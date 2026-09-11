@@ -1,0 +1,2 @@
+# Root requirements.txt for Render / PaaS deployment fallback
+-r backend/requirements.txt

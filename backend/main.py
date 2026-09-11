@@ -3,12 +3,19 @@ FastAPI Backend — AI Socratic Tutor
 All routes, streaming SSE, ElevenLabs TTS proxy, session management.
 """
 import os
+import sys
 import uuid
 import json
 import asyncio
 import httpx
+from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+
+# Ensure backend directory is in sys.path regardless of execution working directory
+BACKEND_DIR = Path(__file__).resolve().parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,6 +34,13 @@ from db.supabase_client import get_supabase
 _sessions: dict[str, TutorState] = {}
 _graph = None
 
+# SSE Response headers to prevent proxy/CDN buffering (Render, Cloudflare, Nginx)
+SSE_HEADERS = {
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+}
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -42,15 +56,18 @@ frontend_env = os.getenv("FRONTEND_URL", "")
 origins = [
     "http://localhost:5173",
     "http://localhost:3000",
+    "http://localhost:4173",
     "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:4173",
 ]
 if frontend_env:
-    origins.extend([origin.strip() for origin in frontend_env.split(",") if origin.strip()])
+    origins.extend([origin.strip().rstrip("/") for origin in frontend_env.split(",") if origin.strip()])
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origin_regex=r"^https://.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -228,7 +245,11 @@ async def send_message(req: MessageRequest):
             yield f"data: {json.dumps({'type': 'response', 'content': fallback_msg, 'done': True})}\n\n"
             yield f"data: {json.dumps({'type': 'done', 'mastery_state': state.get('mastery_state', {})})}\n\n"
 
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers=SSE_HEADERS,
+    )
 
 
 @app.post("/session/upload-work")
@@ -336,7 +357,11 @@ async def upload_work(
             yield f"data: {json.dumps({'type': 'diagnosis', 'diagnosis': fallback_diag, 'mastery_state': state['mastery_state'], 'next_problem': state.get('current_problem')})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers=SSE_HEADERS,
+    )
 
 
 @app.get("/student/{student_id}/mastery")

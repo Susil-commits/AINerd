@@ -149,12 +149,12 @@ The backend is configured for instant deployment using either Render Blueprints 
 
 #### Option B: Manual Web Service
 - **Type**: Web Service
-- **Root Directory**: `backend`
-- **Environment**: Python
+- **Root Directory**: `backend` (or leave default `./` — root fallbacks are included)
+- **Environment**: Python 3.11
 - **Build Command**: `pip install -r requirements.txt`
-- **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT` (if root dir is `backend`) or `uvicorn backend.main:app --host 0.0.0.0 --port $PORT` (if root dir is `./`)
 - **Health Check Path**: `/health`
-- Add Environment Variables matching `backend/.env.example`.
+- Add Environment Variables matching `backend/.env.example` (or `render.yaml`).
 
 > 💡 **Tip for Demo Day**: Render free tier instances spin down after 15 minutes of inactivity. Send a warm-up `GET https://your-backend.onrender.com/health` 2 minutes before presenting!
 
@@ -169,12 +169,12 @@ The frontend is ready for Vercel with automatic SPA routing and API binding.
    - **Framework Preset**: Vite
    - **Root Directory**: `./` (default, supported via root `vercel.json`) or `frontend`
    - **Build Command**: `npm run build` (or automatic via Vite preset)
-   - **Output Directory**: `dist` (or `frontend/dist` if root directory is `./`)
+   - **Output Directory**: `dist` (if root directory is `frontend`) or `frontend/dist` (if root directory is `./`)
 3. Add Environment Variable:
    - **Key**: `VITE_API_URL`
    - **Value**: Your Render backend URL (e.g., `https://ainerd-backend.onrender.com` — no trailing slash needed)
 4. Click **Deploy**.
-5. Once deployed, test the connection by starting a tutoring session! CORS in FastAPI is preconfigured to accept all `*.vercel.app` domains automatically.
+5. Once deployed, test the connection by starting a tutoring session! CORS in FastAPI is preconfigured to accept all `*.vercel.app` domains automatically (and custom domains via `FRONTEND_URL`).
 
 ---
 
