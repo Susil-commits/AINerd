@@ -246,7 +246,7 @@ async def start_session(req: StartSessionRequest):
 
 
 @app.post("/session/message")
-async def send_message(req: MessageRequest, request: Request):
+async def send_message(req: MessageRequest):
     """Send a student text message and get a streaming tutor response."""
     # Rate limit check (1.5s cooldown, max 30 msgs/minute per session)
     limiter.enforce_cooldown(
@@ -320,7 +320,6 @@ async def send_message(req: MessageRequest, request: Request):
 async def upload_work(
     session_id: str,
     file: UploadFile = File(...),
-    request: Request | None = None,
 ):
     """Upload a photo of student handwritten work for OCR + diagnosis."""
     # Rate limit check (3.0s cooldown, max 10 uploads/minute per session)
