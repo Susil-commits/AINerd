@@ -24,7 +24,7 @@ export default function ShiningDots() {
 
     let animationFrameId: number
     let dots: Dot[] = []
-    const spacing = 28 // Exact grid spacing matching modern AI hackathon aesthetic
+    const spacing = 38 // Optimized grid spacing for high performance & clean aesthetic
 
     let mouseX = -1000
     let mouseY = -1000
@@ -48,19 +48,19 @@ export default function ShiningDots() {
       dots = []
       for (let c = 0; c < cols; c++) {
         for (let r = 0; r < rows; r++) {
-          // ~25% of dots continuously shine and twinkle with halo
-          const isShiningStar = Math.random() < 0.25
-          const isViolet = Math.random() < 0.7 // mostly violet, some soft cyan/amber
+          // ~22% of dots continuously shine and twinkle
+          const isShiningStar = Math.random() < 0.22
+          const isViolet = Math.random() < 0.7
           dots.push({
             x: c * spacing,
             y: r * spacing,
-            baseOpacity: isShiningStar ? 0.22 : 0.12,
-            maxOpacity: isShiningStar ? 0.95 : 0.35,
+            baseOpacity: isShiningStar ? 0.20 : 0.10,
+            maxOpacity: isShiningStar ? 0.90 : 0.30,
             phase: Math.random() * Math.PI * 2,
-            speed: 0.018 + Math.random() * 0.035, // organic twinkle rate
+            speed: 0.015 + Math.random() * 0.03,
             isShiningStar,
-            radius: isShiningStar ? 1.5 : 1.1,
-            glowColor: isViolet ? 'rgba(167, 139, 250, 0.9)' : 'rgba(96, 165, 250, 0.85)',
+            radius: isShiningStar ? 1.4 : 1.0,
+            glowColor: isViolet ? 'rgba(167, 139, 250, 0.85)' : 'rgba(96, 165, 250, 0.8)',
           })
         }
       }
@@ -76,18 +76,19 @@ export default function ShiningDots() {
 
       ctx.clearRect(0, 0, width, height)
 
+      // Fast batched rendering
       for (let i = 0; i < dots.length; i++) {
         const dot = dots[i]
 
-        // Continuous harmonic sine oscillation for uninterrupted natural shining
         const naturalPulse = (Math.sin(time * dot.speed * 30 + dot.phase) + 1) / 2
         let currentOpacity = dot.baseOpacity + (dot.maxOpacity - dot.baseOpacity) * naturalPulse
 
-        // Subtle interactive mouse shine
+        // Mouse hover shine
         const dx = dot.x - mouseX
         const dy = dot.y - mouseY
-        const dist = Math.sqrt(dx * dx + dy * dy)
-        if (dist < 140) {
+        const distSq = dx * dx + dy * dy
+        if (distSq < 19600) { // 140^2 precalculated
+          const dist = Math.sqrt(distSq)
           const mouseFactor = (1 - dist / 140) * 0.4
           currentOpacity = Math.min(1, currentOpacity + mouseFactor)
         }
@@ -96,15 +97,10 @@ export default function ShiningDots() {
         ctx.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2)
 
         if (dot.isShiningStar && currentOpacity > 0.4) {
-          // Continuous bright shine with halo glow
-          ctx.shadowBlur = 8 * (currentOpacity / dot.maxOpacity)
-          ctx.shadowColor = dot.glowColor
           ctx.fillStyle = `rgba(230, 225, 255, ${currentOpacity})`
         } else {
-          ctx.shadowBlur = 0
           ctx.fillStyle = `rgba(145, 160, 220, ${currentOpacity})`
         }
-
         ctx.fill()
       }
 

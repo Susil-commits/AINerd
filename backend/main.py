@@ -6,6 +6,7 @@ import os
 import sys
 import uuid
 import json
+import time
 import asyncio
 import httpx
 from pathlib import Path
@@ -19,6 +20,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -66,6 +68,8 @@ origins = [
 if frontend_env:
     origins.extend([origin.strip().rstrip("/") for origin in frontend_env.split(",") if origin.strip()])
 
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -81,9 +85,14 @@ async def root():
     return {
         "status": "ok",
         "service": "AI Socratic Tutor API",
-        "health": "/health",
+        "version": "1.0.0",
         "docs": "/docs",
     }
+
+
+# In-memory health cache (TTL: 30 seconds) to prevent hammering Supabase on client polling
+_last_db_check_time: float = 0.0
+_cached_db_status: bool = False
 
 
 # ── Pydantic Models ──────────────────────────────────────────────────────────
@@ -108,15 +117,20 @@ class MasteryUpdateRequest(BaseModel):
 
 @app.api_route("/health", methods=["GET", "HEAD"])
 async def health():
-    db_connected = False
-    try:
-        supabase = get_supabase()
-        res = supabase.table("skills").select("id").limit(1).execute()
-        if res.data is not None:
-            db_connected = True
-    except Exception as e:
-        print(f"[WARN] Health DB ping check: {e}")
-    return {"status": "ok", "version": "1.0.0", "db": db_connected}
+    global _last_db_check_time, _cached_db_status
+    now = time.time()
+    # Cache DB connectivity check for 30s so client health polling doesn't hammer remote DB
+    if (now - _last_db_check_time) > 30.0:
+        try:
+            supabase = get_supabase()
+            res = supabase.table("skills").select("id").limit(1).execute()
+            _cached_db_status = res.data is not None
+            _last_db_check_time = now
+        except Exception as e:
+            print(f"[WARN] Health DB ping check: {e}")
+            _cached_db_status = False
+            _last_db_check_time = now - 20.0  # retry in 10s if failed
+    return {"status": "ok", "version": "1.0.0", "db": _cached_db_status}
 
 
 @app.post("/session/start")

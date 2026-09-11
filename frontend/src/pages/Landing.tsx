@@ -94,19 +94,37 @@ export default function Landing() {
     }
   }, [])
 
-  const handleStart = async () => {
-    if (connStatus !== 'connected') return
-    if (!name.trim()) { setError('Please enter your name to start!'); return }
+  const [pendingStart, setPendingStart] = useState(false)
+
+  const handleStart = async (overrideName?: string) => {
+    const studentName = (overrideName ?? name).trim()
+    if (!studentName) { setError('Please enter your name to start!'); return }
+
+    if (connStatus !== 'connected') {
+      // Optimistic queue: wait for server to connect and automatically enter
+      setPendingStart(true)
+      setLoading(true)
+      setError('')
+      const isReady = await checkConnection()
+      if (!isReady) {
+        setLoading(false)
+        setPendingStart(false)
+        setError('Server is waking up. Please try clicking Start again in a few seconds!')
+        return
+      }
+    }
+
     setLoading(true)
     setError('')
     try {
-      const session = await startSession(name.trim())
+      const session = await startSession(studentName)
       sessionStorage.setItem('session', JSON.stringify(session))
       navigate('/session')
     } catch (e: any) {
       setError(e?.response?.data?.detail ?? 'Could not connect to server. Make sure the backend is running.')
     } finally {
       setLoading(false)
+      setPendingStart(false)
     }
   }
 
@@ -191,32 +209,26 @@ export default function Landing() {
         <div className="start-form">
           <input
             className="input"
-            placeholder={
-              connStatus === 'connected'
-                ? "What's your name?"
-                : "Waiting for server to connect..."
-            }
+            placeholder="What's your name?"
             value={name}
             onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && connStatus === 'connected' && handleStart()}
+            onKeyDown={e => e.key === 'Enter' && !loading && handleStart()}
             maxLength={40}
-            disabled={connStatus !== 'connected'}
+            disabled={loading}
             aria-label="Student name"
           />
           <button
             className="btn btn-amber"
-            onClick={handleStart}
-            disabled={loading || connStatus !== 'connected'}
+            onClick={() => handleStart()}
+            disabled={loading}
             aria-label="Start Learning math tutoring session"
           >
             {loading ? (
-              'Starting…'
-            ) : connStatus === 'connected' ? (
-              <>Start Learning <ChevronRight size={18} /></>
+              pendingStart ? 'Connecting & Starting…' : 'Starting…'
             ) : connStatus === 'error' ? (
               'Server Offline'
             ) : (
-              'Waking up server…'
+              <>Start Learning <ChevronRight size={18} /></>
             )}
           </button>
         </div>
