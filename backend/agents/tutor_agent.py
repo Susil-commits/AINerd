@@ -2,6 +2,7 @@
 Tutor Agent — Socratic dialogue, never gives the answer.
 Uses Gemini 2.0 Flash via LangChain.
 """
+# pyright: reportMissingImports=false
 import os
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, AIMessage

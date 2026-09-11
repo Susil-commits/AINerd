@@ -2,6 +2,7 @@
 Diagnostic Agent — OCR + misconception detection using Gemini Vision.
 Identifies SPECIFIC errors in student handwritten work, not generic "wrong answer."
 """
+# pyright: reportMissingImports=false
 import os
 import base64
 import json

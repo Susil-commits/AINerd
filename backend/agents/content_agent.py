@@ -2,6 +2,7 @@
 Content Agent — RAG-based problem selection using pgvector + mastery state.
 Picks the NEXT problem targeted at the student's diagnosed skill gap.
 """
+# pyright: reportMissingImports=false
 import os
 import json
 from pydantic import SecretStr
