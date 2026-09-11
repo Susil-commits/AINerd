@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Brain, Mic, Camera, BarChart3, ChevronRight, Zap } from 'lucide-react'
+import { Brain, Mic, Camera, BarChart3, ChevronRight, Zap, Sparkles } from 'lucide-react'
 import { startSession, checkHealth } from '../lib/api'
+import AnimatedIntro from '../components/AnimatedIntro'
+import SocraticPreview from '../components/SocraticPreview'
 import './Landing.css'
 
 const STATS = [
@@ -36,6 +38,11 @@ export default function Landing() {
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Animated intro portal control
+  const [showIntro, setShowIntro] = useState(() => {
+    return sessionStorage.getItem('ainerd_intro_seen') !== 'true'
+  })
 
   // Simple server & database connection status
   const [connStatus, setConnStatus] = useState<ConnStatus>('checking')
@@ -104,7 +111,53 @@ export default function Landing() {
   }
 
   return (
-    <div className="landing">
+    <>
+      {/* Animated Entrance Portal (Opens animately on first arrival or replay) */}
+      {showIntro && (
+        <AnimatedIntro
+          onEnter={() => {
+            setShowIntro(false)
+            sessionStorage.setItem('ainerd_intro_seen', 'true')
+          }}
+        />
+      )}
+
+      {/* Top Glassmorphic Navigation Bar */}
+      <header className="landing-navbar">
+        <div className="navbar-container">
+          <div className="navbar-brand">
+            <span className="brand-icon">📐</span>
+            <span className="brand-name">AINerd<span className="brand-dot">.</span></span>
+            <span className="brand-tag">Socratic Math</span>
+          </div>
+
+          <nav className="navbar-links">
+            <a href="#demo" className="nav-link">Interactive Demo</a>
+            <a href="#how-it-works" className="nav-link">How It Works</a>
+            <a href="#topics" className="nav-link">Math Topics</a>
+          </nav>
+
+          <div className="navbar-actions">
+            <button
+              className="replay-intro-btn"
+              onClick={() => setShowIntro(true)}
+              aria-label="Replay animated intro experience"
+            >
+              <Sparkles size={14} className="sparkle-accent" />
+              <span>Experience Intro</span>
+            </button>
+
+            <div className={`nav-conn-pill nav-conn-pill--${connStatus}`}>
+              <span className="conn-dot" />
+              <span className="conn-pill-text">
+                {connStatus === 'connected' ? 'Ready' : connStatus === 'waking_up' ? 'Waking Up…' : 'Connecting…'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="landing">
       {/* Hero */}
       <section className="hero">
         <h1 className="hero-headline">
@@ -181,8 +234,13 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Interactive Socratic Demo Showcase */}
+      <section id="demo" className="demo-section">
+        <SocraticPreview />
+      </section>
+
       {/* Features */}
-      <section className="features">
+      <section id="features" className="features">
         {FEATURES.map(f => (
           <div key={f.title} className="feature-card card">
             <div className="feature-icon">{f.icon}</div>
@@ -193,7 +251,7 @@ export default function Landing() {
       </section>
 
       {/* How it works & 3 Helpers */}
-      <section className="architecture-section">
+      <section id="how-it-works" className="architecture-section">
         <div className="section-header">
           <span className="badge badge-indigo">How It Works</span>
           <h2>How AI Nerd Helps You Learn</h2>
@@ -345,5 +403,6 @@ export default function Landing() {
         </div>
       </footer>
     </div>
+    </>
   )
 }
