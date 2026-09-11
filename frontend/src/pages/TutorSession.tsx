@@ -37,6 +37,7 @@ export default function TutorSession() {
     if (!raw) { navigate('/'); return }
     const s: SessionData = JSON.parse(raw)
     setSession(s)
+    document.title = `AINerd — Math Practice (${s.student_name})`
     setMasteryState(s.mastery_state)
     setCurrentProblem(s.current_problem)
     setMessages([

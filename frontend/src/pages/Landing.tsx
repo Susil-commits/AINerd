@@ -151,6 +151,7 @@ export default function Landing() {
   }
 
   useEffect(() => {
+    document.title = "AINerd — The Math Tutor That Guides Your Thinking"
     let mounted = true
     let timer: any = null
     let retries = 0

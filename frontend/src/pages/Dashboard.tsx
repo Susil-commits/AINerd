@@ -25,6 +25,7 @@ export default function Dashboard() {
     : 'Student'
 
   useEffect(() => {
+    document.title = `AINerd — ${studentName}'s Progress Dashboard`
     if (!studentId) return
     Promise.all([
       getMastery(studentId),
