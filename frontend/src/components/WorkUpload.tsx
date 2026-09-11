@@ -74,8 +74,8 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
           <video ref={videoRef} autoPlay playsInline className="camera-video" />
           <canvas ref={canvasRef} style={{ display: 'none' }} />
           <div className="camera-actions">
-            <button className="btn btn-primary" onClick={capturePhoto}>📸 Capture</button>
-            <button className="btn btn-ghost" onClick={() => setCameraOpen(false)}>Cancel</button>
+            <button className="btn btn-primary" onClick={capturePhoto} aria-label="Take photo of handwritten work">📸 Capture</button>
+            <button className="btn btn-ghost" onClick={() => setCameraOpen(false)} aria-label="Cancel camera capture">Cancel</button>
           </div>
         </div>
       ) : preview ? (
@@ -147,14 +147,23 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
               )}
             </div>
           )}
-          <button className="clear-btn" onClick={() => { setPreview(null); setFile(null); setDiagnosis(null) }}>
+          <button
+            className="clear-btn"
+            onClick={() => { setPreview(null); setFile(null); setDiagnosis(null) }}
+            aria-label="Remove uploaded image"
+            title="Remove image"
+          >
             <X size={16} />
           </button>
         </div>
       ) : (
         <div
           className="upload-zone"
+          role="button"
+          tabIndex={0}
+          aria-label="Upload photo of handwritten work. Click to browse or drag and drop."
           onClick={() => fileInputRef.current?.click()}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && fileInputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
         >
@@ -173,13 +182,23 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
 
       <div className="upload-actions">
         {!cameraOpen && (
-          <button className="btn btn-ghost" onClick={openCamera} style={{ gap: '6px' }}>
+          <button
+            className="btn btn-ghost"
+            onClick={openCamera}
+            style={{ gap: '6px' }}
+            aria-label="Open camera to capture work photo"
+          >
             <Camera size={16} /> Camera
           </button>
         )}
         {file && !diagnosis && (
-          <button className="btn btn-primary" onClick={analyze} disabled={uploading}>
-            {uploading ? '🔍 Analyzing…' : '🔬 Analyze My Work'}
+          <button
+            className="btn btn-primary"
+            onClick={analyze}
+            disabled={uploading}
+            aria-label="Check handwritten work photo"
+          >
+            {uploading ? '🔍 Checking steps…' : '🔍 Check My Work'}
           </button>
         )}
       </div>

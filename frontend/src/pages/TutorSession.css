@@ -155,9 +155,44 @@
   to   { transform: scaleY(1); }
 }
 
+/* ── Hint & Chat Action Bar ── */
+.chat-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.5rem 1.25rem 0.25rem;
+  background: var(--bg-surface);
+}
+
+.btn-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border-radius: 20px;
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--amber);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-hint:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: var(--amber);
+  transform: translateY(-1px);
+}
+
+.btn-hint:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── Input Area ── */
 .chat-input-area {
-  padding: 1rem 1.25rem;
+  padding: 0.75rem 1.25rem 1rem;
   border-top: 1px solid var(--border);
   display: flex;
   gap: 0.5rem;
@@ -167,6 +202,10 @@
 }
 
 .voice-btn { padding: 10px; flex-shrink: 0; }
+.voice-btn--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .chat-input { flex: 1; }
 

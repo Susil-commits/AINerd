@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mic, MicOff, Send, Volume2, LayoutDashboard } from 'lucide-react'
+import { Mic, MicOff, Send, Volume2, LayoutDashboard, Lightbulb } from 'lucide-react'
 import { streamMessage } from '../lib/api'
 import { useSpeechInput, useTTS } from '../hooks/useVoice'
 import WorkUpload from '../components/WorkUpload'
@@ -27,7 +27,7 @@ export default function TutorSession() {
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   const { isSpeaking, speak } = useTTS()
-  const { isListening, interimText, startListening, stopListening } = useSpeechInput(
+  const { isListening, interimText, startListening, stopListening, isSupported } = useSpeechInput(
     (text) => { setInput(text) }
   )
 
@@ -81,6 +81,38 @@ export default function TutorSession() {
     )
   }, [input, session, isStreaming, speak])
 
+  const handleRequestHint = useCallback(() => {
+    if (!session || isStreaming) return
+    const hintPrompt = "I'm feeling a bit stuck on this step. Can you give me a small guiding hint to help me think about the first step without telling me the answer?"
+    const userMsg: Message = { role: 'student', content: "💡 I'm stuck. Can I get a hint?", timestamp: new Date() }
+    setMessages(prev => [...prev, userMsg])
+    setThinkingSteps([])
+    setIsStreaming(true)
+
+    let responseAcc = ''
+    const botMsg: Message = { role: 'tutor', content: '', timestamp: new Date() }
+    setMessages(prev => [...prev, botMsg])
+
+    streamMessage(
+      session.session_id,
+      hintPrompt,
+      (step) => setThinkingSteps(prev => [...prev, step]),
+      (text, _done) => {
+        responseAcc = text
+        setMessages(prev => {
+          const updated = [...prev]
+          updated[updated.length - 1] = { ...botMsg, content: text }
+          return updated
+        })
+      },
+      (newMastery) => {
+        if (newMastery && Object.keys(newMastery).length) setMasteryState(newMastery)
+        setIsStreaming(false)
+        if (responseAcc) speak(responseAcc)
+      },
+    )
+  }, [session, isStreaming, speak])
+
   const handleDiagnosis = (d: Diagnosis, mastery: Record<string, number>, next: Problem | null) => {
     setMasteryState(mastery)
     if (next) setCurrentProblem(next)
@@ -107,6 +139,7 @@ export default function TutorSession() {
             className="btn btn-ghost"
             style={{ padding: '6px 12px', fontSize: '0.8rem' }}
             onClick={() => navigate(`/dashboard/${session.student_id}`)}
+            aria-label="View learning dashboard"
           >
             <LayoutDashboard size={14} /> Dashboard
           </button>
@@ -167,35 +200,64 @@ export default function TutorSession() {
           </div>
         )}
 
+        {/* Action bar for stuck-student hint affordance */}
+        <div className="chat-actions-bar">
+          <button
+            className="btn-hint"
+            onClick={handleRequestHint}
+            disabled={isStreaming || isListening}
+            aria-label="Request a hint from the tutor"
+            title="Ask the tutor for a small guiding hint without giving away the answer"
+          >
+            <Lightbulb size={14} /> Need a hint?
+          </button>
+        </div>
+
         {/* Input area */}
         <div className="chat-input-area">
           <button
-            className={`btn ${isListening ? 'btn-amber' : 'btn-ghost'} voice-btn`}
-            onClick={isListening ? stopListening : startListening}
-            title={isListening ? 'Stop listening' : 'Speak your answer'}
+            className={`btn ${isListening ? 'btn-amber' : 'btn-ghost'} voice-btn ${!isSupported ? 'voice-btn--disabled' : ''}`}
+            onClick={!isSupported ? undefined : (isListening ? stopListening : startListening)}
+            disabled={!isSupported || isStreaming}
+            title={
+              !isSupported
+                ? 'Voice input is supported in Chrome & Edge (Web Speech API). Please type your answer!'
+                : isListening
+                ? 'Stop listening'
+                : 'Speak your answer'
+            }
+            aria-label={
+              !isSupported
+                ? 'Voice input not supported in this browser'
+                : isListening
+                ? 'Stop listening to voice'
+                : 'Speak your answer with microphone'
+            }
           >
             {isListening ? <MicOff size={20} /> : <Mic size={20} />}
           </button>
 
           <input
             className="input chat-input"
-            placeholder="Type your answer, or use the mic…"
+            placeholder={isSupported ? "Type your answer, or use the mic…" : "Type your answer here…"}
             value={isListening ? interimText : input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
             disabled={isListening || isStreaming}
+            aria-label="Type your math answer or reasoning"
           />
 
           <button
             className="btn btn-primary"
             onClick={sendMessage}
             disabled={!input.trim() || isStreaming || isListening}
+            aria-label="Send answer to tutor"
           >
             {isStreaming ? <span className="spinner" /> : <Send size={18} />}
           </button>
 
           {isSpeaking && (
-            <div className="speaking-badge">
+            <div className="speaking-badge" role="status">
               <Volume2 size={14} /> Speaking
             </div>
           )}
@@ -207,9 +269,9 @@ export default function TutorSession() {
         <div className="intel-header">
           <div className="intel-title-row">
             <span className="live-pulse-dot" />
-            <span className="intel-title">LIVE INTELLIGENCE</span>
+            <span className="intel-title">LIVE PROGRESS</span>
           </div>
-          <span className="intel-caption">Real-time Reasoning Trace & BKT Model</span>
+          <span className="intel-caption">Tutor Guidance & Skill Map</span>
         </div>
 
         <ThinkingTrace steps={thinkingSteps} isActive={isStreaming} />

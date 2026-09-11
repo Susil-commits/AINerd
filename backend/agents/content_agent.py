@@ -27,9 +27,11 @@ def get_next_problem(
     mastery_prob: float,
     student_id: str,
     exclude_problem_ids: list[str] | None = None,
+    misconception_text: str | None = None,
 ) -> dict | None:
     """
-    Retrieve the next problem from Supabase pgvector, filtered by skill and difficulty.
+    Retrieve the next problem from Supabase using pgvector semantic similarity search,
+    calibrated to the student's diagnosed misconception and mastery level.
 
     Difficulty selection logic:
         mastery < 0.4  → difficulty 1-2 (build confidence)
@@ -37,6 +39,7 @@ def get_next_problem(
         mastery ≥ 0.7  → difficulty 3-5 (challenge)
     """
     supabase = get_supabase()
+    exclude_ids = set(exclude_problem_ids or [])
 
     # Determine target difficulty range
     if mastery_prob < 0.4:
@@ -46,7 +49,37 @@ def get_next_problem(
     else:
         min_diff, max_diff = 3, 5
 
-    # Build query: filter by skill + difficulty, exclude already-seen problems
+    # ── 1. Vector Search via pgvector match_problems RPC ─────────────────────
+    try:
+        query_text = (
+            f"Remediation problem for misconception: {misconception_text}"
+            if misconception_text
+            else f"Introductory practice problem for skill {skill_id} difficulty {min_diff} to {max_diff}"
+        )
+        query_embedding = embed_text(query_text)
+
+        rpc_res = supabase.rpc(
+            "match_problems",
+            {
+                "query_embedding": query_embedding,
+                "skill_filter": skill_id,
+                "match_count": 8,
+            },
+        ).execute()
+
+        candidates = rpc_res.data or []
+        # Filter out already attempted problems
+        fresh_candidates = [p for p in candidates if str(p.get("id")) not in exclude_ids]
+
+        if fresh_candidates:
+            # Prioritize candidates within the target difficulty range
+            in_range = [p for p in fresh_candidates if min_diff <= p.get("difficulty", 1) <= max_diff]
+            chosen = in_range[0] if in_range else fresh_candidates[0]
+            return chosen
+    except Exception as e:
+        print(f"[WARN] pgvector match_problems RPC skipped/failed ({e}), falling back to direct SQL query.")
+
+    # ── 2. Fallback SQL query (filter by skill + difficulty) ──────────────────
     query = (
         supabase.table("problems")
         .select("*")
@@ -62,12 +95,18 @@ def get_next_problem(
 
     if not result.data:
         # Fallback: get any problem with this skill, regardless of difficulty
-        result = supabase.table("problems").select("*").eq("skill_id", skill_id).limit(3).execute()
+        fallback_query = supabase.table("problems").select("*").eq("skill_id", skill_id)
+        if exclude_problem_ids:
+            fallback_query = fallback_query.not_.in_("id", exclude_problem_ids)
+        result = fallback_query.limit(3).execute()
+
+    if not result.data:
+        # Ultimate fallback: any problem for this skill ignoring exclusion if exhausted
+        result = supabase.table("problems").select("*").eq("skill_id", skill_id).limit(1).execute()
 
     if not result.data:
         return None
 
-    # Pick the first available problem (could enhance with semantic ranking)
     return result.data[0]
 
 

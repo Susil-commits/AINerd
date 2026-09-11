@@ -19,9 +19,26 @@ export interface SessionData {
   session_id: string
   student_id: string
   student_name: string
+  session_token?: string
   current_problem: Problem
   mastery_state: Record<string, number>
   welcome_message: string
+}
+
+export function getAuthHeaders(): Record<string, string> {
+  try {
+    const raw = sessionStorage.getItem('session')
+    if (raw) {
+      const session = JSON.parse(raw)
+      if (session.session_token) {
+        return {
+          'Authorization': `Bearer ${session.session_token}`,
+          'X-Session-Token': session.session_token,
+        }
+      }
+    }
+  } catch {}
+  return {}
 }
 
 export interface BoundingBox {
@@ -46,19 +63,30 @@ export interface Diagnosis {
   bounding_box?: BoundingBox | null
 }
 
-export async function startSession(studentName: string): Promise<SessionData> {
-  const { data } = await api.post('/session/start', { student_name: studentName })
+export async function checkHealth(): Promise<{ status: string; db?: boolean }> {
+  const { data } = await api.get('/health', { timeout: 12000 })
+  return data
+}
+
+export async function startSession(studentName: string, studentId?: string): Promise<SessionData> {
+  const { data } = await api.post('/session/start', {
+    student_name: studentName,
+    student_id: studentId,
+  })
   return data
 }
 
 export async function getMastery(studentId: string) {
-  const { data } = await api.get(`/student/${studentId}/mastery`)
+  const { data } = await api.get(`/student/${studentId}/mastery`, {
+    headers: getAuthHeaders(),
+  })
   return data
 }
 
 export async function getSummary(studentId: string, sessionId: string) {
   const { data } = await api.get(`/student/${studentId}/summary`, {
-    params: { session_id: sessionId }
+    params: { session_id: sessionId },
+    headers: getAuthHeaders(),
   })
   return data
 }
@@ -73,10 +101,21 @@ export function streamMessage(
   const url = `${BASE_URL}/session/message`
   fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify({ session_id: sessionId, message }),
   }).then(async (res) => {
-    const reader = res.body!.getReader()
+    if (res.status === 429) {
+      onThinking('⏳ Tutor catching breath...')
+      onResponse("You're thinking super fast! Please wait a couple of seconds before sending your next message.", true)
+      onDone({})
+      return
+    }
+
+    if (!res.body) return
+    const reader = res.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
 
@@ -96,6 +135,8 @@ export function streamMessage(
         } catch {}
       }
     }
+  }).catch((err) => {
+    console.warn('streamMessage error:', err)
   })
 }
 
@@ -110,9 +151,16 @@ export function streamDiagnosis(
 
   fetch(`${BASE_URL}/session/upload-work?session_id=${sessionId}`, {
     method: 'POST',
+    headers: getAuthHeaders(),
     body: formData,
   }).then(async (res) => {
-    const reader = res.body!.getReader()
+    if (res.status === 429) {
+      onThinking('⏳ Vision analyzer cooldown — please wait a few seconds before re-uploading.')
+      return
+    }
+
+    if (!res.body) return
+    const reader = res.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
 
@@ -133,10 +181,15 @@ export function streamDiagnosis(
         } catch {}
       }
     }
+  }).catch((err) => {
+    console.warn('streamDiagnosis error:', err)
   })
 }
 
 export async function synthesizeSpeech(text: string): Promise<ArrayBuffer> {
-  const res = await fetch(`${BASE_URL}/tts?text=${encodeURIComponent(text)}`, { method: 'POST' })
+  const res = await fetch(`${BASE_URL}/tts?text=${encodeURIComponent(text)}`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  })
   return res.arrayBuffer()
 }

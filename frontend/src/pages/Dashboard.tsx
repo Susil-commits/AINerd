@@ -54,31 +54,31 @@ export default function Dashboard() {
   return (
     <div className="dashboard">
       <header className="dash-header">
-        <button className="btn btn-ghost" onClick={() => navigate('/session')}>
+        <button className="btn btn-ghost" onClick={() => navigate('/session')} aria-label="Back to Session">
           <ArrowLeft size={16} /> Back to Session
         </button>
         <div>
           <h2>{studentName}'s Learning Dashboard</h2>
-          <p className="dash-sub">Bayesian Knowledge Tracing — live mastery estimates</p>
+          <p className="dash-sub">Real-time skill progress & practice summary</p>
         </div>
         <div className="dash-stats">
           <div className="dash-stat">
             <span>{Math.round(avgMastery * 100)}%</span>
-            <label>Avg Mastery</label>
+            <label>Overall Progress</label>
           </div>
           <div className="dash-stat">
             <span>{strongSkills.length}</span>
-            <label>Strong Skills</label>
+            <label>Mastered</label>
           </div>
           <div className="dash-stat">
             <span>{weakSkills.length}</span>
-            <label>Need Work</label>
+            <label>Practicing</label>
           </div>
         </div>
       </header>
 
       {loading ? (
-        <div className="dash-loading">Loading mastery data…</div>
+        <div className="dash-loading">Loading your progress…</div>
       ) : (
         <div className="dash-content">
           <div className="dash-left">

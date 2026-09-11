@@ -17,7 +17,7 @@ BACKEND_DIR = Path(__file__).resolve().parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel
@@ -29,6 +29,8 @@ from graph.orchestrator import build_graph, TutorState
 from agents.content_agent import get_next_problem, generate_session_summary
 from bkt.tracker import initialize_mastery, get_all_skills, get_skill_params
 from db.supabase_client import get_supabase
+from auth import create_session_token, verify_student_access
+from rate_limiter import limiter
 
 # ── In-memory session store (Supabase for persistence, memory for speed) ────
 _sessions: dict[str, TutorState] = {}
@@ -88,6 +90,7 @@ async def root():
 
 class StartSessionRequest(BaseModel):
     student_name: str
+    student_id: str | None = None
 
 
 class MessageRequest(BaseModel):
@@ -105,29 +108,57 @@ class MasteryUpdateRequest(BaseModel):
 
 @app.api_route("/health", methods=["GET", "HEAD"])
 async def health():
-    return {"status": "ok", "version": "1.0.0"}
+    db_connected = False
+    try:
+        supabase = get_supabase()
+        res = supabase.table("skills").select("id").limit(1).execute()
+        if res.data is not None:
+            db_connected = True
+    except Exception as e:
+        print(f"[WARN] Health DB ping check: {e}")
+    return {"status": "ok", "version": "1.0.0", "db": db_connected}
 
 
 @app.post("/session/start")
 async def start_session(req: StartSessionRequest):
-    """Create a new tutoring session and return the first problem."""
+    """Create a new tutoring session, issue a scoped session token, and return the first problem."""
     supabase = get_supabase()
 
-    # Create or find student
-    student_result = (
-        supabase.table("students")
-        .upsert({"name": req.student_name}, on_conflict="name")
-        .execute()
-    )
-    # Get the student row
-    student_row = (
-        supabase.table("students")
-        .select("*")
-        .eq("name", req.student_name)
-        .single()
-        .execute()
-    )
-    student_id = student_row.data["id"]
+    student_id = None
+    # 1. Reuse existing student if ID provided
+    if req.student_id:
+        try:
+            existing = (
+                supabase.table("students")
+                .select("*")
+                .eq("id", req.student_id)
+                .single()
+                .execute()
+            )
+            if existing.data:
+                student_id = existing.data["id"]
+        except Exception:
+            student_id = None
+
+    # 2. Otherwise create a new student record (supports multiple students with same first name)
+    if not student_id:
+        try:
+            # Try inserting as a distinct student
+            new_student = supabase.table("students").insert({"name": req.student_name}).execute()
+            if new_student.data:
+                student_id = new_student.data[0]["id"]
+        except Exception:
+            # Fallback if the database still retains a legacy UNIQUE(name) constraint
+            try:
+                found = supabase.table("students").select("*").eq("name", req.student_name).execute()
+                if found.data:
+                    student_id = found.data[0]["id"]
+            except Exception as e:
+                print(f"[WARN] Student lookup/creation fallback: {e}")
+
+    # Fallback UUID if database offline/unreachable
+    if not student_id:
+        student_id = str(uuid.uuid4())
 
     # Load existing mastery or initialize fresh
     mastery_rows = (
@@ -137,16 +168,19 @@ async def start_session(req: StartSessionRequest):
         .execute()
     )
     mastery_state = initialize_mastery()
-    for row in mastery_rows.data:
+    for row in (mastery_rows.data or []):
         mastery_state[row["skill_id"]] = row["mastery_prob"]
 
     # Create session record
     session_id = str(uuid.uuid4())
-    supabase.table("sessions").insert({
-        "id": session_id,
-        "student_id": student_id,
-        "student_name": req.student_name,
-    }).execute()
+    try:
+        supabase.table("sessions").insert({
+            "id": session_id,
+            "student_id": student_id,
+            "student_name": req.student_name,
+        }).execute()
+    except Exception as e:
+        print(f"[WARN] Supabase session insert error: {e}")
 
     # Pick first problem
     from bkt.tracker import get_next_skill
@@ -159,6 +193,13 @@ async def start_session(req: StartSessionRequest):
 
     if not problem:
         raise HTTPException(status_code=503, detail="No problems available. Please run seed script.")
+
+    # Generate cryptographically signed session token scoped to this student & session
+    session_token = create_session_token(
+        student_id=student_id,
+        session_id=session_id,
+        student_name=req.student_name,
+    )
 
     # Initialize session state
     state: TutorState = {
@@ -183,6 +224,7 @@ async def start_session(req: StartSessionRequest):
         "session_id": session_id,
         "student_id": student_id,
         "student_name": req.student_name,
+        "session_token": session_token,
         "current_problem": problem,
         "mastery_state": mastery_state,
         "welcome_message": f"Hi {req.student_name}! I'm your math tutor. Let's start with this problem. Read it carefully, then tell me what you think the first step is!",
@@ -190,8 +232,16 @@ async def start_session(req: StartSessionRequest):
 
 
 @app.post("/session/message")
-async def send_message(req: MessageRequest):
+async def send_message(req: MessageRequest, request: Request):
     """Send a student text message and get a streaming tutor response."""
+    # Rate limit check (1.5s cooldown, max 30 msgs/minute per session)
+    limiter.enforce_cooldown(
+        key=f"msg_{req.session_id}",
+        cooldown_seconds=1.5,
+        action="message",
+        max_per_minute=30,
+    )
+
     if req.session_id not in _sessions:
         raise HTTPException(status_code=404, detail="Session not found")
 
@@ -208,7 +258,7 @@ async def send_message(req: MessageRequest):
             from agents.tutor_agent import run_tutor_agent
 
             thinking_steps = []
-            thinking_steps.append("🎓 Analyzing your response...")
+            thinking_steps.append("🎓 Reading your thought...")
             yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
             await asyncio.sleep(0.1)
 
@@ -218,7 +268,7 @@ async def send_message(req: MessageRequest):
                 current_problem=state.get("current_problem"),
             )
 
-            thinking_steps.append("✅ Formulating Socratic question...")
+            thinking_steps.append("💡 Thinking of a guiding question...")
             yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
 
             # Update state
@@ -256,8 +306,17 @@ async def send_message(req: MessageRequest):
 async def upload_work(
     session_id: str,
     file: UploadFile = File(...),
+    request: Request | None = None,
 ):
     """Upload a photo of student handwritten work for OCR + diagnosis."""
+    # Rate limit check (3.0s cooldown, max 10 uploads/minute per session)
+    limiter.enforce_cooldown(
+        key=f"upload_{session_id}",
+        cooldown_seconds=3.0,
+        action="work upload",
+        max_per_minute=10,
+    )
+
     if session_id not in _sessions:
         raise HTTPException(status_code=404, detail="Session not found")
 
@@ -273,7 +332,7 @@ async def upload_work(
             from bkt.tracker import update_mastery
 
             current_problem = state.get("current_problem") or {}
-            yield f"data: {json.dumps({'type': 'thinking', 'content': '🔍 Comparing your steps to the expected solution...'})}\n\n"
+            yield f"data: {json.dumps({'type': 'thinking', 'content': '🔍 Checking your steps...'})}\n\n"
 
             diagnosis = run_diagnostic_agent(
                 image_bytes=image_bytes,
@@ -283,7 +342,8 @@ async def upload_work(
             )
 
             misconception = diagnosis.get('misconception_type', 'unknown')
-            yield f"data: {json.dumps({'type': 'thinking', 'content': 'Found: ' + misconception})}\n\n"
+            friendly_misc = misconception.replace('_', ' ')
+            yield f"data: {json.dumps({'type': 'thinking', 'content': 'Checking step: ' + friendly_misc})}\n\n"
 
             # Update mastery
             skill_id = state["current_skill_id"]
@@ -296,7 +356,7 @@ async def upload_work(
             state["mastery_state"][skill_id] = new_mastery
 
             mastery_pct = f"{new_mastery*100:.0f}%"
-            yield f"data: {json.dumps({'type': 'thinking', 'content': 'Updating mastery: ' + mastery_pct})}\n\n"
+            yield f"data: {json.dumps({'type': 'thinking', 'content': 'Updating skill progress: ' + mastery_pct})}\n\n"
 
             # Persist to Supabase
             try:
@@ -320,16 +380,18 @@ async def upload_work(
             state["diagnosis"] = diagnosis
             _sessions[session_id] = state
 
-            # If correct, select next problem
+            # If correct, select next problem targeted with pgvector RAG
             if is_correct:
-                yield f"data: {json.dumps({'type': 'thinking', 'content': '📚 Selecting next problem...'})}\n\n"
+                yield f"data: {json.dumps({'type': 'thinking', 'content': '📚 Picking your next practice problem...'})}\n\n"
                 from bkt.tracker import get_next_skill
                 next_skill = get_next_skill(state["mastery_state"])
+                misconception_desc = diagnosis.get("description") or diagnosis.get("misconception_type")
                 next_problem = get_next_problem(
                     skill_id=next_skill,
                     mastery_prob=state["mastery_state"].get(next_skill, 0.3),
                     student_id=state["student_id"],
                     exclude_problem_ids=state.get("problems_attempted", []),
+                    misconception_text=misconception_desc,
                 )
                 if next_problem:
                     state["current_problem"] = next_problem
@@ -365,8 +427,11 @@ async def upload_work(
 
 
 @app.get("/student/{student_id}/mastery")
-async def get_mastery(student_id: str):
-    """Get the full mastery state for a student."""
+async def get_mastery(
+    student_id: str,
+    auth_payload: dict = Depends(verify_student_access),
+):
+    """Get the full mastery state for a student (protected by scoped session token)."""
     supabase = get_supabase()
     result = (
         supabase.table("student_skill_mastery")
@@ -379,8 +444,12 @@ async def get_mastery(student_id: str):
 
 
 @app.get("/student/{student_id}/summary")
-async def get_summary(student_id: str, session_id: str):
-    """Generate an LLM session summary for teacher/parent dashboard."""
+async def get_summary(
+    student_id: str,
+    session_id: str,
+    auth_payload: dict = Depends(verify_student_access),
+):
+    """Generate an LLM session summary for teacher/parent dashboard (protected by scoped session token)."""
     supabase = get_supabase()
 
     student_row = supabase.table("students").select("*").eq("id", student_id).single().execute()

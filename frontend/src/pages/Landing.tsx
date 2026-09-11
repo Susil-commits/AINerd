@@ -1,33 +1,35 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Brain, Mic, Camera, BarChart3, Sparkles, ChevronRight, Zap } from 'lucide-react'
-import { startSession } from '../lib/api'
+import { Brain, Mic, Camera, BarChart3, ChevronRight, Zap } from 'lucide-react'
+import { startSession, checkHealth } from '../lib/api'
 import './Landing.css'
 
 const STATS = [
-  { value: '3', label: 'Specialized Agents', icon: <Brain size={20} /> },
-  { value: '10', label: 'Tracked Skills', icon: <BarChart3 size={20} /> },
-  { value: '20+', label: 'Curated Problems', icon: <Sparkles size={20} /> },
-  { value: 'Real-time', label: 'Misconception Detection', icon: <Zap size={20} /> },
+  { value: '3', label: 'Smart AI Helpers', icon: <Brain size={20} /> },
+  { value: '10', label: 'Core Math Topics', icon: <BarChart3 size={20} /> },
+  { value: '20+', label: 'Practice Problems', icon: <ChevronRight size={20} /> },
+  { value: 'Instant', label: 'Step-by-Step Feedback', icon: <Zap size={20} /> },
 ]
 
 const FEATURES = [
   {
     icon: '🎓',
-    title: 'Socratic Tutor',
-    desc: 'Never gives the answer. Asks guiding questions that help students discover solutions themselves.',
+    title: 'The Socratic Tutor',
+    desc: 'Never just hands you the answer. Asks friendly guiding questions that help you solve problems on your own.',
   },
   {
-    icon: '🔬',
-    title: 'Deep Diagnosis',
-    desc: 'OCRs handwritten work and names the exact misconception — not "wrong," but "denominator addition error."',
+    icon: '📷',
+    title: 'Paper Work Reader',
+    desc: 'Snap a picture of your handwritten work. It checks each step and pinpoints tricky spots — like flipped signs or mixed-up fractions.',
   },
   {
     icon: '📊',
-    title: 'Bayesian Mastery',
-    desc: 'Tracks skill mastery with a calibrated probability model — an auditable number teachers can trust.',
+    title: 'Real Progress Tracker',
+    desc: 'Watches how you grow across every math topic so you always practice problems that are just the right challenge.',
   },
 ]
+
+type ConnStatus = 'checking' | 'connected' | 'waking_up' | 'error'
 
 export default function Landing() {
   const navigate = useNavigate()
@@ -35,13 +37,63 @@ export default function Landing() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Simple server & database connection status
+  const [connStatus, setConnStatus] = useState<ConnStatus>('checking')
+  const [connMessage, setConnMessage] = useState<string>('Checking server connection...')
+
+  const checkConnection = async (): Promise<boolean> => {
+    try {
+      const data = await checkHealth()
+      if (data && data.status === 'ok') {
+        setConnStatus('connected')
+        setConnMessage(data.db ? 'Server & database ready' : 'Server ready')
+        return true
+      } else {
+        setConnStatus('waking_up')
+        setConnMessage('Waking up server... please wait a moment')
+        return false
+      }
+    } catch {
+      setConnStatus('waking_up')
+      setConnMessage('Waking up server from inactivity (15-30s)... please wait')
+      return false
+    }
+  }
+
+  useEffect(() => {
+    let mounted = true
+    let timer: any = null
+    let retries = 0
+
+    const poll = async () => {
+      const ready = await checkConnection()
+      if (!mounted) return
+      if (!ready) {
+        retries++
+        if (retries < 25) {
+          timer = setTimeout(poll, 2500)
+        } else {
+          setConnStatus('error')
+          setConnMessage('Server offline or taking too long.')
+        }
+      }
+    }
+
+    poll()
+
+    return () => {
+      mounted = false
+      if (timer) clearTimeout(timer)
+    }
+  }, [])
+
   const handleStart = async () => {
+    if (connStatus !== 'connected') return
     if (!name.trim()) { setError('Please enter your name to start!'); return }
     setLoading(true)
     setError('')
     try {
       const session = await startSession(name.trim())
-      // Store session in sessionStorage for TutorSession to pick up
       sessionStorage.setItem('session', JSON.stringify(session))
       navigate('/session')
     } catch (e: any) {
@@ -55,32 +107,64 @@ export default function Landing() {
     <div className="landing">
       {/* Hero */}
       <section className="hero">
-        <div className="hero-badge badge badge-violet">
-          <Sparkles size={12} /> AI-Powered Math Tutoring
-        </div>
-
         <h1 className="hero-headline">
-          The tutor that never<br />
-          <span className="gradient-text">gives the answer.</span>
+          The Math Tutor That<br />
+          <span className="gradient-text">Guides Your Thinking.</span>
         </h1>
 
         <p className="hero-sub">
-          A multi-agent Socratic tutor that diagnoses <em>exactly</em> where your thinking
-          broke — and adapts what it teaches next using a real mastery model.
+          An encouraging math tutor that spots where you get stuck — asking helpful questions so you learn the concepts and solve problems on your own.
         </p>
+
+        {/* Simple Connection Status */}
+        <div className={`conn-status conn-status--${connStatus}`}>
+          <span className="conn-dot" />
+          <span>{connMessage}</span>
+          {connStatus === 'error' && (
+            <button
+              className="conn-retry-btn"
+              onClick={() => {
+                setConnStatus('checking')
+                setConnMessage('Reconnecting to server...')
+                checkConnection()
+              }}
+            >
+              Retry
+            </button>
+          )}
+        </div>
 
         {/* Start form */}
         <div className="start-form">
           <input
             className="input"
-            placeholder="What's your name?"
+            placeholder={
+              connStatus === 'connected'
+                ? "What's your name?"
+                : "Waiting for server to connect..."
+            }
             value={name}
             onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleStart()}
+            onKeyDown={e => e.key === 'Enter' && connStatus === 'connected' && handleStart()}
             maxLength={40}
+            disabled={connStatus !== 'connected'}
+            aria-label="Student name"
           />
-          <button className="btn btn-amber" onClick={handleStart} disabled={loading}>
-            {loading ? 'Starting…' : 'Start Learning'} <ChevronRight size={18} />
+          <button
+            className="btn btn-amber"
+            onClick={handleStart}
+            disabled={loading || connStatus !== 'connected'}
+            aria-label="Start Learning math tutoring session"
+          >
+            {loading ? (
+              'Starting…'
+            ) : connStatus === 'connected' ? (
+              <>Start Learning <ChevronRight size={18} /></>
+            ) : connStatus === 'error' ? (
+              'Server Offline'
+            ) : (
+              'Waking up server…'
+            )}
           </button>
         </div>
         {error && <p className="error-msg">{error}</p>}
@@ -108,79 +192,79 @@ export default function Landing() {
         ))}
       </section>
 
-      {/* How it works & 3 Agents */}
+      {/* How it works & 3 Helpers */}
       <section className="architecture-section">
         <div className="section-header">
-          <span className="badge badge-indigo">Multi-Agent System & Cognitive Science</span>
-          <h2>How AI Nerd Works: 3 Agents + Calibrated BKT</h2>
+          <span className="badge badge-indigo">How It Works</span>
+          <h2>How AI Nerd Helps You Learn</h2>
           <p className="section-sub">
-            Built as an autonomous LangGraph pipeline where specialized agents communicate through a shared Bayesian state.
+            Three smart helpers work together to guide your math practice, check your handwritten work, and find the perfect next problem.
           </p>
         </div>
 
         <div className="agents-grid">
           <div className="agent-card card">
             <div className="agent-header">
-              <span className="agent-tag badge badge-violet">Agent 1 · Dialogue</span>
-              <h3>🎓 Socratic Tutor Agent</h3>
+              <span className="agent-tag badge badge-violet">Helper 1 · Conversation</span>
+              <h3>🎓 The Friendly Tutor</h3>
             </div>
             <p className="agent-desc">
-              Powered by <strong>Gemini 3.6 Flash</strong>. Strictly adheres to Socratic prompting: it is barred from giving the answer or next step, instead asking targeted guiding questions that lead the student to their own realization.
+              Guides your thinking with warm, step-by-step questions. Instead of giving away the solution, it prompts you to notice patterns and discover the answer yourself.
             </p>
             <div className="agent-feature">
-              <span>Rule</span> Never reveals solutions; asks ONE question at a time
+              <span>Approach</span> Never gives away answers; asks one helpful question at a time
             </div>
           </div>
 
           <div className="agent-card card">
             <div className="agent-header">
-              <span className="agent-tag badge badge-amber">Agent 2 · Multimodal</span>
-              <h3>🔬 Vision Diagnostic Agent</h3>
+              <span className="agent-tag badge badge-amber">Helper 2 · Homework Checker</span>
+              <h3>📷 Handwritten Work Reader</h3>
             </div>
             <p className="agent-desc">
-              Reads photos of raw handwritten paper work via <strong>Gemini Vision</strong>. It compares the work against expected solution steps to locate the exact step and name the specific cognitive misconception.
+              Snap a quick picture of your paper math work. It reads your handwriting, verifies each line of working, and points out where a step went off track.
             </p>
             <div className="agent-feature">
-              <span>Taxonomy</span> Grounded in the Eedi/NeurIPS diagnostic dataset
+              <span>Checks</span> Flipped signs, denominator additions, and calculation errors
             </div>
           </div>
 
           <div className="agent-card card">
             <div className="agent-header">
-              <span className="agent-tag badge badge-emerald">Agent 3 · Retrieval</span>
-              <h3>📚 Adaptive Content Agent</h3>
+              <span className="agent-tag badge badge-emerald">Helper 3 · Practice Guide</span>
+              <h3>📚 Smart Problem Finder</h3>
             </div>
             <p className="agent-desc">
-              Retrieves problems via <strong>pgvector semantic embeddings</strong> filtered by the student's target skill gap and difficulty level, keeping learning squarely in Vygotsky's Zone of Proximal Development (ZPD).
+              Chooses the next problem tailored to how well you understand the topic. When you're cruising, it adds a fun challenge; when you're stuck, it gives you an easier practice step.
             </p>
             <div className="agent-feature">
-              <span>Targeting</span> Consolidates weak skills; challenges mastered areas
+              <span>Pacing</span> Keeps problems at just the right challenge level
             </div>
           </div>
 
           <div className="agent-card card card-highlight">
             <div className="agent-header">
-              <span className="agent-tag badge badge-indigo">Cognitive Engine</span>
-              <h3>📊 Calibrated BKT Engine</h3>
+              <span className="agent-tag badge badge-indigo">Progress Engine</span>
+              <h3>📈 Live Skill Tracker</h3>
             </div>
             <p className="agent-desc">
-              Implements <strong>Bayesian Knowledge Tracing</strong> with parameters calibrated via maximum-likelihood estimation on <strong>55,000+ real student responses</strong> from the <strong>ASSISTments 2009–2010</strong> benchmark (across 6 core fraction and equation skills) paired with Corbett & Anderson baseline priors for early arithmetic. Unlike arbitrary LLM "scores", BKT computes mathematically sound, auditable mastery probabilities.
+              Keeps a live map of your skills as you practice. Every completed problem updates your progress so parents, teachers, and you can see real growth across fractions, word problems, and equations.
             </p>
             <div className="agent-feature">
-              <span>Model</span> P(L_t+1) = P(L|obs) + (1 - P(L|obs)) · P(T)
+              <span>Feedback</span> Updates instantly after each problem attempt
             </div>
           </div>
         </div>
 
         {/* Pipeline flow */}
         <div className="pipeline-strip card">
-          <span className="pipeline-label">LIVE EXECUTION LOOP:</span>
+          <span className="pipeline-label">HOW EACH PRACTICE STEP WORKS:</span>
           <div className="pipeline-steps">
             {[
-              { icon: <Mic size={18} />, label: 'Student Speech / Text', color: 'var(--violet)' },
-              { icon: '🧠', label: 'LangGraph Orchestrator', color: 'var(--indigo)' },
-              { icon: <Camera size={18} />, label: 'Gemini Vision OCR', color: 'var(--amber)' },
-              { icon: <BarChart3 size={18} />, label: 'Calibrated BKT Shift', color: 'var(--emerald)' },
+              { icon: <Mic size={18} />, label: 'Student Voice / Text', color: 'var(--violet)' },
+              { icon: '🧠', label: 'Tutor Thinks & Guides', color: 'var(--indigo)' },
+              { icon: <Camera size={18} />, label: 'Checks Paper Work Photo', color: 'var(--amber)' },
+              { icon: <BarChart3 size={18} />, label: 'Updates Your Skill Map', color: 'var(--emerald)' },
             ].map((step, i) => (
               <div key={i} className="pipeline-step-item">
                 <span className="step-badge" style={{ borderColor: step.color }}>{step.icon}</span>
@@ -192,13 +276,13 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Research Grounding & Data Sources */}
+      {/* Classroom Aligned & Standards */}
       <section className="research-section">
         <div className="section-header">
-          <span className="badge badge-emerald">Real Research · Not Vibes</span>
-          <h2>Empirical Benchmarks & Data Provenance</h2>
+          <span className="badge badge-emerald">Classroom Aligned</span>
+          <h2>Built on Proven Math Learning Standards</h2>
           <p className="section-sub">
-            AI Nerd is grounded in standard educational data mining datasets and peer-reviewed cognitive science literature.
+            AI Nerd is modeled around real classroom math curricula and common student learning patterns.
           </p>
         </div>
 
@@ -206,45 +290,45 @@ export default function Landing() {
           <div className="citation-card card">
             <div className="citation-header">
               <span className="citation-icon">📈</span>
-              <h4>ASSISTments Benchmark (Fitted)</h4>
+              <h4>Real Student Practice Data</h4>
             </div>
             <p>
-              Priors and learning transitions calibrated via Maximum Likelihood Estimation on 55,455 real student interaction logs from the ASSISTments 2009–2010 Skill Builder dataset (WPI / CAHLR) across 6 core fraction and equation skills, combined with standard cognitive tutor baselines.
+              Calibrated with over 55,000 real student practice sessions across fraction, equation, and arithmetic topics to make sure the tutor advances skills at a natural pace.
             </p>
-            <span className="citation-source">WPI Educational Data Mining (2009–2010)</span>
+            <span className="citation-source">Student Learning Data (55,000+ Sessions)</span>
           </div>
 
           <div className="citation-card card">
             <div className="citation-header">
               <span className="citation-icon">🔬</span>
-              <h4>Eedi Misconception Taxonomy</h4>
+              <h4>Common Mistake Patterns</h4>
             </div>
             <p>
-              Diagnostic agent classifies errors into empirically validated misconception categories (sign flips, denominator additions, operation confusion) from the NeurIPS 2020 Education Challenge.
+              Recognizes typical elementary and middle school tricky spots — like adding fraction denominators together or flipping negative signs.
             </p>
-            <span className="citation-source">NeurIPS 2020 Diagnostic Math Challenge</span>
+            <span className="citation-source">Math Misconception Research</span>
           </div>
 
           <div className="citation-card card">
             <div className="citation-header">
               <span className="citation-icon">📐</span>
-              <h4>GSM8K Multi-Step Reasoning</h4>
+              <h4>Step-by-Step Word Problems</h4>
             </div>
             <p>
-              Problem decomposition patterns and step verification chains adapted from OpenAI's Grade School Math 8K benchmark to enforce multi-step Socratic scaffolding.
+              Breaks multi-step word problems into manageable bites so students learn how to set up equations and solve with confidence.
             </p>
-            <span className="citation-source">Cobbe et al., OpenAI (2021)</span>
+            <span className="citation-source">Multi-Step Math Problem Bank</span>
           </div>
 
           <div className="citation-card card">
             <div className="citation-header">
               <span className="citation-icon">🎯</span>
-              <h4>Common Core Standards</h4>
+              <h4>Grade-Level Standards</h4>
             </div>
             <p>
-              Skills are formally tagged to Common Core State Standards (CCSS-M: 3.OA, 4.NF, 6.EE, 7.EE) ensuring pedagogical alignment with standard K-12 math curricula.
+              Aligned directly with standard elementary and middle school Common Core math standards (Grades 3 to 7) matching classroom curricula.
             </p>
-            <span className="citation-source">National Governors Association (CCSS-M)</span>
+            <span className="citation-source">Common Core Math Standards (CCSS-M)</span>
           </div>
         </div>
       </section>
@@ -253,10 +337,10 @@ export default function Landing() {
       <footer className="landing-footer">
         <div className="footer-content">
           <p className="footer-lead">
-            <strong>AI Nerd</strong> · Multimodal Socratic Math Tutoring with Calibrated Bayesian Knowledge Tracing
+            <strong>AI Nerd</strong> · Friendly, Step-by-Step Math Tutoring for Kids
           </p>
           <p className="footer-meta">
-            Powered by Google Gemini 3.6 Flash · LangGraph · Supabase pgvector · BKT Calibrated on ASSISTments 2009–2010 & Eedi
+            Powered by Google Gemini · Voice & Vision · Aligned with Classroom Math Standards
           </p>
         </div>
       </footer>

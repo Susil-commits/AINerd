@@ -9,7 +9,7 @@ export default function ThinkingTrace({ steps, isActive }: Props) {
   return (
     <div className="thinking-trace">
       <h4>
-        Agent Thinking
+        Tutor Thinking
         {isActive && (
           <span className="thinking-dot">
             <span /><span /><span />

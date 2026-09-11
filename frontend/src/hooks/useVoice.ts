@@ -10,54 +10,71 @@ declare global {
 
 // Web Speech API hook for STT (speech-to-text)
 export function useSpeechInput(onResult: (text: string) => void) {
+  const isSupported = typeof window !== 'undefined' && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition)
   const [isListening, setIsListening] = useState(false)
   const [interimText, setInterimText] = useState('')
   const recognitionRef = useRef<any | null>(null)
 
   const startListening = useCallback(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    const SpeechRecognition = typeof window !== 'undefined'
+      ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+      : null
+
     if (!SpeechRecognition) {
-      alert('Voice input requires Chrome or Edge. Please type your response instead.')
+      console.warn('SpeechRecognition is not supported on this browser.')
       return
     }
 
-    const recognition = new SpeechRecognition()
-    recognition.continuous = false
-    recognition.interimResults = true
-    recognition.lang = 'en-US'
+    try {
+      const recognition = new SpeechRecognition()
+      recognition.continuous = false
+      recognition.interimResults = true
+      recognition.lang = 'en-US'
 
-    recognition.onstart = () => setIsListening(true)
-    recognition.onend = () => {
-      setIsListening(false)
-      setInterimText('')
-    }
-
-    recognition.onresult = (event: any) => {
-      let final = ''
-      let interim = ''
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const t = event.results[i][0].transcript
-        if (event.results[i].isFinal) final += t
-        else interim += t
-      }
-      setInterimText(interim)
-      if (final) {
-        onResult(final.trim())
+      recognition.onstart = () => setIsListening(true)
+      recognition.onend = () => {
+        setIsListening(false)
         setInterimText('')
       }
-    }
 
-    recognition.onerror = () => setIsListening(false)
-    recognitionRef.current = recognition
-    recognition.start()
+      recognition.onresult = (event: any) => {
+        let final = ''
+        let interim = ''
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const t = event.results[i][0].transcript
+          if (event.results[i].isFinal) final += t
+          else interim += t
+        }
+        setInterimText(interim)
+        if (final) {
+          onResult(final.trim())
+          setInterimText('')
+        }
+      }
+
+      recognition.onerror = (event: any) => {
+        setIsListening(false)
+        if (event?.error === 'not-allowed') {
+          console.warn('Microphone permission denied.')
+        }
+      }
+
+      recognitionRef.current = recognition
+      recognition.start()
+    } catch (e) {
+      console.warn('Failed to start SpeechRecognition:', e)
+      setIsListening(false)
+    }
   }, [onResult])
 
   const stopListening = useCallback(() => {
-    recognitionRef.current?.stop()
+    try {
+      recognitionRef.current?.stop()
+    } catch {}
     setIsListening(false)
   }, [])
 
-  return { isListening, interimText, startListening, stopListening }
+  return { isListening, interimText, startListening, stopListening, isSupported }
 }
 
 // ElevenLabs TTS hook (via backend proxy)

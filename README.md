@@ -178,6 +178,45 @@ The frontend is ready for Vercel with automatic SPA routing and API binding.
 
 ---
 
+---
+
+## Engineering Architecture, Scope & Production Roadmap
+
+This project was built end-to-end in one week. Here is an honest, transparent breakdown of architectural decisions, current mitigations, and production roadmap items:
+
+### 1. Authentication & Student Isolation
+- **Current Mitigation**: The backend issues **cryptographically signed HMAC-SHA256 session tokens** on `/session/start`. Protected endpoints (`/student/{id}/mastery` and `/student/{id}/summary`) verify token signatures and enforce strict student-scoping (rejecting requests with HTTP 401/403). This prevents student ID enumeration without adding cumbersome email/password login friction for kids during live demos.
+- **Name Collision Fix**: Students are identified by unique UUIDs rather than unique name strings, ensuring multiple students named "Alex" maintain completely separate mastery histories.
+- **Production Roadmap**: Migrate to Supabase Auth with per-student/parent Row Level Security (RLS) policies and Magic Link / Single Sign-On (SSO) for schools (Google Classroom / Clever).
+
+### 2. Privacy & Children's Data Governance (COPPA & DPDP Act)
+- **Minors' Data Awareness**: Because this application is designed for K-12 students, compliance with COPPA (US) and the DPDP Act (India) is a first-class consideration.
+- **Current Scope**: Raw OCR text of handwritten work and session event logs are retained in Supabase for teacher analytics.
+- **Production Roadmap**:
+  - Implement a parental consent verification gate prior to activating camera/microphone features.
+  - Implement a 30-day Time-To-Live (TTL) automated data retention and purging policy for image bytes and OCR transcripts.
+  - Add self-serve "Delete My Child's Data" endpoints for parents and teachers.
+
+### 3. RAG Agent & Vector Retrieval (pgvector)
+- **Current Implementation**: The Content Agent uses Gemini embeddings (`models/gemini-embedding-001`) to embed the student's diagnosed misconception description (or skill target) and performs cosine similarity search against problem vectors using Supabase pgvector (`match_problems` RPC). A resilient fallback query ensures zero downtime if vector services experience latency.
+- **Production Roadmap**: Expand the problem bank to 5,000+ problems sourced from OpenStax and GSM8K, indexed with HNSW for sub-millisecond retrieval at scale.
+
+### 4. Rate Limiting & Resource Protection
+- **Current Implementation**: Sliding-window rate limiting with per-session cooldowns (1.5s on text messages, 3.0s on work photo uploads) prevents rapid double-clicks or scripts from exhausting Gemini and ElevenLabs free-tier quotas.
+
+### 5. Session State & Horizontal Scaling
+- **Current Implementation**: Active conversation state is cached in-memory for sub-second Socratic response generation, while all mastery updates and audit events are persisted to PostgreSQL.
+- **Production Roadmap**: Replace Python in-memory state with Redis or PostgreSQL JSONB session tables to support multi-container horizontal autoscaling across Render instances.
+
+### 6. BKT Mastery Calibration & Temporal Decay
+- **Current Implementation**: Bayesian Knowledge Tracing tracks mastery across 10 Common Core skills using 4 parameters (Prior, Learn, Guess, Slip).
+- **Production Roadmap**: Add a Half-Life / forgetting decay term ($P(L_t) = P(L_{t-1}) \cdot e^{-\lambda \Delta t}$) to realistically model skill retention decay across days/weeks of inactivity.
+
+### 7. Voice Compatibility & Accessibility
+- **Current Implementation**: Native Web Speech API STT for Chrome/Edge with graceful feature-detection and tooltip guidance on Firefox/Safari (avoiding jarring `alert()` popups). High-fidelity ElevenLabs TTS with browser SpeechSynthesis fallback. Full `aria-label` accessibility tags across all icon-only buttons.
+
+---
+
 ## Data Sources
 - **GSM8K** (OpenAI) — math reasoning dataset
 - **Eedi / NeurIPS 2020** — misconception taxonomy (used as few-shot examples)

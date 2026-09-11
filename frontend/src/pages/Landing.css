@@ -54,6 +54,64 @@
   margin-top: -0.5rem;
 }
 
+.conn-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  margin-top: -0.5rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.conn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.conn-status--connected {
+  color: var(--emerald);
+}
+.conn-status--connected .conn-dot {
+  background: var(--emerald);
+  box-shadow: 0 0 6px var(--emerald);
+}
+
+.conn-status--waking_up,
+.conn-status--sleeping,
+.conn-status--checking {
+  color: var(--amber);
+}
+.conn-status--waking_up .conn-dot,
+.conn-status--sleeping .conn-dot,
+.conn-status--checking .conn-dot {
+  background: var(--amber);
+  box-shadow: 0 0 6px var(--amber);
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+.conn-status--error {
+  color: var(--rose);
+}
+.conn-status--error .conn-dot {
+  background: var(--rose);
+}
+
+.conn-retry-btn {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 4px;
+  font-size: 0.82rem;
+}
+
 /* ── Stats ── */
 .stats-grid {
   display: grid;

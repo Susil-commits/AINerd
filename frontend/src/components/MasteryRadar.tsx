@@ -44,9 +44,9 @@ export default function MasteryRadar({ skills }: Props) {
   return (
     <div className="mastery-container">
       <div className="mastery-header-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 className="mastery-title" style={{ margin: 0 }}>Skill Mastery</h3>
+        <h3 className="mastery-title" style={{ margin: 0 }}>Skill Progress</h3>
         <span className="badge badge-emerald" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
-          Calibrated BKT
+          Live Progress Map
         </span>
       </div>
 
@@ -58,7 +58,7 @@ export default function MasteryRadar({ skills }: Props) {
             tick={{ fill: 'var(--text-secondary)', fontSize: 11, fontFamily: 'Inter' }}
           />
           <Radar
-            name="Mastery"
+            name="Progress"
             dataKey="mastery"
             stroke="var(--violet)"
             fill="var(--violet)"
@@ -73,7 +73,7 @@ export default function MasteryRadar({ skills }: Props) {
               color: 'var(--text-primary)',
               fontSize: '0.85rem',
             }}
-            formatter={(value: any) => [`${value}%`, 'Mastery']}
+            formatter={(value: any) => [`${value}%`, 'Progress']}
           />
         </RadarChart>
       </ResponsiveContainer>

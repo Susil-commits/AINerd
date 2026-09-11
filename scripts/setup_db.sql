@@ -7,9 +7,11 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- ── Students ────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS students (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        TEXT NOT NULL UNIQUE,
+    name        TEXT NOT NULL,
     created_at  TIMESTAMPTZ DEFAULT now()
 );
+-- Migration: Allow distinct students with identical first names (drops legacy unique constraint)
+ALTER TABLE students DROP CONSTRAINT IF EXISTS students_name_key;
 
 -- ── Sessions ────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS sessions (
