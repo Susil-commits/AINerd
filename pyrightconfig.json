@@ -1,0 +1,25 @@
+{
+  "venvPath": "backend",
+  "venv": "venv",
+  "extraPaths": [
+    "backend",
+    "backend/venv/Lib/site-packages"
+  ],
+  "reportCallIssue": "none",
+  "executionEnvironments": [
+    {
+      "root": "scripts",
+      "extraPaths": [
+        "backend",
+        "backend/venv/Lib/site-packages"
+      ]
+    },
+    {
+      "root": "backend",
+      "extraPaths": [
+        "backend",
+        "backend/venv/Lib/site-packages"
+      ]
+    }
+  ]
+}

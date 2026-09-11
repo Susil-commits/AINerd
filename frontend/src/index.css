@@ -1,0 +1,213 @@
+/* ── AI Socratic Tutor — Design System ────────────────────────────────────
+   Nerdy-inspired dark navy with violet/indigo accent + amber highlights
+   ─────────────────────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+:root {
+  /* ── Color Palette ── */
+  --bg-base:         #0F1425;   /* deep navy */
+  --bg-surface:      #151B30;
+  --bg-elevated:     #1C2340;
+  --bg-card:         #1E2744;
+  --bg-input:        #242C4A;
+
+  --violet:          #7C5DFA;
+  --violet-light:    #9D7EFF;
+  --violet-dim:      rgba(124, 93, 250, 0.15);
+
+  --indigo:          #4F6EF7;
+  --indigo-dim:      rgba(79, 110, 247, 0.15);
+
+  --amber:           #F5A623;
+  --amber-light:     #FFC355;
+  --amber-dim:       rgba(245, 166, 35, 0.15);
+
+  --emerald:         #34D399;
+  --rose:            #F87171;
+
+  --text-primary:    #F0F4FF;
+  --text-secondary:  #9BA8C8;
+  --text-muted:      #5A6580;
+
+  --border:          rgba(255,255,255,0.07);
+  --border-accent:   rgba(124, 93, 250, 0.3);
+  --glow-violet:     0 0 40px rgba(124, 93, 250, 0.25);
+  --glow-amber:      0 0 30px rgba(245, 166, 35, 0.2);
+
+  /* ── Typography ── */
+  --font-body:       'Inter', system-ui, sans-serif;
+  --font-display:    'Space Grotesk', system-ui, sans-serif;
+
+  /* ── Spacing ── */
+  --radius-sm:  6px;
+  --radius-md:  12px;
+  --radius-lg:  20px;
+  --radius-xl:  28px;
+
+  /* ── Transitions ── */
+  --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 3px; }
+
+/* ── Nebula background ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(124,93,250,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 90%, rgba(79,110,247,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 50% 50%, rgba(245,166,35,0.04) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+#root { position: relative; z-index: 1; }
+
+/* ── Typography ── */
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; }
+h1 { font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.1; letter-spacing: -0.02em; }
+h2 { font-size: clamp(1.4rem, 3vw, 2rem); }
+h3 { font-size: 1.2rem; }
+
+/* ── Utility Classes ── */
+.glass {
+  background: rgba(28, 35, 64, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge-violet { background: var(--violet-dim); color: var(--violet-light); border: 1px solid rgba(124,93,250,0.3); }
+.badge-amber  { background: var(--amber-dim);  color: var(--amber-light);  border: 1px solid rgba(245,166,35,0.3); }
+.badge-emerald{ background: rgba(52,211,153,0.1); color: var(--emerald);   border: 1px solid rgba(52,211,153,0.3); }
+.badge-rose   { background: rgba(248,113,113,0.1); color: var(--rose);     border: 1px solid rgba(248,113,113,0.3); }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  border: none;
+  outline: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--violet), var(--indigo));
+  color: white;
+  box-shadow: 0 4px 20px rgba(124,93,250,0.35);
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 28px rgba(124,93,250,0.5);
+}
+.btn-primary:active { transform: translateY(0); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); }
+
+.btn-amber {
+  background: linear-gradient(135deg, var(--amber), #e8931a);
+  color: #0F1425;
+  font-weight: 700;
+  box-shadow: 0 4px 20px rgba(245,166,35,0.3);
+}
+.btn-amber:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(245,166,35,0.45); }
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ── Input ── */
+.input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  transition: var(--transition);
+  outline: none;
+}
+.input:focus { border-color: var(--violet); box-shadow: 0 0 0 3px var(--violet-dim); }
+.input::placeholder { color: var(--text-muted); }
+
+/* ── Animations ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(124,93,250,0.2); }
+  50%       { box-shadow: 0 0 40px rgba(124,93,250,0.5); }
+}
+
+@keyframes waveform {
+  0%, 100% { scaleY: 0.3; }
+  50%       { scaleY: 1; }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes thinking-dot {
+  0%, 80%, 100% { transform: scale(0); opacity: 0; }
+  40%           { transform: scale(1); opacity: 1; }
+}
+
+.animate-fadein { animation: fadeInUp 0.4s ease both; }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
