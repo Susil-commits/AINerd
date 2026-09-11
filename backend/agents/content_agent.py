@@ -121,5 +121,9 @@ Keep it under 150 words total. Warm, specific, actionable."""
         SystemMessage(content="You are an expert education data analyst writing parent-facing session reports."),
         HumanMessage(content=prompt),
     ]
-    response = llm.invoke(messages)
-    return str(response.content).strip()
+    try:
+        response = llm.invoke(messages)
+        return str(response.content).strip()
+    except Exception as e:
+        print(f"[WARN] Failed to generate LLM summary: {e}")
+        return f"{student_name} completed an active practice session today. The tutor tracked student engagement across core Common Core math concepts. Continued practice with targeted guidance is recommended to solidify problem-solving fluency."
