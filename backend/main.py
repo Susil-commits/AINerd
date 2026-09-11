@@ -166,46 +166,50 @@ async def send_message(req: MessageRequest):
     state["latest_image_bytes"] = None
 
     async def event_stream() -> AsyncGenerator[str, None]:
-        # Emit thinking steps as they happen
-        yield f"data: {json.dumps({'type': 'thinking', 'content': '🎓 Tutor thinking...'})}\n\n"
+        try:
+            # Emit thinking steps as they happen
+            yield f"data: {json.dumps({'type': 'thinking', 'content': '🎓 Tutor thinking...'})}\n\n"
 
-        # Run through LangGraph (tutor node)
-        # Override entry point to tutor
-        from agents.tutor_agent import run_tutor_agent
-        from bkt.tracker import update_mastery
+            # Run through LangGraph (tutor node)
+            from agents.tutor_agent import run_tutor_agent
 
-        thinking_steps = []
-        thinking_steps.append("🎓 Analyzing your response...")
-        yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
-        await asyncio.sleep(0.1)
+            thinking_steps = []
+            thinking_steps.append("🎓 Analyzing your response...")
+            yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
+            await asyncio.sleep(0.1)
 
-        response = run_tutor_agent(
-            student_message=req.message,
-            conversation_history=state["conversation_history"],
-            current_problem=state.get("current_problem"),
-        )
+            response = run_tutor_agent(
+                student_message=req.message,
+                conversation_history=state["conversation_history"],
+                current_problem=state.get("current_problem"),
+            )
 
-        thinking_steps.append("✅ Formulating Socratic question...")
-        yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
+            thinking_steps.append("✅ Formulating Socratic question...")
+            yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
 
-        # Update state
-        state["conversation_history"] = state["conversation_history"] + [
-            {"role": "student", "content": req.message},
-            {"role": "tutor", "content": response},
-        ]
-        state["thinking_steps"] = thinking_steps
-        _sessions[req.session_id] = state
+            # Update state
+            state["conversation_history"] = state["conversation_history"] + [
+                {"role": "student", "content": req.message},
+                {"role": "tutor", "content": response},
+            ]
+            state["thinking_steps"] = thinking_steps
+            _sessions[req.session_id] = state
 
-        # Stream the response word by word for a live feel
-        words = response.split(" ")
-        accumulated = ""
-        for i, word in enumerate(words):
-            accumulated += word + (" " if i < len(words) - 1 else "")
-            if i % 3 == 0 or i == len(words) - 1:
-                yield f"data: {json.dumps({'type': 'response', 'content': accumulated, 'done': i == len(words) - 1})}\n\n"
-                await asyncio.sleep(0.04)
+            # Stream the response word by word for a live feel
+            words = response.split(" ")
+            accumulated = ""
+            for i, word in enumerate(words):
+                accumulated += word + (" " if i < len(words) - 1 else "")
+                if i % 3 == 0 or i == len(words) - 1:
+                    yield f"data: {json.dumps({'type': 'response', 'content': accumulated, 'done': i == len(words) - 1})}\n\n"
+                    await asyncio.sleep(0.04)
 
-        yield f"data: {json.dumps({'type': 'done', 'mastery_state': state['mastery_state']})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'mastery_state': state['mastery_state']})}\n\n"
+        except Exception as e:
+            print(f"[ERROR] Chat stream exception: {e}")
+            fallback_msg = "I had a quick pause! Could you repeat that thought?"
+            yield f"data: {json.dumps({'type': 'response', 'content': fallback_msg, 'done': True})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'mastery_state': state.get('mastery_state', {})})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
@@ -223,79 +227,96 @@ async def upload_work(
     image_bytes = await file.read()
 
     async def event_stream() -> AsyncGenerator[str, None]:
-        yield f"data: {json.dumps({'type': 'thinking', 'content': '📸 Reading your handwritten work...'})}\n\n"
-        await asyncio.sleep(0.1)
-
-        from agents.diagnostic_agent import run_diagnostic_agent
-        from bkt.tracker import update_mastery
-
-        current_problem = state.get("current_problem") or {}
-        yield f"data: {json.dumps({'type': 'thinking', 'content': '🔍 Comparing your steps to the expected solution...'})}\n\n"
-
-        diagnosis = run_diagnostic_agent(
-            image_bytes=image_bytes,
-            expected_steps=current_problem.get("expected_steps", []),
-            problem_text=current_problem.get("text", ""),
-            skill_id=state.get("current_skill_id", ""),
-        )
-
-        misconception = diagnosis.get('misconception_type', 'unknown')
-        yield f"data: {json.dumps({'type': 'thinking', 'content': 'Found: ' + misconception})}\n\n"
-
-        # Update mastery
-        skill_id = state["current_skill_id"]
-        is_correct = diagnosis.get("is_correct", False)
-        new_mastery = update_mastery(
-            current_mastery=state["mastery_state"].get(skill_id, 0.3),
-            is_correct=is_correct,
-            skill_id=skill_id,
-        )
-        state["mastery_state"][skill_id] = new_mastery
-
-        mastery_pct = f"{new_mastery*100:.0f}%"
-        yield f"data: {json.dumps({'type': 'thinking', 'content': 'Updating mastery: ' + mastery_pct})}\n\n"
-
-        # Persist to Supabase
         try:
-            supabase = get_supabase()
-            supabase.table("student_skill_mastery").upsert({
-                "student_id": state["student_id"],
-                "skill_id": skill_id,
-                "mastery_prob": new_mastery,
-            }, on_conflict="student_id,skill_id").execute()
-            supabase.table("session_events").insert({
-                "session_id": state["session_id"],
-                "student_id": state["student_id"],
-                "problem_id": current_problem.get("id"),
-                "attempt_text": diagnosis.get("ocr_text", ""),
-                "is_correct": is_correct,
-                "agent_response": diagnosis.get("corrective_question", ""),
-            }).execute()
-        except Exception as e:
-            print(f"[WARN] Supabase write failed: {e}")
+            yield f"data: {json.dumps({'type': 'thinking', 'content': '📸 Reading your handwritten work...'})}\n\n"
+            await asyncio.sleep(0.1)
 
-        state["diagnosis"] = diagnosis
-        _sessions[session_id] = state
+            from agents.diagnostic_agent import run_diagnostic_agent
+            from bkt.tracker import update_mastery
 
-        # If correct, select next problem
-        if is_correct:
-            yield f"data: {json.dumps({'type': 'thinking', 'content': '📚 Selecting next problem...'})}\n\n"
-            from bkt.tracker import get_next_skill
-            next_skill = get_next_skill(state["mastery_state"])
-            next_problem = get_next_problem(
-                skill_id=next_skill,
-                mastery_prob=state["mastery_state"].get(next_skill, 0.3),
-                student_id=state["student_id"],
-                exclude_problem_ids=state.get("problems_attempted", []),
+            current_problem = state.get("current_problem") or {}
+            yield f"data: {json.dumps({'type': 'thinking', 'content': '🔍 Comparing your steps to the expected solution...'})}\n\n"
+
+            diagnosis = run_diagnostic_agent(
+                image_bytes=image_bytes,
+                expected_steps=current_problem.get("expected_steps", []),
+                problem_text=current_problem.get("text", ""),
+                skill_id=state.get("current_skill_id", ""),
             )
-            if next_problem:
-                state["current_problem"] = next_problem
-                state["current_skill_id"] = next_skill
-                state["problems_attempted"] = state.get("problems_attempted", []) + [next_problem["id"]]
-                _sessions[session_id] = state
 
-        yield f"data: {json.dumps({'type': 'diagnosis', 'diagnosis': diagnosis, 'mastery_state': state['mastery_state'], 'next_problem': state.get('current_problem')})}\n\n"
-        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+            misconception = diagnosis.get('misconception_type', 'unknown')
+            yield f"data: {json.dumps({'type': 'thinking', 'content': 'Found: ' + misconception})}\n\n"
+
+            # Update mastery
+            skill_id = state["current_skill_id"]
+            is_correct = diagnosis.get("is_correct", False)
+            new_mastery = update_mastery(
+                current_mastery=state["mastery_state"].get(skill_id, 0.3),
+                is_correct=is_correct,
+                skill_id=skill_id,
+            )
+            state["mastery_state"][skill_id] = new_mastery
+
+            mastery_pct = f"{new_mastery*100:.0f}%"
+            yield f"data: {json.dumps({'type': 'thinking', 'content': 'Updating mastery: ' + mastery_pct})}\n\n"
+
+            # Persist to Supabase
+            try:
+                supabase = get_supabase()
+                supabase.table("student_skill_mastery").upsert({
+                    "student_id": state["student_id"],
+                    "skill_id": skill_id,
+                    "mastery_prob": new_mastery,
+                }, on_conflict="student_id,skill_id").execute()
+                supabase.table("session_events").insert({
+                    "session_id": state["session_id"],
+                    "student_id": state["student_id"],
+                    "problem_id": current_problem.get("id"),
+                    "attempt_text": diagnosis.get("ocr_text", ""),
+                    "is_correct": is_correct,
+                    "agent_response": diagnosis.get("corrective_question", ""),
+                }).execute()
+            except Exception as e:
+                print(f"[WARN] Supabase write failed: {e}")
+
+            state["diagnosis"] = diagnosis
+            _sessions[session_id] = state
+
+            # If correct, select next problem
+            if is_correct:
+                yield f"data: {json.dumps({'type': 'thinking', 'content': '📚 Selecting next problem...'})}\n\n"
+                from bkt.tracker import get_next_skill
+                next_skill = get_next_skill(state["mastery_state"])
+                next_problem = get_next_problem(
+                    skill_id=next_skill,
+                    mastery_prob=state["mastery_state"].get(next_skill, 0.3),
+                    student_id=state["student_id"],
+                    exclude_problem_ids=state.get("problems_attempted", []),
+                )
+                if next_problem:
+                    state["current_problem"] = next_problem
+                    state["current_skill_id"] = next_skill
+                    state["problems_attempted"] = state.get("problems_attempted", []) + [next_problem["id"]]
+                    _sessions[session_id] = state
+
+            yield f"data: {json.dumps({'type': 'diagnosis', 'diagnosis': diagnosis, 'mastery_state': state['mastery_state'], 'next_problem': state.get('current_problem')})}\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+        except Exception as e:
+            print(f"[ERROR] upload_work stream failed: {e}")
+            yield f"data: {json.dumps({'type': 'thinking', 'content': '⚠️ Recovering from analysis hiccup...'})}\n\n"
+            fallback_diag = {
+                "ocr_text": "Could not complete analysis",
+                "is_correct": False,
+                "step_number": 1,
+                "misconception_type": "temporary_system_pause",
+                "description": "The system encountered a brief delay processing this request.",
+                "skill_gap": state.get("current_skill_id", ""),
+                "skill_gap_name": "",
+                "corrective_question": "I had a momentary glitch reading your work. Can you describe what step you took, or try uploading once more?",
+                "bounding_hint": "step_1",
+            }
+            yield f"data: {json.dumps({'type': 'diagnosis', 'diagnosis': fallback_diag, 'mastery_state': state['mastery_state'], 'next_problem': state.get('current_problem')})}\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 

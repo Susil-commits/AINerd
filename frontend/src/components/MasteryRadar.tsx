@@ -43,7 +43,12 @@ export default function MasteryRadar({ skills }: Props) {
 
   return (
     <div className="mastery-container">
-      <h3 className="mastery-title">Skill Mastery Map</h3>
+      <div className="mastery-header-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+        <h3 className="mastery-title" style={{ margin: 0 }}>Skill Mastery</h3>
+        <span className="badge badge-emerald" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
+          ASSISTments BKT
+        </span>
+      </div>
 
       <ResponsiveContainer width="100%" height={280}>
         <RadarChart data={data} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>

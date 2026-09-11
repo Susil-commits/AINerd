@@ -13,9 +13,10 @@ from bkt.tracker import get_skill_params
 
 def embed_text(text: str) -> list[float]:
     """Embed a text string using Gemini embedding model."""
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY", "")
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/gemini-embedding-001",
-        google_api_key=SecretStr(os.environ["GEMINI_API_KEY"]),
+        google_api_key=SecretStr(api_key),
     )
     return embeddings.embed_query(text, output_dimensionality=768)
 
@@ -78,9 +79,11 @@ def generate_session_summary(
     """
     Generate an LLM-written session summary for the teacher/parent dashboard.
     """
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY", "")
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
-        google_api_key=os.environ["GEMINI_API_KEY"],
+        model=model_name,
+        google_api_key=api_key,
         temperature=0.4,
         max_output_tokens=500,
     )

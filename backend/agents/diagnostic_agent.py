@@ -76,11 +76,13 @@ Be specific and educational — a teacher should be able to show this diagnosis 
 
 
 def build_vision_llm() -> ChatGoogleGenerativeAI:
+    model_name = os.environ.get("GEMINI_VISION_MODEL") or os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY", "")
     return ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
-        google_api_key=os.environ["GEMINI_API_KEY"],
+        model=model_name,
+        google_api_key=api_key,
         temperature=0.2,  # Low temperature for precise diagnosis
-        max_output_tokens=600,
+        max_output_tokens=1000,
     )
 
 
@@ -137,28 +139,81 @@ Return ONLY the JSON diagnosis object, no other text.
             HumanMessage(content=context + "\n\nNote: No image was provided. Respond with a placeholder diagnosis."),
         ]
 
-    response = llm.invoke(messages)
-    raw = str(response.content).strip()
+    try:
+        response = llm.invoke(messages)
+        raw = str(response.content).strip()
+    except Exception as e:
+        err_str = str(e).lower()
+        print(f"[WARN] Diagnostic agent vision call failed: {e}")
+        if "429" in err_str or "quota" in err_str or "resource_exhausted" in err_str or "rate" in err_str:
+            return {
+                "ocr_text": "[Rate Limit Encountered]",
+                "is_correct": False,
+                "step_number": 1,
+                "misconception_type": "rate_limit_pause",
+                "description": "The Gemini Vision API reached its temporary per-minute rate limit.",
+                "skill_gap": skill_id,
+                "skill_gap_name": "",
+                "corrective_question": "Our AI vision tutor is catching its breath! Please try submitting again in about 10 seconds, or type out what you wrote.",
+                "bounding_hint": "step_1",
+            }
+        elif "image" in err_str or "decode" in err_str or "format" in err_str:
+            return {
+                "ocr_text": "[Image format unreadable]",
+                "is_correct": False,
+                "step_number": 1,
+                "misconception_type": "unreadable_image",
+                "description": "The uploaded photo could not be parsed as a readable image.",
+                "skill_gap": skill_id,
+                "skill_gap_name": "",
+                "corrective_question": "That photo seems a bit blurry or dark. Could you take another picture with more light, or type your next step?",
+                "bounding_hint": "step_1",
+            }
+        else:
+            return {
+                "ocr_text": "[Analysis temporarily unavailable]",
+                "is_correct": False,
+                "step_number": 1,
+                "misconception_type": "service_interruption",
+                "description": "Temporary service disruption during image analysis.",
+                "skill_gap": skill_id,
+                "skill_gap_name": "",
+                "corrective_question": "I had a momentary glitch reading your paper. Can you try uploading once more or type your answer?",
+                "bounding_hint": "step_1",
+            }
 
-    # Strip markdown code fences if model wraps in them
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-        raw = raw.strip()
+    # Extract JSON object using regex to handle potential conversational wrappers
+    import re
+    clean_text = raw.strip()
+    clean_text = re.sub(r"^```(?:json)?\s*", "", clean_text, flags=re.IGNORECASE)
+    clean_text = re.sub(r"\s*```$", "", clean_text).strip()
+
+    json_match = re.search(r"\{[\s\S]*\}", clean_text)
+    clean_json = json_match.group(0) if json_match else clean_text
 
     try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        # Fallback: return a safe default
+        data = json.loads(clean_json)
+        # Ensure critical keys are present
+        if not isinstance(data, dict):
+            raise ValueError("Parsed JSON is not a dictionary")
+
+        if not data.get("ocr_text"):
+            data["ocr_text"] = "Handwriting analyzed"
+        if not data.get("corrective_question"):
+            data["corrective_question"] = "Can you walk me through your steps out loud?"
+
+        return data
+    except Exception as parse_err:
+        print(f"[WARN] Failed to parse diagnostic JSON: {parse_err}. Raw text: {raw[:150]}")
+        # Pedagogical fallback for unreadable or badly formatted response
         return {
-            "ocr_text": "Could not parse handwriting",
+            "ocr_text": "Handwriting was difficult to read",
             "is_correct": False,
             "step_number": 1,
-            "misconception_type": "unknown",
-            "description": "Could not identify a specific misconception. Please try uploading a clearer image.",
+            "misconception_type": "blurry_or_unclear_photo",
+            "description": "The handwriting in this photo was too blurry or faint to parse with confidence.",
             "skill_gap": skill_id,
             "skill_gap_name": "",
-            "corrective_question": "Can you walk me through your steps out loud?",
+            "corrective_question": "I couldn't quite make out all your pencil marks in that photo! Could you try taking a clearer photo in good lighting, or tell me what step you wrote down?",
             "bounding_hint": "step_1",
         }

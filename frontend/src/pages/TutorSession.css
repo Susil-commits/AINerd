@@ -1,7 +1,7 @@
 /* TutorSession.css */
 .session-layout {
   display: grid;
-  grid-template-columns: 340px 1fr 300px;
+  grid-template-columns: 320px 1fr 350px;
   height: 100vh;
   overflow: hidden;
   gap: 0;
@@ -189,12 +189,51 @@
   white-space: nowrap;
 }
 
-/* ── Right Mastery ── */
+/* ── Right Mastery & Live Intelligence ── */
 .session-mastery {
   border-left: 1px solid var(--border);
   overflow-y: auto;
   padding: 1.25rem;
   background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.intel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.intel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--emerald);
+  box-shadow: 0 0 10px var(--emerald);
+  animation: pulse 1.8s infinite ease-in-out;
+}
+
+.intel-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-primary);
+  text-transform: uppercase;
+}
+
+.intel-caption {
+  font-size: 0.72rem;
+  color: var(--text-muted);
 }
 
 .session-loading {

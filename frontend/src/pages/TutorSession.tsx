@@ -132,8 +132,6 @@ export default function TutorSession() {
           onThinking={(step) => setThinkingSteps(prev => [...prev, step])}
           onDiagnosis={handleDiagnosis}
         />
-
-        <ThinkingTrace steps={thinkingSteps} isActive={isStreaming} />
       </aside>
 
       {/* ── Main chat ── */}
@@ -204,8 +202,18 @@ export default function TutorSession() {
         </div>
       </main>
 
-      {/* ── Right sidebar: mastery ── */}
+      {/* ── Right sidebar: live intelligence (reasoning trace + mastery radar) ── */}
       <aside className="session-mastery">
+        <div className="intel-header">
+          <div className="intel-title-row">
+            <span className="live-pulse-dot" />
+            <span className="intel-title">LIVE INTELLIGENCE</span>
+          </div>
+          <span className="intel-caption">Real-time Reasoning Trace & BKT Model</span>
+        </div>
+
+        <ThinkingTrace steps={thinkingSteps} isActive={isStreaming} />
+
         <MasteryRadar skills={masterySkills} />
       </aside>
     </div>

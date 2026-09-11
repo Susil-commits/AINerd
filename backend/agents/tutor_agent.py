@@ -47,9 +47,10 @@ FEW_SHOT_EXAMPLES = [
 
 def build_tutor_llm() -> ChatGoogleGenerativeAI:
     model_name = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY", "")
     return ChatGoogleGenerativeAI(
         model=model_name,
-        google_api_key=os.environ["GEMINI_API_KEY"],
+        google_api_key=api_key,
         temperature=0.7,
         max_output_tokens=300,
     )
@@ -98,5 +99,12 @@ Expected solution steps (for your reference only — do NOT reveal these):
     # Add current student message
     messages.append(HumanMessage(content=student_message))
 
-    response = llm.invoke(messages)
-    return str(response.content).strip()
+    try:
+        response = llm.invoke(messages)
+        return str(response.content).strip()
+    except Exception as e:
+        err_str = str(e).lower()
+        print(f"[WARN] Tutor agent invoke failed: {e}")
+        if "429" in err_str or "quota" in err_str or "resource_exhausted" in err_str:
+            return "I'm pausing for just a moment while our tutor AI catches its breath! Please send your thought again in 10 seconds."
+        return "I had a momentary glitch thinking through that. Could you share your thought with me one more time?"

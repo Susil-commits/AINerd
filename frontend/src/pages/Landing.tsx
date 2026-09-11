@@ -108,30 +108,157 @@ export default function Landing() {
         ))}
       </section>
 
-      {/* How it works */}
-      <section className="pipeline">
-        <h2>How It Works</h2>
-        <div className="pipeline-steps">
-          {[
-            { icon: <Mic size={22} />, label: 'You speak or type', color: 'var(--violet)' },
-            { icon: '🧠', label: 'LangGraph orchestrates 3 agents', color: 'var(--indigo)' },
-            { icon: <Camera size={22} />, label: 'Gemini Vision reads your work', color: 'var(--amber)' },
-            { icon: <BarChart3 size={22} />, label: 'BKT updates mastery live', color: 'var(--emerald)' },
-          ].map((step, i) => (
-            <div key={i} className="pipeline-step">
-              <div className="pipeline-dot" style={{ background: step.color, boxShadow: `0 0 20px ${step.color}` }}>
-                {step.icon}
-              </div>
-              <p>{step.label}</p>
-              {i < 3 && <div className="pipeline-arrow">→</div>}
+      {/* How it works & 3 Agents */}
+      <section className="architecture-section">
+        <div className="section-header">
+          <span className="badge badge-indigo">Multi-Agent System & Cognitive Science</span>
+          <h2>How AI Nerd Works: 3 Agents + Calibrated BKT</h2>
+          <p className="section-sub">
+            Built as an autonomous LangGraph pipeline where specialized agents communicate through a shared Bayesian state.
+          </p>
+        </div>
+
+        <div className="agents-grid">
+          <div className="agent-card card">
+            <div className="agent-header">
+              <span className="agent-tag badge badge-violet">Agent 1 · Dialogue</span>
+              <h3>🎓 Socratic Tutor Agent</h3>
             </div>
-          ))}
+            <p className="agent-desc">
+              Powered by <strong>Gemini 3.6 Flash</strong>. Strictly adheres to Socratic prompting: it is barred from giving the answer or next step, instead asking targeted guiding questions that lead the student to their own realization.
+            </p>
+            <div className="agent-feature">
+              <span>Rule</span> Never reveals solutions; asks ONE question at a time
+            </div>
+          </div>
+
+          <div className="agent-card card">
+            <div className="agent-header">
+              <span className="agent-tag badge badge-amber">Agent 2 · Multimodal</span>
+              <h3>🔬 Vision Diagnostic Agent</h3>
+            </div>
+            <p className="agent-desc">
+              Reads photos of raw handwritten paper work via <strong>Gemini Vision</strong>. It compares the work against expected solution steps to locate the exact step and name the specific cognitive misconception.
+            </p>
+            <div className="agent-feature">
+              <span>Taxonomy</span> Grounded in the Eedi/NeurIPS diagnostic dataset
+            </div>
+          </div>
+
+          <div className="agent-card card">
+            <div className="agent-header">
+              <span className="agent-tag badge badge-emerald">Agent 3 · Retrieval</span>
+              <h3>📚 Adaptive Content Agent</h3>
+            </div>
+            <p className="agent-desc">
+              Retrieves problems via <strong>pgvector semantic embeddings</strong> filtered by the student's target skill gap and difficulty level, keeping learning squarely in Vygotsky's Zone of Proximal Development (ZPD).
+            </p>
+            <div className="agent-feature">
+              <span>Targeting</span> Consolidates weak skills; challenges mastered areas
+            </div>
+          </div>
+
+          <div className="agent-card card card-highlight">
+            <div className="agent-header">
+              <span className="agent-tag badge badge-indigo">Cognitive Engine</span>
+              <h3>📊 Calibrated BKT Engine</h3>
+            </div>
+            <p className="agent-desc">
+              Implements <strong>Bayesian Knowledge Tracing</strong> with parameters calibrated on <strong>ASSISTments</strong> student data. Unlike arbitrary LLM "scores", BKT computes mathematically sound, auditable mastery probabilities.
+            </p>
+            <div className="agent-feature">
+              <span>Model</span> P(L_t+1) = P(L|obs) + (1 - P(L|obs)) · P(T)
+            </div>
+          </div>
+        </div>
+
+        {/* Pipeline flow */}
+        <div className="pipeline-strip card">
+          <span className="pipeline-label">LIVE EXECUTION LOOP:</span>
+          <div className="pipeline-steps">
+            {[
+              { icon: <Mic size={18} />, label: 'Student Speech / Text', color: 'var(--violet)' },
+              { icon: '🧠', label: 'LangGraph Orchestrator', color: 'var(--indigo)' },
+              { icon: <Camera size={18} />, label: 'Gemini Vision OCR', color: 'var(--amber)' },
+              { icon: <BarChart3 size={18} />, label: 'ASSISTments BKT Shift', color: 'var(--emerald)' },
+            ].map((step, i) => (
+              <div key={i} className="pipeline-step-item">
+                <span className="step-badge" style={{ borderColor: step.color }}>{step.icon}</span>
+                <span className="step-name">{step.label}</span>
+                {i < 3 && <span className="step-arrow">→</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Research Grounding & Data Sources */}
+      <section className="research-section">
+        <div className="section-header">
+          <span className="badge badge-emerald">Real Research · Not Vibes</span>
+          <h2>Empirical Benchmarks & Data Provenance</h2>
+          <p className="section-sub">
+            AI Nerd is grounded in standard educational data mining datasets and peer-reviewed cognitive science literature.
+          </p>
+        </div>
+
+        <div className="citations-grid">
+          <div className="citation-card card">
+            <div className="citation-header">
+              <span className="citation-icon">📈</span>
+              <h4>ASSISTments Benchmark</h4>
+            </div>
+            <p>
+              Used to calibrate Bayesian Knowledge Tracing (BKT) priors and transition parameters across middle-school algebra and fractions using Expectation-Maximization on real student response sequences.
+            </p>
+            <span className="citation-source">WPI Educational Data Mining (2009–2010)</span>
+          </div>
+
+          <div className="citation-card card">
+            <div className="citation-header">
+              <span className="citation-icon">🔬</span>
+              <h4>Eedi Misconception Taxonomy</h4>
+            </div>
+            <p>
+              Diagnostic agent classifies errors into empirically validated misconception categories (sign flips, denominator additions, operation confusion) from the NeurIPS 2020 Education Challenge.
+            </p>
+            <span className="citation-source">NeurIPS 2020 Diagnostic Math Challenge</span>
+          </div>
+
+          <div className="citation-card card">
+            <div className="citation-header">
+              <span className="citation-icon">📐</span>
+              <h4>GSM8K & MATH Benchmarks</h4>
+            </div>
+            <p>
+              Grade-school math problem formulations and multi-step reasoning validation to establish step-by-step gold standards for handwriting comparison.
+            </p>
+            <span className="citation-source">Cobbe et al. (OpenAI) & Hendrycks et al.</span>
+          </div>
+
+          <div className="citation-card card">
+            <div className="citation-header">
+              <span className="citation-icon">🎯</span>
+              <h4>Common Core Standards</h4>
+            </div>
+            <p>
+              Skills are formally tagged to Common Core State Standards (CCSS-M: 3.OA, 4.NF, 6.EE, 7.EE) ensuring pedagogical alignment with standard K-12 math curricula.
+            </p>
+            <span className="citation-source">National Governors Association (CCSS-M)</span>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="landing-footer">
-        <p>Built for the Nerdy Hackathon · Powered by Gemini + LangGraph + Supabase</p>
+        <div className="footer-content">
+          <p className="footer-lead">
+            <strong>AI Nerd</strong> · Multimodal Socratic Math Tutoring with Calibrated Bayesian Knowledge Tracing
+          </p>
+          <p className="footer-meta">
+            Powered by Google Gemini 3.6 Flash · LangGraph · Supabase pgvector · Calibrated on ASSISTments & Eedi
+          </p>
+        </div>
       </footer>
     </div>
   )
