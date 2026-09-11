@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Sparkles, ChevronRight, X } from 'lucide-react'
+import { Sparkles, ChevronRight } from 'lucide-react'
 import './AnimatedIntro.css'
 
 const MATH_GLYPHS = [
@@ -28,6 +28,11 @@ export default function AnimatedIntro({ onEnter }: AnimatedIntroProps) {
     const t2 = setTimeout(() => setActiveStep(2), 1200)
     const t3 = setTimeout(() => setActiveStep(3), 2000)
 
+    // Implicitly auto-close intro after 30 seconds and enter the main website
+    const autoExitTimer = setTimeout(() => {
+      handleExit()
+    }, 30000)
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault()
@@ -42,6 +47,7 @@ export default function AnimatedIntro({ onEnter }: AnimatedIntroProps) {
       clearTimeout(t1)
       clearTimeout(t2)
       clearTimeout(t3)
+      clearTimeout(autoExitTimer)
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [])
@@ -74,16 +80,6 @@ export default function AnimatedIntro({ onEnter }: AnimatedIntroProps) {
           </span>
         ))}
       </div>
-
-      {/* Skip button */}
-      <button
-        className="intro-skip-btn"
-        onClick={handleExit}
-        aria-label="Skip animated intro"
-      >
-        <span>Skip Intro</span>
-        <X size={14} />
-      </button>
 
       {/* Main Centerpiece */}
       <div className="intro-core-container">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Brain, Mic, Camera, BarChart3, ChevronRight, Zap, Sparkles } from 'lucide-react'
+import { Brain, Mic, Camera, BarChart3, ChevronRight, Zap } from 'lucide-react'
 import { startSession, checkHealth } from '../lib/api'
 import AnimatedIntro from '../components/AnimatedIntro'
 import SocraticPreview from '../components/SocraticPreview'
@@ -28,6 +28,89 @@ const FEATURES = [
     icon: '📊',
     title: 'Real Progress Tracker',
     desc: 'Watches how you grow across every math topic so you always practice problems that are just the right challenge.',
+  },
+]
+
+const MATH_TOPICS = [
+  {
+    id: '3.OA.A.1',
+    grade: 'Grade 3',
+    name: 'Understanding Multiplication',
+    desc: 'Connecting equal groups, arrays, and repeated addition to build rock-solid number sense.',
+    example: '3 groups of 4 apples = 12',
+    tag: 'Foundations',
+  },
+  {
+    id: '3.OA.A.2',
+    grade: 'Grade 3',
+    name: 'Understanding Division',
+    desc: 'Sharing quantities into equal piles and discovering how division is multiplication in reverse.',
+    example: '15 stickers shared by 3 friends = 5 each',
+    tag: 'Foundations',
+  },
+  {
+    id: '3.OA.D.8',
+    grade: 'Grade 3',
+    name: 'Two-Step Word Problems',
+    desc: 'Breaking tricky real-world scenarios into step 1 and step 2 without getting overwhelmed.',
+    example: 'Earned $10, bought $4 juice, saved the rest',
+    tag: 'Word Problems',
+  },
+  {
+    id: '4.NF.A.1',
+    grade: 'Grade 4',
+    name: 'Equivalent Fractions',
+    desc: 'Seeing why 1/2 is the same amount of pizza as 2/4 or 4/8 using visual area models.',
+    example: '2/3 = 4/6 = 8/12',
+    tag: 'Fractions',
+  },
+  {
+    id: '4.NF.B.3',
+    grade: 'Grade 4',
+    name: 'Adding & Subtracting Fractions',
+    desc: 'Finding common denominators and discovering why you never add denominators together.',
+    example: '1/3 + 1/6 = 2/6 + 1/6 = 3/6 = 1/2',
+    tag: 'Fractions',
+  },
+  {
+    id: '4.NF.B.4',
+    grade: 'Grade 4',
+    name: 'Multiplying Fractions by Whole Numbers',
+    desc: 'Scaling recipes, measuring ingredients, and repeated fraction additions.',
+    example: '3 × (2/5) = 6/5 = 1 1/5',
+    tag: 'Fractions',
+  },
+  {
+    id: '5.NF.B.7',
+    grade: 'Grade 5',
+    name: 'Dividing Fractions',
+    desc: 'Understanding how many fractional slices fit into a whole unit using intuitive visual models.',
+    example: 'How many 1/4 cups in 2 cups? 2 ÷ 1/4 = 8',
+    tag: 'Fractions',
+  },
+  {
+    id: '6.EE.A.2',
+    grade: 'Grade 6',
+    name: 'Algebraic Expressions',
+    desc: 'Translating written math phrases into algebraic expressions with variables and constants.',
+    example: '"5 less than twice a number" → 2n - 5',
+    tag: 'Algebra',
+  },
+  {
+    id: '6.EE.B.7',
+    grade: 'Grade 6',
+    name: 'Solving One-Step Equations',
+    desc: 'Balancing the scales: using inverse operations to isolate variables with confidence.',
+    example: 'x + 7 = 15 → x = 8',
+    tag: 'Algebra',
+  },
+  {
+    id: '7.EE.B.4',
+    grade: 'Grade 7',
+    name: 'Solving Multi-Step Equations',
+    desc: 'Combining like terms, distributing, and keeping track of negative signs on both sides.',
+    example: '3(x - 4) + 2 = 14 → x = 8',
+    tag: 'Algebra',
   },
 ]
 
@@ -156,15 +239,6 @@ export default function Landing() {
           </nav>
 
           <div className="navbar-actions">
-            <button
-              className="replay-intro-btn"
-              onClick={() => setShowIntro(true)}
-              aria-label="Replay animated intro experience"
-            >
-              <Sparkles size={14} className="sparkle-accent" />
-              <span>Experience Intro</span>
-            </button>
-
             <div className={`nav-conn-pill nav-conn-pill--${connStatus}`}>
               <span className="conn-dot" />
               <span className="conn-pill-text">
@@ -343,6 +417,34 @@ export default function Landing() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* 10 Core Math Topics Section */}
+      <section id="topics" className="topics-section">
+        <div className="section-header">
+          <span className="badge badge-violet">Curriculum Topics</span>
+          <h2>10 Core Math Topics You Can Master</h2>
+          <p className="section-sub">
+            From multiplication and visual fractions to multi-step algebra, practice with problems calibrated directly to standard classroom curricula.
+          </p>
+        </div>
+
+        <div className="topics-grid">
+          {MATH_TOPICS.map(topic => (
+            <div key={topic.id} className="topic-card card">
+              <div className="topic-card-top">
+                <span className="topic-standard">{topic.id}</span>
+                <span className="topic-grade">{topic.grade}</span>
+              </div>
+              <h3 className="topic-title">{topic.name}</h3>
+              <p className="topic-desc">{topic.desc}</p>
+              <div className="topic-example">
+                <span className="example-tag">Sample:</span>
+                <code>{topic.example}</code>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
