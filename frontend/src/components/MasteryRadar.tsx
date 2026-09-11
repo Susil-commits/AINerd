@@ -46,7 +46,7 @@ export default function MasteryRadar({ skills }: Props) {
       <div className="mastery-header-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
         <h3 className="mastery-title" style={{ margin: 0 }}>Skill Mastery</h3>
         <span className="badge badge-emerald" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
-          ASSISTments BKT
+          Calibrated BKT
         </span>
       </div>
 

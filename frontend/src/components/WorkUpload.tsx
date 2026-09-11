@@ -81,6 +81,46 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
       ) : preview ? (
         <div className="preview-container">
           <img src={preview} alt="Your work" className="work-preview" />
+
+          {/* Visual mistake-highlight overlay directly on top of handwritten work */}
+          {diagnosis && !diagnosis.is_correct && (
+            <div
+              className="error-bounding-box"
+              style={{
+                top: `${diagnosis.bounding_box?.top ?? 35}%`,
+                left: `${diagnosis.bounding_box?.left ?? 10}%`,
+                width: `${diagnosis.bounding_box?.width ?? 80}%`,
+                height: `${diagnosis.bounding_box?.height ?? 22}%`,
+              }}
+            >
+              <div className="box-reticle-corner top-left" />
+              <div className="box-reticle-corner top-right" />
+              <div className="box-reticle-corner bottom-left" />
+              <div className="box-reticle-corner bottom-right" />
+              <div className="box-badge">
+                <AlertCircle size={12} />
+                <span>Step {diagnosis.step_number}: {diagnosis.misconception_type.replace(/_/g, ' ')}</span>
+              </div>
+            </div>
+          )}
+
+          {diagnosis && diagnosis.is_correct && (
+            <div
+              className="success-bounding-box"
+              style={{
+                top: '12%',
+                left: '8%',
+                width: '84%',
+                height: '74%',
+              }}
+            >
+              <div className="box-badge success">
+                <CheckCircle size={12} />
+                <span>Verified correct reasoning</span>
+              </div>
+            </div>
+          )}
+
           {diagnosis && (
             <div className={`diagnosis-overlay ${diagnosis.is_correct ? 'correct' : 'incorrect'}`}>
               {diagnosis.is_correct ? (

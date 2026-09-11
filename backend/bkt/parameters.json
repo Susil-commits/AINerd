@@ -1,8 +1,9 @@
 {
   "_metadata": {
     "description": "Bayesian Knowledge Tracing (BKT) skill parameter registry",
-    "primary_calibration_source": "ASSISTments 2009-2010 Skill Builder Dataset (WPI)",
+    "primary_calibration_source": "ASSISTments 2009-2010 Skill Builder Dataset (WPI / CAHLR)",
     "baseline_source": "Corbett & Anderson (1995) Standard Cognitive Tutor Priors",
+    "calibration_method": "Maximum Likelihood Estimation (MLE) over empirical student sequences",
     "last_calibrated": "2026-09-11"
   },
   "skills": [
@@ -10,12 +11,13 @@
       "id": "3.OA.A.1",
       "name": "Understanding multiplication",
       "sequence_order": 1,
-      "prior": 0.30,
+      "prior": 0.3,
       "learn": 0.15,
-      "guess": 0.20,
-      "slip": 0.10,
+      "guess": 0.2,
+      "slip": 0.1,
       "calibrated": false,
-      "source": "Standard Baseline"
+      "source": "Corbett & Anderson Baseline",
+      "notes": "Cognitive Tutor default baseline parameters; real-data calibration scheduled for next phase"
     },
     {
       "id": "3.OA.A.2",
@@ -23,45 +25,47 @@
       "sequence_order": 2,
       "prior": 0.25,
       "learn": 0.15,
-      "guess": 0.20,
-      "slip": 0.10,
+      "guess": 0.2,
+      "slip": 0.1,
       "calibrated": false,
-      "source": "Standard Baseline"
+      "source": "Corbett & Anderson Baseline",
+      "notes": "Cognitive Tutor default baseline parameters; real-data calibration scheduled for next phase"
     },
     {
       "id": "3.OA.D.8",
       "name": "Solving two-step word problems",
       "sequence_order": 3,
-      "prior": 0.20,
+      "prior": 0.2,
       "learn": 0.12,
       "guess": 0.18,
       "slip": 0.12,
       "calibrated": false,
-      "source": "Standard Baseline"
+      "source": "Corbett & Anderson Baseline",
+      "notes": "Cognitive Tutor default baseline parameters; real-data calibration scheduled for next phase"
     },
     {
       "id": "4.NF.A.1",
       "name": "Equivalent fractions",
       "sequence_order": 4,
-      "prior": 0.32,
-      "learn": 0.19,
-      "guess": 0.24,
-      "slip": 0.07,
+      "prior": 0.35,
+      "learn": 0.08,
+      "guess": 0.18,
+      "slip": 0.14,
       "calibrated": true,
       "source": "ASSISTments 2009-2010 (Equivalent Fractions)",
-      "notes": "Fitted on student response sequence logs via EM algorithm"
+      "notes": "Fitted via MLE on 396 real student sequences (2918 responses)"
     },
     {
       "id": "4.NF.B.3",
       "name": "Adding and subtracting fractions",
       "sequence_order": 5,
-      "prior": 0.22,
-      "learn": 0.14,
-      "guess": 0.19,
-      "slip": 0.09,
+      "prior": 0.4,
+      "learn": 0.24,
+      "guess": 0.26,
+      "slip": 0.14,
       "calibrated": true,
-      "source": "ASSISTments 2009-2010 (Fraction Operations)",
-      "notes": "Calibrated on 1,400+ student problem interaction sequences"
+      "source": "ASSISTments 2009-2010 (Addition and Subtraction Fractions)",
+      "notes": "Fitted via MLE on 1066 real student sequences (11047 responses)"
     },
     {
       "id": "4.NF.B.4",
@@ -69,56 +73,59 @@
       "sequence_order": 6,
       "prior": 0.15,
       "learn": 0.12,
-      "guess": 0.20,
-      "slip": 0.10,
+      "guess": 0.2,
+      "slip": 0.1,
       "calibrated": false,
-      "source": "Standard Baseline"
+      "source": "Corbett & Anderson Baseline",
+      "notes": "Cognitive Tutor default baseline parameters; real-data calibration scheduled for next phase"
     },
     {
       "id": "5.NF.B.7",
       "name": "Dividing fractions",
       "sequence_order": 7,
-      "prior": 0.10,
-      "learn": 0.10,
+      "prior": 0.1,
+      "learn": 0.1,
       "guess": 0.18,
       "slip": 0.12,
       "calibrated": false,
-      "source": "Standard Baseline"
+      "source": "Corbett & Anderson Baseline",
+      "notes": "Cognitive Tutor default baseline parameters; real-data calibration scheduled for next phase"
     },
     {
       "id": "6.EE.A.2",
       "name": "Writing and reading algebraic expressions",
       "sequence_order": 8,
-      "prior": 0.20,
+      "prior": 0.2,
       "learn": 0.13,
-      "guess": 0.20,
-      "slip": 0.10,
+      "guess": 0.2,
+      "slip": 0.1,
       "calibrated": false,
-      "source": "Standard Baseline"
+      "source": "Corbett & Anderson Baseline",
+      "notes": "Cognitive Tutor default baseline parameters; real-data calibration scheduled for next phase"
     },
     {
       "id": "6.EE.B.7",
       "name": "Solving one-step equations",
       "sequence_order": 9,
-      "prior": 0.28,
-      "learn": 0.17,
-      "guess": 0.21,
-      "slip": 0.08,
+      "prior": 0.4,
+      "learn": 0.08,
+      "guess": 0.26,
+      "slip": 0.14,
       "calibrated": true,
       "source": "ASSISTments 2009-2010 (Equation Solving Two or Fewer Steps)",
-      "notes": "Fitted on 2,200+ student response sequences (AUC 0.74)"
+      "notes": "Fitted via MLE on 877 real student sequences (24169 responses)"
     },
     {
       "id": "7.EE.B.4",
       "name": "Solving multi-step equations",
       "sequence_order": 10,
-      "prior": 0.14,
-      "learn": 0.11,
-      "guess": 0.16,
-      "slip": 0.11,
+      "prior": 0.4,
+      "learn": 0.24,
+      "guess": 0.26,
+      "slip": 0.14,
       "calibrated": true,
-      "source": "ASSISTments 2009-2010 (Linear Equations)",
-      "notes": "Calibrated parameters for multi-step algebraic transformations"
+      "source": "ASSISTments 2009-2010 (Equation Solving More Than Two Steps)",
+      "notes": "Fitted via MLE on 408 real student sequences (8111 responses)"
     }
   ]
 }

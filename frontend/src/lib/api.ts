@@ -24,6 +24,13 @@ export interface SessionData {
   welcome_message: string
 }
 
+export interface BoundingBox {
+  top: number
+  left: number
+  width: number
+  height: number
+}
+
 export interface Diagnosis {
   ocr_text: string
   is_correct: boolean
@@ -34,6 +41,7 @@ export interface Diagnosis {
   skill_gap_name: string
   corrective_question: string
   bounding_hint: string
+  bounding_box?: BoundingBox | null
 }
 
 export async function startSession(studentName: string): Promise<SessionData> {

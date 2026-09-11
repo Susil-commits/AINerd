@@ -69,10 +69,20 @@ Output format:
   "skill_gap": "4.NF.B.3",
   "skill_gap_name": "Adding and subtracting fractions",
   "corrective_question": "When we add fractions, can we add the bottom numbers? What do we need to make the denominators the same first?",
-  "bounding_hint": "step_2"
+  "bounding_hint": "step_2",
+  "bounding_box": {{
+    "top": 38,
+    "left": 12,
+    "width": 76,
+    "height": 22
+  }}
 }}
 
-If the work is correct, set is_correct=true and misconception_type="step_skipped_correctly".
+For bounding_box:
+- If is_correct is false, estimate the percentage coordinates (0 to 100) surrounding the specific erroneous line or calculation on the paper: top (% from top edge), left (% from left edge), width (% of image width), height (% of image height).
+- If is_correct is true, set bounding_box to null.
+
+If the work is correct, set is_correct=true, misconception_type="step_skipped_correctly", and bounding_box=null.
 Be specific and educational — a teacher should be able to show this diagnosis to a student."""
 
 
@@ -83,8 +93,42 @@ def build_vision_llm() -> ChatGoogleGenerativeAI:
         model=model_name,
         google_api_key=api_key,
         temperature=0.2,  # Low temperature for precise diagnosis
-        max_output_tokens=1000,
+        max_output_tokens=2048,
     )
+
+
+def normalize_bounding_box(data: dict) -> dict | None:
+    """Ensure coordinates (top, left, width, height) are valid percentages (0-100)."""
+    if data.get("is_correct"):
+        return None
+    bbox = data.get("bounding_box")
+    if isinstance(bbox, dict):
+        try:
+            top = float(bbox.get("top", 0))
+            left = float(bbox.get("left", 0))
+            width = float(bbox.get("width", 0))
+            height = float(bbox.get("height", 0))
+            if 0 <= top <= 95 and 0 <= left <= 95 and width > 5 and height > 5:
+                return {
+                    "top": round(min(max(top, 5.0), 85.0), 1),
+                    "left": round(min(max(left, 5.0), 85.0), 1),
+                    "width": round(min(max(width, 10.0), 90.0), 1),
+                    "height": round(min(max(height, 8.0), 40.0), 1),
+                }
+        except (ValueError, TypeError):
+            pass
+
+    # Deterministic fallback based on step_number
+    step = data.get("step_number", 1)
+    if not isinstance(step, int) or step < 1:
+        step = 1
+    top_estimate = min(15.0 + (step - 1) * 25.0, 70.0)
+    return {
+        "top": round(top_estimate, 1),
+        "left": 10.0,
+        "width": 80.0,
+        "height": 22.0,
+    }
 
 
 def run_diagnostic_agent(
@@ -147,7 +191,7 @@ Return ONLY the JSON diagnosis object, no other text.
         err_str = str(e).lower()
         print(f"[WARN] Diagnostic agent vision call failed: {e}")
         if "429" in err_str or "quota" in err_str or "resource_exhausted" in err_str or "rate" in err_str:
-            return {
+            res = {
                 "ocr_text": "[Rate Limit Encountered]",
                 "is_correct": False,
                 "step_number": 1,
@@ -158,8 +202,10 @@ Return ONLY the JSON diagnosis object, no other text.
                 "corrective_question": "Our AI vision tutor is catching its breath! Please try submitting again in about 10 seconds, or type out what you wrote.",
                 "bounding_hint": "step_1",
             }
+            res["bounding_box"] = normalize_bounding_box(res)
+            return res
         elif "image" in err_str or "decode" in err_str or "format" in err_str:
-            return {
+            res = {
                 "ocr_text": "[Image format unreadable]",
                 "is_correct": False,
                 "step_number": 1,
@@ -170,8 +216,10 @@ Return ONLY the JSON diagnosis object, no other text.
                 "corrective_question": "That photo seems a bit blurry or dark. Could you take another picture with more light, or type your next step?",
                 "bounding_hint": "step_1",
             }
+            res["bounding_box"] = normalize_bounding_box(res)
+            return res
         else:
-            return {
+            res = {
                 "ocr_text": "[Analysis temporarily unavailable]",
                 "is_correct": False,
                 "step_number": 1,
@@ -182,6 +230,8 @@ Return ONLY the JSON diagnosis object, no other text.
                 "corrective_question": "I had a momentary glitch reading your paper. Can you try uploading once more or type your answer?",
                 "bounding_hint": "step_1",
             }
+            res["bounding_box"] = normalize_bounding_box(res)
+            return res
 
     # Extract JSON object using regex to handle potential conversational wrappers
     import re
@@ -203,11 +253,12 @@ Return ONLY the JSON diagnosis object, no other text.
         if not data.get("corrective_question"):
             data["corrective_question"] = "Can you walk me through your steps out loud?"
 
+        data["bounding_box"] = normalize_bounding_box(data)
         return data
     except Exception as parse_err:
         print(f"[WARN] Failed to parse diagnostic JSON: {parse_err}. Raw text: {raw[:150]}")
         # Pedagogical fallback for unreadable or badly formatted response
-        return {
+        fallback = {
             "ocr_text": "Handwriting was difficult to read",
             "is_correct": False,
             "step_number": 1,
@@ -218,3 +269,5 @@ Return ONLY the JSON diagnosis object, no other text.
             "corrective_question": "I couldn't quite make out all your pencil marks in that photo! Could you try taking a clearer photo in good lighting, or tell me what step you wrote down?",
             "bounding_hint": "step_1",
         }
+        fallback["bounding_box"] = normalize_bounding_box(fallback)
+        return fallback
