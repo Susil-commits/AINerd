@@ -6,21 +6,31 @@
     "backend/venv/Lib/site-packages"
   ],
   "reportMissingImports": "none",
+  "reportMissingModuleSource": "none",
+  "reportMissingTypeStubs": "none",
   "reportCallIssue": "none",
   "executionEnvironments": [
     {
-      "root": "scripts",
-      "extraPaths": [
-        "backend",
-        "backend/venv/Lib/site-packages"
-      ]
-    },
-    {
       "root": "backend",
       "extraPaths": [
-        "backend",
-        "backend/venv/Lib/site-packages"
-      ]
+        ".",
+        "venv/Lib/site-packages",
+        "../backend",
+        "../backend/venv/Lib/site-packages"
+      ],
+      "reportMissingImports": "none",
+      "reportMissingModuleSource": "none",
+      "reportMissingTypeStubs": "none"
+    },
+    {
+      "root": "scripts",
+      "extraPaths": [
+        "../backend",
+        "../backend/venv/Lib/site-packages"
+      ],
+      "reportMissingImports": "none",
+      "reportMissingModuleSource": "none",
+      "reportMissingTypeStubs": "none"
     }
   ]
 }
