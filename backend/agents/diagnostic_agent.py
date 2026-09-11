@@ -69,20 +69,23 @@ Output format:
   "skill_gap": "4.NF.B.3",
   "skill_gap_name": "Adding and subtracting fractions",
   "corrective_question": "When we add fractions, can we add the bottom numbers? What do we need to make the denominators the same first?",
-  "bounding_hint": "step_2",
-  "bounding_box": {{
-    "top": 38,
-    "left": 12,
-    "width": 76,
-    "height": 22
+  "bounding_hint": {{
+    "x": 12.0,
+    "y": 38.0,
+    "width": 76.0,
+    "height": 22.0
   }}
 }}
 
-For bounding_box:
-- If is_correct is false, estimate the percentage coordinates (0 to 100) surrounding the specific erroneous line or calculation on the paper: top (% from top edge), left (% from left edge), width (% of image width), height (% of image height).
-- If is_correct is true, set bounding_box to null.
+For bounding_hint:
+- If is_correct is false, return an object specifying the percentage coordinates (0 to 100) highlighting the student's erroneous step on the image:
+  - x: percentage from left edge (0 to 100)
+  - y: percentage from top edge (0 to 100)
+  - width: percentage width of error area (0 to 100)
+  - height: percentage height of error area (0 to 100)
+- If is_correct is true, return null for bounding_hint.
 
-If the work is correct, set is_correct=true, misconception_type="step_skipped_correctly", and bounding_box=null.
+If the work is correct, set is_correct=true, misconception_type="step_skipped_correctly", and bounding_hint=null.
 Be specific and educational — a teacher should be able to show this diagnosis to a student."""
 
 
@@ -98,20 +101,20 @@ def build_vision_llm() -> ChatGoogleGenerativeAI:
 
 
 def normalize_bounding_box(data: dict) -> dict | None:
-    """Ensure coordinates (top, left, width, height) are valid percentages (0-100)."""
+    """Ensure coordinates {x, y, width, height} are valid percentages (0-100)."""
     if data.get("is_correct"):
         return None
-    bbox = data.get("bounding_box")
-    if isinstance(bbox, dict):
+    raw = data.get("bounding_hint") or data.get("bounding_box")
+    if isinstance(raw, dict):
         try:
-            top = float(bbox.get("top", 0))
-            left = float(bbox.get("left", 0))
-            width = float(bbox.get("width", 0))
-            height = float(bbox.get("height", 0))
-            if 0 <= top <= 95 and 0 <= left <= 95 and width > 5 and height > 5:
+            x = float(raw.get("x", raw.get("left", 10.0)))
+            y = float(raw.get("y", raw.get("top", 35.0)))
+            width = float(raw.get("width", 80.0))
+            height = float(raw.get("height", 22.0))
+            if 0 <= x <= 95 and 0 <= y <= 95 and width > 5 and height > 5:
                 return {
-                    "top": round(min(max(top, 5.0), 85.0), 1),
-                    "left": round(min(max(left, 5.0), 85.0), 1),
+                    "x": round(min(max(x, 5.0), 85.0), 1),
+                    "y": round(min(max(y, 5.0), 85.0), 1),
                     "width": round(min(max(width, 10.0), 90.0), 1),
                     "height": round(min(max(height, 8.0), 40.0), 1),
                 }
@@ -122,10 +125,10 @@ def normalize_bounding_box(data: dict) -> dict | None:
     step = data.get("step_number", 1)
     if not isinstance(step, int) or step < 1:
         step = 1
-    top_estimate = min(15.0 + (step - 1) * 25.0, 70.0)
+    y_estimate = min(15.0 + (step - 1) * 25.0, 70.0)
     return {
-        "top": round(top_estimate, 1),
-        "left": 10.0,
+        "x": 10.0,
+        "y": round(y_estimate, 1),
         "width": 80.0,
         "height": 22.0,
     }
@@ -142,43 +145,53 @@ def run_diagnostic_agent(
 
     Args:
         image_bytes: Raw image bytes (JPEG/PNG) of handwritten work. None for text-only.
-        expected_steps: List of expected solution steps for this problem.
-        problem_text: The full problem text.
-        skill_id: The skill ID this problem tests.
+        expected_steps: List of correct solution steps (for comparison).
+        problem_text: The problem the student is solving.
+        skill_id: The target skill.
 
     Returns:
         dict with ocr_text, is_correct, misconception_type, description, skill_gap, corrective_question, bounding_hint
     """
     llm = build_vision_llm()
 
-    steps_formatted = "\n".join(f"Step {i+1}: {s}" for i, s in enumerate(expected_steps))
-    context = f"""
-PROBLEM: {problem_text}
-
-EXPECTED SOLUTION STEPS:
-{steps_formatted}
-
-Skill being tested: {skill_id}
-
-Please analyze the student's handwritten work shown in the image and identify any misconceptions.
-Return ONLY the JSON diagnosis object, no other text.
-"""
+    context = f"""Problem: {problem_text}
+Expected Steps:
+{chr(10).join(f'{i+1}. {s}' for i, s in enumerate(expected_steps))}
+Target Skill: {skill_id}"""
 
     if image_bytes:
-        # Encode image as base64 for Gemini Vision
-        img_b64 = base64.b64encode(image_bytes).decode("utf-8")
+        try:
+            b64_image = base64.b64encode(image_bytes).decode("utf-8")
+        except Exception as e:
+            print(f"[ERROR] Failed to base64-encode image bytes: {e}")
+            fallback_err = {
+                "ocr_text": "Failed to decode image",
+                "is_correct": False,
+                "step_number": 1,
+                "misconception_type": "image_decode_failure",
+                "description": "The image data was corrupted or in an unsupported format.",
+                "skill_gap": skill_id,
+                "skill_gap_name": "",
+                "corrective_question": "There was an issue processing that photo file. Could you try uploading as a standard JPEG or PNG?",
+            }
+            box = normalize_bounding_box(fallback_err)
+            fallback_err["bounding_hint"] = box
+            fallback_err["bounding_box"] = box
+            return fallback_err
+
         messages = [
             SystemMessage(content=DIAGNOSTIC_SYSTEM_PROMPT),
-            HumanMessage(content=[
-                {"type": "text", "text": context},
-                {
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"},
-                },
-            ]),
+            HumanMessage(
+                content=[
+                    {"type": "text", "text": context},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"},
+                    },
+                ]
+            ),
         ]
     else:
-        # Text-only mode (no image uploaded)
         messages = [
             SystemMessage(content=DIAGNOSTIC_SYSTEM_PROMPT),
             HumanMessage(content=context + "\n\nNote: No image was provided. Respond with a placeholder diagnosis."),
@@ -200,9 +213,10 @@ Return ONLY the JSON diagnosis object, no other text.
                 "skill_gap": skill_id,
                 "skill_gap_name": "",
                 "corrective_question": "Our AI vision tutor is catching its breath! Please try submitting again in about 10 seconds, or type out what you wrote.",
-                "bounding_hint": "step_1",
             }
-            res["bounding_box"] = normalize_bounding_box(res)
+            box = normalize_bounding_box(res)
+            res["bounding_hint"] = box
+            res["bounding_box"] = box
             return res
         elif "image" in err_str or "decode" in err_str or "format" in err_str:
             res = {
@@ -214,9 +228,10 @@ Return ONLY the JSON diagnosis object, no other text.
                 "skill_gap": skill_id,
                 "skill_gap_name": "",
                 "corrective_question": "That photo seems a bit blurry or dark. Could you take another picture with more light, or type your next step?",
-                "bounding_hint": "step_1",
             }
-            res["bounding_box"] = normalize_bounding_box(res)
+            box = normalize_bounding_box(res)
+            res["bounding_hint"] = box
+            res["bounding_box"] = box
             return res
         else:
             res = {
@@ -228,9 +243,10 @@ Return ONLY the JSON diagnosis object, no other text.
                 "skill_gap": skill_id,
                 "skill_gap_name": "",
                 "corrective_question": "I had a momentary glitch reading your paper. Can you try uploading once more or type your answer?",
-                "bounding_hint": "step_1",
             }
-            res["bounding_box"] = normalize_bounding_box(res)
+            box = normalize_bounding_box(res)
+            res["bounding_hint"] = box
+            res["bounding_box"] = box
             return res
 
     # Extract JSON object using regex to handle potential conversational wrappers
@@ -253,7 +269,9 @@ Return ONLY the JSON diagnosis object, no other text.
         if not data.get("corrective_question"):
             data["corrective_question"] = "Can you walk me through your steps out loud?"
 
-        data["bounding_box"] = normalize_bounding_box(data)
+        box = normalize_bounding_box(data)
+        data["bounding_hint"] = box
+        data["bounding_box"] = box
         return data
     except Exception as parse_err:
         print(f"[WARN] Failed to parse diagnostic JSON: {parse_err}. Raw text: {raw[:150]}")
@@ -267,7 +285,8 @@ Return ONLY the JSON diagnosis object, no other text.
             "skill_gap": skill_id,
             "skill_gap_name": "",
             "corrective_question": "I couldn't quite make out all your pencil marks in that photo! Could you try taking a clearer photo in good lighting, or tell me what step you wrote down?",
-            "bounding_hint": "step_1",
         }
-        fallback["bounding_box"] = normalize_bounding_box(fallback)
+        box = normalize_bounding_box(fallback)
+        fallback["bounding_hint"] = box
+        fallback["bounding_box"] = box
         return fallback

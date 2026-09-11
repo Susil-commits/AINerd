@@ -29,6 +29,14 @@ TARGET_SKILLS = {
         "skill_id": "4.NF.A.1",
         "skill_name": "Equivalent fractions"
     },
+    "Multiplication Fractions": {
+        "skill_id": "4.NF.B.4",
+        "skill_name": "Multiplying fractions by whole numbers"
+    },
+    "Division Fractions": {
+        "skill_id": "5.NF.B.7",
+        "skill_name": "Dividing fractions"
+    },
     "Equation Solving More Than Two Steps": {
         "skill_id": "7.EE.B.4",
         "skill_name": "Solving multi-step equations"

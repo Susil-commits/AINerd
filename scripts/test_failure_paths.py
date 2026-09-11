@@ -34,12 +34,15 @@ def test_corrupted_image():
     print(f"   - is_correct: {diagnosis.get('is_correct')}")
     print(f"   - misconception_type: {diagnosis.get('misconception_type')}")
     print(f"   - corrective_question: {diagnosis.get('corrective_question')}")
+    print(f"   - bounding_hint: {diagnosis.get('bounding_hint')}")
     print(f"   - bounding_box: {diagnosis.get('bounding_box')}")
     assert "corrective_question" in diagnosis, "Must provide corrective question"
     assert diagnosis["is_correct"] is False, "Must not mark bad image as correct"
-    assert "bounding_box" in diagnosis, "Must include bounding_box field"
-    assert diagnosis["bounding_box"] is not None, "Error diagnosis must have bounding_box coordinates"
-    print("✅ Corrupted image handled gracefully with bounding_box coordinates!\n")
+    assert "bounding_hint" in diagnosis, "Must include bounding_hint field"
+    hint = diagnosis["bounding_hint"]
+    assert isinstance(hint, dict), f"bounding_hint must be a dict with coordinates, got {type(hint)}"
+    assert all(k in hint for k in ("x", "y", "width", "height")), f"bounding_hint must contain x, y, width, height: {hint}"
+    print("✅ Corrupted image handled gracefully with {x, y, width, height} coordinates in bounding_hint!\n")
 
 def test_no_image():
     print("🧪 Testing Diagnostic Agent in text-only mode (None image)...")

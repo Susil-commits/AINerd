@@ -164,7 +164,7 @@ export default function Landing() {
               <h3>📊 Calibrated BKT Engine</h3>
             </div>
             <p className="agent-desc">
-              Implements <strong>Bayesian Knowledge Tracing</strong> with parameters calibrated via maximum-likelihood estimation on <strong>46,000+ real student responses</strong> from the <strong>ASSISTments 2009–2010</strong> benchmark (for fraction operations and equations) paired with Corbett & Anderson baseline priors. Unlike arbitrary LLM "scores", BKT computes mathematically sound, auditable mastery probabilities.
+              Implements <strong>Bayesian Knowledge Tracing</strong> with parameters calibrated via maximum-likelihood estimation on <strong>55,000+ real student responses</strong> from the <strong>ASSISTments 2009–2010</strong> benchmark (across 6 core fraction and equation skills) paired with Corbett & Anderson baseline priors for early arithmetic. Unlike arbitrary LLM "scores", BKT computes mathematically sound, auditable mastery probabilities.
             </p>
             <div className="agent-feature">
               <span>Model</span> P(L_t+1) = P(L|obs) + (1 - P(L|obs)) · P(T)
@@ -209,7 +209,7 @@ export default function Landing() {
               <h4>ASSISTments Benchmark (Fitted)</h4>
             </div>
             <p>
-              Priors and learning transitions calibrated via Maximum Likelihood Estimation on 46,245 real student interaction logs from the ASSISTments 2009–2010 Skill Builder dataset (WPI / CAHLR) across core fraction and equation skills, combined with standard cognitive tutor baselines.
+              Priors and learning transitions calibrated via Maximum Likelihood Estimation on 55,455 real student interaction logs from the ASSISTments 2009–2010 Skill Builder dataset (WPI / CAHLR) across 6 core fraction and equation skills, combined with standard cognitive tutor baselines.
             </p>
             <span className="citation-source">WPI Educational Data Mining (2009–2010)</span>
           </div>

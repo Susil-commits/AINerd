@@ -83,26 +83,34 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
           <img src={preview} alt="Your work" className="work-preview" />
 
           {/* Visual mistake-highlight overlay directly on top of handwritten work */}
-          {diagnosis && !diagnosis.is_correct && (
-            <div
-              className="error-bounding-box"
-              style={{
-                top: `${diagnosis.bounding_box?.top ?? 35}%`,
-                left: `${diagnosis.bounding_box?.left ?? 10}%`,
-                width: `${diagnosis.bounding_box?.width ?? 80}%`,
-                height: `${diagnosis.bounding_box?.height ?? 22}%`,
-              }}
-            >
-              <div className="box-reticle-corner top-left" />
-              <div className="box-reticle-corner top-right" />
-              <div className="box-reticle-corner bottom-left" />
-              <div className="box-reticle-corner bottom-right" />
-              <div className="box-badge">
-                <AlertCircle size={12} />
-                <span>Step {diagnosis.step_number}: {diagnosis.misconception_type.replace(/_/g, ' ')}</span>
+          {diagnosis && !diagnosis.is_correct && (() => {
+            const b = diagnosis.bounding_hint || diagnosis.bounding_box
+            const x = b ? ('x' in b && b.x !== undefined ? b.x : (b.left ?? 10)) : 10
+            const y = b ? ('y' in b && b.y !== undefined ? b.y : (b.top ?? 35)) : 35
+            const w = b?.width ?? 80
+            const h = b?.height ?? 22
+
+            return (
+              <div
+                className="error-bounding-box"
+                style={{
+                  top: `${y}%`,
+                  left: `${x}%`,
+                  width: `${w}%`,
+                  height: `${h}%`,
+                }}
+              >
+                <div className="box-reticle-corner top-left" />
+                <div className="box-reticle-corner top-right" />
+                <div className="box-reticle-corner bottom-left" />
+                <div className="box-reticle-corner bottom-right" />
+                <div className="box-badge">
+                  <AlertCircle size={12} />
+                  <span>Step {diagnosis.step_number}: {diagnosis.misconception_type.replace(/_/g, ' ')}</span>
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {diagnosis && diagnosis.is_correct && (
             <div

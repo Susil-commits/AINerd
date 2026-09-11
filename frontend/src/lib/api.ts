@@ -25,10 +25,12 @@ export interface SessionData {
 }
 
 export interface BoundingBox {
-  top: number
-  left: number
+  x: number
+  y: number
   width: number
   height: number
+  top?: number
+  left?: number
 }
 
 export interface Diagnosis {
@@ -40,7 +42,7 @@ export interface Diagnosis {
   skill_gap: string
   skill_gap_name: string
   corrective_question: string
-  bounding_hint: string
+  bounding_hint: BoundingBox | null
   bounding_box?: BoundingBox | null
 }
 

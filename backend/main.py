@@ -330,7 +330,8 @@ async def upload_work(
                 "skill_gap": state.get("current_skill_id", ""),
                 "skill_gap_name": "",
                 "corrective_question": "I had a momentary glitch reading your work. Can you describe what step you took, or try uploading once more?",
-                "bounding_hint": "step_1",
+                "bounding_hint": {"x": 10.0, "y": 20.0, "width": 80.0, "height": 22.0},
+                "bounding_box": {"x": 10.0, "y": 20.0, "width": 80.0, "height": 22.0},
             }
             yield f"data: {json.dumps({'type': 'diagnosis', 'diagnosis': fallback_diag, 'mastery_state': state['mastery_state'], 'next_problem': state.get('current_problem')})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
