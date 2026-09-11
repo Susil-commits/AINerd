@@ -4,6 +4,8 @@ Routes between: Tutor Agent, Diagnostic Agent, Content Agent.
 """
 # pyright: reportMissingImports=false, reportMissingModuleSource=false
 import os
+import warnings
+warnings.filterwarnings("ignore", message=".*allowed_objects.*")
 from typing import TypedDict, Literal, Any
 from langgraph.graph import StateGraph, END, START
 

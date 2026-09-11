@@ -8,10 +8,20 @@ import uuid
 import json
 import time
 import asyncio
+import warnings
 import httpx
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+
+# Suppress harmless LangGraph/LangChain internal serializer deprecation notice on startup
+warnings.filterwarnings("ignore", message=".*allowed_objects.*")
+_orig_showwarning = warnings.showwarning
+def _suppress_langgraph_deprecation(message, category, filename, lineno, file=None, line=None):
+    if "allowed_objects" in str(message):
+        return
+    return _orig_showwarning(message, category, filename, lineno, file, line)
+warnings.showwarning = _suppress_langgraph_deprecation
 
 # Ensure backend directory is in sys.path regardless of execution working directory
 BACKEND_DIR = Path(__file__).resolve().parent
