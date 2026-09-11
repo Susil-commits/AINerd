@@ -37,17 +37,34 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="AI Socratic Tutor API", lifespan=lifespan)
 
-# CORS — allow frontend
+# CORS — allow frontend (local, custom FRONTEND_URL, and all Vercel domains)
+frontend_env = os.getenv("FRONTEND_URL", "")
+origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+]
+if frontend_env:
+    origins.extend([origin.strip() for origin in frontend_env.split(",") if origin.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        os.getenv("FRONTEND_URL", "http://localhost:5173"),
-        "https://*.vercel.app",
-    ],
+    allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/")
+async def root():
+    return {
+        "status": "ok",
+        "service": "AI Socratic Tutor API",
+        "health": "/health",
+        "docs": "/docs",
+    }
 
 
 # ── Pydantic Models ──────────────────────────────────────────────────────────

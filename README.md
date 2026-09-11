@@ -123,21 +123,58 @@ Updates after every problem attempt. Stored in Supabase.
 
 ---
 
-## Deployment
-
-### Frontend → Vercel
-1. Push `frontend/` to GitHub
-2. Connect repo to Vercel
-3. Set `VITE_API_URL` to your Render backend URL
+## Deployment Guide
 
 ### Backend → Render
-1. Push `backend/` to GitHub
-2. Create a new Web Service on Render
-3. Set all env vars from `.env.example` in the Render dashboard
-4. Build command: `pip install -r requirements.txt`
-5. Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 
-> ⚠️ Render free tier spins down when idle. Send a warm-up request before your demo!
+The backend is configured for instant deployment using either Render Blueprints (`render.yaml`) or a manual Web Service.
+
+#### Option A: 1-Click via Render Blueprint (Recommended)
+1. Go to [Render Dashboard](https://dashboard.render.com/) → **New** → **Blueprint**.
+2. Connect your GitHub repository (`Susil-commits/AINerd`).
+3. Render will automatically detect the root `render.yaml` and configure:
+   - **Root Directory**: `backend`
+   - **Runtime**: Python 3.11
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+   - **Health Check**: `/health`
+4. Fill in the required secret environment variables prompted by Render:
+   - `GEMINI_API_KEY`: Your Google Gemini API key
+   - `SUPABASE_URL`: Your Supabase project URL (`https://xyz.supabase.co`)
+   - `SUPABASE_ANON_KEY`: Your Supabase anon key
+   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key
+   - `ELEVENLABS_API_KEY`: Your ElevenLabs API key (optional for voice)
+   - `FRONTEND_URL`: Your Vercel frontend URL (or leave blank; Vercel preview & production domains are automatically supported by CORS regex)
+5. Click **Apply**. Once built, note your backend URL (e.g. `https://ainerd-backend.onrender.com`).
+
+#### Option B: Manual Web Service
+- **Type**: Web Service
+- **Root Directory**: `backend`
+- **Environment**: Python
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- **Health Check Path**: `/health`
+- Add Environment Variables matching `backend/.env.example`.
+
+> 💡 **Tip for Demo Day**: Render free tier instances spin down after 15 minutes of inactivity. Send a warm-up `GET https://your-backend.onrender.com/health` 2 minutes before presenting!
+
+---
+
+### Frontend → Vercel
+
+The frontend is ready for Vercel with automatic SPA routing and API binding.
+
+1. Go to [Vercel Dashboard](https://vercel.com/new) → **Add New Project** → Import `Susil-commits/AINerd`.
+2. Configure Project Settings:
+   - **Framework Preset**: Vite
+   - **Root Directory**: `./` (default, supported via root `vercel.json`) or `frontend`
+   - **Build Command**: `npm run build` (or automatic via Vite preset)
+   - **Output Directory**: `dist` (or `frontend/dist` if root directory is `./`)
+3. Add Environment Variable:
+   - **Key**: `VITE_API_URL`
+   - **Value**: Your Render backend URL (e.g., `https://ainerd-backend.onrender.com` — no trailing slash needed)
+4. Click **Deploy**.
+5. Once deployed, test the connection by starting a tutoring session! CORS in FastAPI is preconfigured to accept all `*.vercel.app` domains automatically.
 
 ---
 
