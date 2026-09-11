@@ -6,7 +6,7 @@ Usage:
     cd backend
     python ../scripts/seed_db.py
 """
-# pyright: reportMissingImports=false
+# pyright: reportMissingImports=false, reportMissingModuleSource=false
 import os
 import sys
 import json

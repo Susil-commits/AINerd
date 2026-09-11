@@ -2,10 +2,11 @@
 Diagnostic Agent — OCR + misconception detection using Gemini Vision.
 Identifies SPECIFIC errors in student handwritten work, not generic "wrong answer."
 """
-# pyright: reportMissingImports=false
+# pyright: reportMissingImports=false, reportMissingModuleSource=false
 import os
 import base64
 import json
+from typing import Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -164,7 +165,7 @@ Target Skill: {skill_id}"""
             b64_image = base64.b64encode(image_bytes).decode("utf-8")
         except Exception as e:
             print(f"[ERROR] Failed to base64-encode image bytes: {e}")
-            fallback_err = {
+            fallback_err: dict[str, Any] = {
                 "ocr_text": "Failed to decode image",
                 "is_correct": False,
                 "step_number": 1,
@@ -204,7 +205,7 @@ Target Skill: {skill_id}"""
         err_str = str(e).lower()
         print(f"[WARN] Diagnostic agent vision call failed: {e}")
         if "429" in err_str or "quota" in err_str or "resource_exhausted" in err_str or "rate" in err_str:
-            res = {
+            res: dict[str, Any] = {
                 "ocr_text": "[Rate Limit Encountered]",
                 "is_correct": False,
                 "step_number": 1,
@@ -219,7 +220,7 @@ Target Skill: {skill_id}"""
             res["bounding_box"] = box
             return res
         elif "image" in err_str or "decode" in err_str or "format" in err_str:
-            res = {
+            res: dict[str, Any] = {
                 "ocr_text": "[Image format unreadable]",
                 "is_correct": False,
                 "step_number": 1,
@@ -234,7 +235,7 @@ Target Skill: {skill_id}"""
             res["bounding_box"] = box
             return res
         else:
-            res = {
+            res: dict[str, Any] = {
                 "ocr_text": "[Analysis temporarily unavailable]",
                 "is_correct": False,
                 "step_number": 1,
@@ -259,11 +260,12 @@ Target Skill: {skill_id}"""
     clean_json = json_match.group(0) if json_match else clean_text
 
     try:
-        data = json.loads(clean_json)
+        parsed_data = json.loads(clean_json)
         # Ensure critical keys are present
-        if not isinstance(data, dict):
+        if not isinstance(parsed_data, dict):
             raise ValueError("Parsed JSON is not a dictionary")
 
+        data: dict[str, Any] = dict(parsed_data)
         if not data.get("ocr_text"):
             data["ocr_text"] = "Handwriting analyzed"
         if not data.get("corrective_question"):
@@ -276,7 +278,7 @@ Target Skill: {skill_id}"""
     except Exception as parse_err:
         print(f"[WARN] Failed to parse diagnostic JSON: {parse_err}. Raw text: {raw[:150]}")
         # Pedagogical fallback for unreadable or badly formatted response
-        fallback = {
+        fallback: dict[str, Any] = {
             "ocr_text": "Handwriting was difficult to read",
             "is_correct": False,
             "step_number": 1,

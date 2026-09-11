@@ -2,7 +2,7 @@
 LangGraph Orchestrator — 3-agent pipeline with state management.
 Routes between: Tutor Agent, Diagnostic Agent, Content Agent.
 """
-# pyright: reportMissingImports=false
+# pyright: reportMissingImports=false, reportMissingModuleSource=false
 import os
 from typing import TypedDict, Literal, Any
 from langgraph.graph import StateGraph, END, START
