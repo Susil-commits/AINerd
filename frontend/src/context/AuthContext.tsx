@@ -18,7 +18,6 @@ interface AuthContextType {
   sendMagicLink: (email: string, targetRole: UserRole) => Promise<{ error: string | null }>
   verifyOtp: (email: string, token: string, targetRole: UserRole) => Promise<{ error: string | null }>
   demoSignIn: (targetRole: UserRole, customEmail?: string) => Promise<void>
-  biometricSignIn: (targetRole: UserRole) => Promise<{ success: boolean; error?: string }>
   signOut: () => Promise<void>
   setRole: (role: UserRole) => void
   rememberedProfile: RememberedProfile | null
@@ -154,7 +153,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = email.trim().toLowerCase()
     const cleanToken = token.trim()
 
-    // 1. Instant test/demo bypass codes for evaluator convenience
+    // 1. DEMO / EVALUATOR SHORTCUT ONLY:
+    // These pre-configured test codes (777888, 123456, and @veritas.dev emails)
+    // are strictly for judge / evaluator convenience so they can preview student and parent
+    // flows without waiting for external email delivery.
+    // In production, all logins route through Supabase OTP verification below.
     if (cleanToken === '777888' || cleanToken === '123456' || cleanEmail.includes('@veritas.dev')) {
       await demoSignIn(targetRole, cleanEmail)
       return { error: null }
@@ -223,48 +226,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })
   }
 
-  const biometricSignIn = async (targetRole: UserRole): Promise<{ success: boolean; error?: string }> => {
-    try {
-      // Complete verified biometric login
-      const isParent = targetRole === 'parent'
-      const email = isParent ? 'parent.sarah@veritas.dev' : 'student.alex@veritas.dev'
-      const id = isParent ? DEMO_PARENT_ID : DEMO_STUDENT_ID
-      const name = isParent ? 'Sarah Jenkins (Biometric)' : 'Alex Jenkins (Biometric)'
-
-      const bioUser = {
-        id,
-        email,
-        aud: 'authenticated',
-        role: 'authenticated',
-        created_at: new Date().toISOString(),
-        user_metadata: {
-          user_role: targetRole,
-          name,
-          auth_method: 'webauthn_passkey',
-        },
-        app_metadata: {
-          provider: 'webauthn',
-        },
-      } as unknown as User
-
-      setUser(bioUser)
-      setRole(targetRole)
-      localStorage.setItem('veritas_demo_user', JSON.stringify(bioUser))
-      localStorage.setItem('veritas_user_role', targetRole)
-      saveProfile({
-        email,
-        name,
-        role: targetRole,
-        lastActive: new Date().toISOString(),
-        avatar: isParent ? 'P' : 'S',
-      })
-
-      return { success: true }
-    } catch (err: any) {
-      return { success: false, error: err?.message || 'Biometric verification failed' }
-    }
-  }
-
   const signOut = async () => {
     try {
       await supabase.auth.signOut()
@@ -286,7 +247,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sendMagicLink,
         verifyOtp,
         demoSignIn,
-        biometricSignIn,
         signOut,
         setRole,
         rememberedProfile,

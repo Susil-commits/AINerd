@@ -54,7 +54,7 @@ ABOUT AINERD PLATFORM (GROUNDED KNOWLEDGE):
 - Key Feature 3: Bayesian Knowledge Tracing (BKT) — Scientifically calculates real-time mastery probability P(L_t) for each skill. Dynamically serves the next problem matched to student ability.
 - Key Feature 4: Student Practice Session — Features live chat with the Socratic AI tutor, scratchpad chalkboard, voice synthesis (ElevenLabs audio), and instant step validation.
 - Key Feature 5: Parent Dashboard — Parents can link multiple children by email, see real-time skill radars, check practice recency, and receive automatic alerts (e.g., "Has not practiced fractions in 3 days!").
-- Key Feature 6: Authentication & Security — Supports 1-click Demo accounts, email Magic Links with 6-digit OTPs, and WebAuthn / Biometric Passkeys. Uses HMAC-SHA256 session tokens and active rate limiting.
+- Key Feature 6: Authentication & Security — Supports passwordless email Magic Links with 6-digit OTP verification, 1-click evaluator demo accounts, HMAC-SHA256 session tokens, and active rate limiting.
 - Supported Curriculum:
   * Grade 3: Understanding Multiplication (3.OA.A.1), Understanding Division (3.OA.A.2), Two-Step Word Problems (3.OA.D.8).
   * Grade 4: Equivalent Fractions (4.NF.A.1), Adding & Subtracting Fractions (4.NF.B.3), Multiplying Fractions by Whole Numbers (4.NF.B.4).

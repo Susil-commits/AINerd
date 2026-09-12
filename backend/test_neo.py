@@ -35,7 +35,7 @@ def test_on_topic_domain_queries():
         "How do I upload a photo of my handwritten work?",
         "What does the Bayesian Knowledge Tracing radar show?",
         "How does the parent dashboard alert me about fractions?",
-        "How do I sign in with a passkey or biometric login?",
+        "How do I sign in with a magic link or OTP?",
         "Hello! Who are you?",
     ]
     for q in valid_queries:

@@ -34,20 +34,19 @@ CREATE TABLE IF NOT EXISTS public.children (
 -- 4. Enable Row Level Security (RLS) on children table
 ALTER TABLE public.children ENABLE ROW LEVEL SECURITY;
 
--- Allow parents to see and manage their linked children
+-- Clean up any permissive legacy policies
+DROP POLICY IF EXISTS "Allow public select children" ON public.children;
 DROP POLICY IF EXISTS "Allow parent all on own children" ON public.children;
+
+-- Strict RLS: Authenticated parents can ONLY query and manage their own linked children
+-- Unauthenticated requests using anon key get 0 rows.
+-- Note: The FastAPI backend accesses this table using SUPABASE_SERVICE_ROLE_KEY which bypasses RLS cleanly.
 CREATE POLICY "Allow parent all on own children"
 ON public.children
 FOR ALL
-USING (auth.uid() = parent_id OR auth.uid() IS NULL)
-WITH CHECK (auth.uid() = parent_id OR auth.uid() IS NULL);
-
--- Allow public read for authenticated/anon keys
-DROP POLICY IF EXISTS "Allow public select children" ON public.children;
-CREATE POLICY "Allow public select children"
-ON public.children
-FOR SELECT
-USING (true);
+TO authenticated
+USING (auth.uid() = parent_id)
+WITH CHECK (auth.uid() = parent_id);
 
 -- 5. Ensure students table has email column for easier child lookup
 ALTER TABLE IF EXISTS public.students ADD COLUMN IF NOT EXISTS email TEXT;
