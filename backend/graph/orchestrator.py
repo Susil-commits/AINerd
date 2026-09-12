@@ -53,7 +53,7 @@ class TutorState(TypedDict):
 def tutor_node(state: TutorState) -> dict:
     """Socratic tutor — responds to student text messages."""
     steps = state.get("thinking_steps", [])
-    steps.append("🎓 Tutor agent: formulating Socratic response...")
+    steps.append("Tutor agent: formulating Socratic response...")
 
     response = run_tutor_agent(
         student_message=state["latest_input"],
@@ -67,7 +67,7 @@ def tutor_node(state: TutorState) -> dict:
         {"role": "tutor", "content": response},
     ]
 
-    steps.append("✅ Tutor response ready")
+    steps.append("Tutor response ready")
 
     return {
         "agent_response": response,
@@ -80,7 +80,7 @@ def tutor_node(state: TutorState) -> dict:
 def diagnose_node(state: TutorState) -> dict:
     """Diagnostic agent — OCR + misconception detection on uploaded image."""
     steps = state.get("thinking_steps", [])
-    steps.append("🔍 Diagnostic agent: reading handwritten work...")
+    steps.append("Diagnostic agent: reading handwritten work...")
 
     current_problem = state.get("current_problem") or {}
     diagnosis = run_diagnostic_agent(
@@ -90,7 +90,7 @@ def diagnose_node(state: TutorState) -> dict:
         skill_id=state.get("current_skill_id", ""),
     )
 
-    steps.append(f"🔬 Found: {diagnosis.get('misconception_type', 'unknown')} at step {diagnosis.get('step_number', '?')}")
+    steps.append(f"Found: {diagnosis.get('misconception_type', 'unknown')} at step {diagnosis.get('step_number', '?')}")
 
     # Update mastery based on correctness
     mastery_state = dict(state["mastery_state"])
@@ -106,7 +106,7 @@ def diagnose_node(state: TutorState) -> dict:
     # Persist mastery to Supabase
     _save_mastery(state["student_id"], skill_id, new_mastery)
 
-    steps.append(f"📊 Mastery for {skill_id}: {new_mastery*100:.0f}%")
+    steps.append(f"Mastery for {skill_id}: {new_mastery*100:.0f}%")
 
     # Log the session event
     _log_event(
@@ -130,13 +130,13 @@ def diagnose_node(state: TutorState) -> dict:
 def select_problem_node(state: TutorState) -> dict:
     """Content agent — selects the next problem based on mastery."""
     steps = state.get("thinking_steps", [])
-    steps.append("📚 Content agent: finding the best next problem...")
+    steps.append("Content agent: finding the best next problem...")
 
     # Determine next skill
     next_skill = get_next_skill(state["mastery_state"])
     mastery_prob = state["mastery_state"].get(next_skill, 0.3)
 
-    steps.append(f"🎯 Targeting skill: {next_skill} (mastery: {mastery_prob*100:.0f}%)")
+    steps.append(f"Targeting skill: {next_skill} (mastery: {mastery_prob*100:.0f}%)")
 
     problem = get_next_problem(
         skill_id=next_skill,
@@ -147,13 +147,13 @@ def select_problem_node(state: TutorState) -> dict:
 
     if problem is None:
         return {
-            "agent_response": "Amazing work! You've completed all available problems for today. 🎉",
+            "agent_response": "Amazing work! You've completed all available problems for today.",
             "next_action": "end",
             "thinking_steps": steps,
         }
 
     attempted = state.get("problems_attempted", []) + [problem["id"]]
-    steps.append(f"✅ Selected problem: {problem.get('title', problem['id'])}")
+    steps.append(f"Selected problem: {problem.get('title', problem['id'])}")
 
     return {
         "current_problem": problem,

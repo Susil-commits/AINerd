@@ -147,7 +147,7 @@ export function streamMessage(
     body: JSON.stringify({ session_id: sessionId, message }),
   }).then(async (res) => {
     if (res.status === 429) {
-      onThinking('⏳ Tutor catching breath...')
+      onThinking('Tutor catching breath...')
       onResponse("You're thinking super fast! Please wait a couple of seconds before sending your next message.", true)
       onDone({})
       return
@@ -194,7 +194,7 @@ export function streamDiagnosis(
     body: formData,
   }).then(async (res) => {
     if (res.status === 429) {
-      onThinking('⏳ Vision analyzer cooldown — please wait a few seconds before re-uploading.')
+      onThinking('Vision analyzer cooldown — please wait a few seconds before re-uploading.')
       return
     }
 
@@ -232,3 +232,51 @@ export async function synthesizeSpeech(text: string): Promise<ArrayBuffer> {
   })
   return res.arrayBuffer()
 }
+
+export interface NeoChatResponse {
+  status: string
+  reply: string
+  guardrailed: boolean
+  guardrail_reason?: string | null
+  suggested_actions: string[]
+  user_role: string
+}
+
+export async function sendNeoChat(
+  message: string,
+  history: Array<{ role: string; content: string }>,
+  visitorId?: string,
+): Promise<NeoChatResponse> {
+  const headers: Record<string, string> = {
+    ...getAuthHeaders(),
+  }
+  if (visitorId) {
+    headers['X-Visitor-Id'] = visitorId
+  }
+
+  const { data } = await api.post<NeoChatResponse>(
+    '/neo/chat',
+    {
+      message,
+      history,
+      visitor_id: visitorId,
+    },
+    { headers },
+  )
+  return data
+}
+
+export async function getNeoSuggestions(): Promise<string[]> {
+  try {
+    const { data } = await api.get<{ suggestions: string[] }>('/neo/suggestions')
+    return data.suggestions || []
+  } catch {
+    return [
+      'How does the Socratic tutor work?',
+      'What math topics are covered?',
+      'How do I upload handwritten work?',
+      'How do parent progress alerts work?',
+    ]
+  }
+}
+

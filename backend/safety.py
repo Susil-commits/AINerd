@@ -54,8 +54,8 @@ IMAGE_MAGIC_BYTES = [
 
 # Educational boundary message when a student attempts prompt injection or answer extraction
 SOCRATIC_BOUNDARY_RESPONSE = (
-    "Nice try! 😊 But I'm your Socratic math coach, not an answer key. "
-    "I'm here to help your brain do the heavy lifting so you truly master this. "
+    "Nice try! But I am your Socratic math coach, not an answer key. "
+    "I am here to help your brain do the heavy lifting so you truly master this. "
     "Let's look at the problem together — what is the first step or operation you see?"
 )
 
@@ -63,6 +63,28 @@ SAFE_SUPPORT_RESPONSE = (
     "It sounds like you might be having a difficult time. Please talk to a trusted adult, "
     "parent, or teacher, or contact a support helpline. Your well-being is what matters most."
 )
+
+NEO_OUT_OF_SCOPE_RESPONSE = (
+    "I am **Neo**, your dedicated AINerd AI assistant.\n\n"
+    "I am strictly guardrailed to answer questions related to the **AINerd** platform — including our "
+    "Socratic math tutoring, Grade 3–7 curriculum, Paper Work Reader OCR, BKT progress metrics, "
+    "student & parent dashboards, and account features.\n\n"
+    "I cannot answer questions about general topics, unrelated coding, or non-platform subjects. "
+    "How can I help you explore or use AINerd today?"
+)
+
+NEO_OFF_TOPIC_PATTERNS = [
+    r"\b(crypto|bitcoin|ethereum|dogecoin|forex|stock market|investing|cryptocurrency)\b",
+    r"\b(recipe|bake a cake|cook|ingredients for|dinner recipe|baking)\b",
+    r"\b(president of|prime minister|election|political party|democrat|republican|presidential)\b",
+    r"\b(write a python script|write code in|write a rust program|web scraper|flask app|django app|javascript code)\b",
+    r"\b(world war|french revolution|american civil war|history essay|historical event)\b",
+    r"\b(photosynthesis|mitochondria|biology essay|chemistry lab|dna replication|biology homework)\b",
+    r"\b(translate (this|to) (french|spanish|german|chinese|japanese))\b",
+    r"\b(who won\b.*?\b(fifa|super bowl|world cup|nba|champions league|olympics))\b",
+    r"\b(movie|celebrity|gossip|hollywood|netflix show|theaters tonight)\b",
+    r"\b(minecraft|fortnite|roblox|gta|video game)\b",
+]
 
 
 def sanitize_input(text: str, max_length: int = 1500) -> str:
@@ -116,6 +138,36 @@ def check_harmful_content(text: str) -> Tuple[bool, Optional[str]]:
         if re.search(pattern, text_lower):
             return True, "distress_or_inappropriate"
     return False, None
+
+
+def check_neo_domain_scope(text: str) -> Tuple[bool, Optional[str]]:
+    """
+    Guardrail filter for Neo AI assistant:
+    Ensures that queries are strictly related to the AINerd platform,
+    its math curriculum, features (Socratic tutor, OCR Work Reader, BKT, dashboards),
+    or navigation.
+    Returns (is_in_scope: bool, reason: Optional[str]).
+    """
+    if not text or len(text.strip()) == 0:
+        return True, None
+
+    # Check for harmful content first
+    is_harmful, h_reason = check_harmful_content(text)
+    if is_harmful:
+        return False, f"Harmful or distressing query: {h_reason}"
+
+    # Check for prompt injection / jailbreak
+    is_injection, i_reason = check_prompt_injection(text)
+    if is_injection:
+        return False, f"Jailbreak or system prompt extraction attempt: {i_reason}"
+
+    # Check for explicit off-topic patterns
+    text_lower = text.lower()
+    for pattern in NEO_OFF_TOPIC_PATTERNS:
+        if re.search(pattern, text_lower):
+            return False, f"Off-topic subject query matching: {pattern}"
+
+    return True, None
 
 
 def is_answer_leaked(tutor_reply: str, expected_answer: Optional[str]) -> bool:

@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback } from 'react'
-import { Camera, Upload, X, CheckCircle, AlertCircle } from 'lucide-react'
 import type { Diagnosis, Problem } from '../lib/api'
 import { streamDiagnosis } from '../lib/api'
 import './WorkUpload.css'
@@ -67,14 +66,14 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
 
   return (
     <div className="work-upload">
-      <h3 className="upload-title">📷 Show Your Work</h3>
+      <h3 className="upload-title">Show Your Work</h3>
 
       {cameraOpen ? (
         <div className="camera-view">
           <video ref={videoRef} autoPlay playsInline className="camera-video" />
           <canvas ref={canvasRef} style={{ display: 'none' }} />
           <div className="camera-actions">
-            <button className="btn btn-primary" onClick={capturePhoto} aria-label="Take photo of handwritten work">📸 Capture</button>
+            <button className="btn btn-primary" onClick={capturePhoto} aria-label="Take photo of handwritten work">Capture</button>
             <button className="btn btn-ghost" onClick={() => setCameraOpen(false)} aria-label="Cancel camera capture">Cancel</button>
           </div>
         </div>
@@ -105,7 +104,6 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
                 <div className="box-reticle-corner bottom-left" />
                 <div className="box-reticle-corner bottom-right" />
                 <div className="box-badge">
-                  <AlertCircle size={12} />
                   <span>Step {diagnosis.step_number}: {diagnosis.misconception_type.replace(/_/g, ' ')}</span>
                 </div>
               </div>
@@ -123,7 +121,6 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
               }}
             >
               <div className="box-badge success">
-                <CheckCircle size={12} />
                 <span>Verified correct reasoning</span>
               </div>
             </div>
@@ -133,12 +130,10 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
             <div className={`diagnosis-overlay ${diagnosis.is_correct ? 'correct' : 'incorrect'}`}>
               {diagnosis.is_correct ? (
                 <div className="diagnosis-result correct">
-                  <CheckCircle size={20} />
                   <span>Correct! Well done.</span>
                 </div>
               ) : (
                 <div className="diagnosis-result incorrect">
-                  <AlertCircle size={20} />
                   <div>
                     <strong>{diagnosis.misconception_type.replace(/_/g, ' ')}</strong>
                     <p>at Step {diagnosis.step_number}</p>
@@ -153,7 +148,7 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
             aria-label="Remove uploaded image"
             title="Remove image"
           >
-            <X size={16} />
+            Remove
           </button>
         </div>
       ) : (
@@ -167,7 +162,7 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
         >
-          <Upload size={32} color="var(--text-muted)" />
+          <span className="upload-prompt-badge">Upload Work</span>
           <p>Drop your photo here<br /><span>or click to browse</span></p>
         </div>
       )}
@@ -188,7 +183,7 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
             style={{ gap: '6px' }}
             aria-label="Open camera to capture work photo"
           >
-            <Camera size={16} /> Camera
+            Camera
           </button>
         )}
         {file && !diagnosis && (
@@ -198,7 +193,7 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
             disabled={uploading}
             aria-label="Check handwritten work photo"
           >
-            {uploading ? '🔍 Checking steps…' : '🔍 Check My Work'}
+            {uploading ? 'Checking steps…' : 'Check My Work'}
           </button>
         )}
       </div>
@@ -206,7 +201,7 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
       {diagnosis && !diagnosis.is_correct && (
         <div className="diagnosis-detail animate-fadein">
           <p className="diagnosis-desc">{diagnosis.description}</p>
-          <p className="corrective-q">💬 {diagnosis.corrective_question}</p>
+          <p className="corrective-q">{diagnosis.corrective_question}</p>
         </div>
       )}
     </div>

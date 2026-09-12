@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Sparkles, ChevronRight } from 'lucide-react'
 import './AnimatedIntro.css'
 
 const MATH_GLYPHS = [
@@ -92,7 +91,7 @@ export default function AnimatedIntro({ onEnter }: AnimatedIntroProps) {
           <div className="orbital-satellite sat-2" />
           <div className="orbital-satellite sat-3" />
           <div className="orbital-center-glow">
-            <Sparkles size={34} className="intro-sparkle-icon" />
+            <span className="orbital-core-dot" />
           </div>
         </div>
 
@@ -122,7 +121,6 @@ export default function AnimatedIntro({ onEnter }: AnimatedIntroProps) {
               <span className="btn-glow-layer" />
               <span className="btn-content">
                 <span>Enter Veritas</span>
-                <ChevronRight size={18} />
               </span>
             </button>
             <span className="intro-key-hint">or press <kbd>Space</kbd> / <kbd>Enter</kbd></span>

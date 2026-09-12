@@ -42,7 +42,8 @@ from graph.orchestrator import build_graph, TutorState
 from agents.content_agent import get_next_problem, generate_session_summary
 from bkt.tracker import initialize_mastery, get_all_skills, get_skill_params
 from db.supabase_client import get_supabase
-from auth import create_session_token, verify_student_access
+from auth import create_session_token, verify_student_access, verify_session_token
+from agents.neo_agent import run_neo_agent, DEFAULT_SUGGESTIONS
 from rate_limiter import limiter
 from safety import (
     sanitize_input,
@@ -159,6 +160,12 @@ class MasteryUpdateRequest(BaseModel):
     session_id: str
     problem_id: str
     is_correct: bool
+
+
+class NeoChatRequest(BaseModel):
+    message: str
+    history: list[dict] = []
+    visitor_id: str | None = None
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
@@ -342,10 +349,10 @@ async def send_message(req: MessageRequest):
     async def event_stream() -> AsyncGenerator[str, None]:
         try:
             # Emit thinking steps as they happen
-            yield f"data: {json.dumps({'type': 'thinking', 'content': '🎓 Tutor thinking...'})}\n\n"
+            yield f"data: {json.dumps({'type': 'thinking', 'content': 'Tutor thinking...'})}\n\n"
 
             thinking_steps = []
-            thinking_steps.append("🎓 Reading your thought...")
+            thinking_steps.append("Reading your thought...")
             yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
             await asyncio.sleep(0.1)
 
@@ -371,7 +378,7 @@ async def send_message(req: MessageRequest):
                         "what math property explains why this step works?"
                     )
 
-            thinking_steps.append("💡 Thinking of a guiding question...")
+            thinking_steps.append("Thinking of a guiding question...")
             yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
 
             # Update state
@@ -434,14 +441,14 @@ async def upload_work(
 
     async def event_stream() -> AsyncGenerator[str, None]:
         try:
-            yield f"data: {json.dumps({'type': 'thinking', 'content': '📸 Reading your handwritten work...'})}\n\n"
+            yield f"data: {json.dumps({'type': 'thinking', 'content': 'Reading your handwritten work...'})}\n\n"
             await asyncio.sleep(0.1)
 
             from agents.diagnostic_agent import run_diagnostic_agent
             from bkt.tracker import update_mastery
 
             current_problem = state.get("current_problem") or {}
-            yield f"data: {json.dumps({'type': 'thinking', 'content': '🔍 Checking your steps...'})}\n\n"
+            yield f"data: {json.dumps({'type': 'thinking', 'content': 'Checking your steps...'})}\n\n"
 
             diagnosis = run_diagnostic_agent(
                 image_bytes=image_bytes,
@@ -491,7 +498,7 @@ async def upload_work(
 
             # If correct, select next problem targeted with pgvector RAG
             if is_correct:
-                yield f"data: {json.dumps({'type': 'thinking', 'content': '📚 Picking your next practice problem...'})}\n\n"
+                yield f"data: {json.dumps({'type': 'thinking', 'content': 'Picking your next practice problem...'})}\n\n"
                 from bkt.tracker import get_next_skill
                 next_skill = get_next_skill(state["mastery_state"])
                 misconception_desc = diagnosis.get("description") or diagnosis.get("misconception_type")
@@ -512,7 +519,7 @@ async def upload_work(
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
         except Exception as e:
             print(f"[ERROR] upload_work stream failed: {e}")
-            yield f"data: {json.dumps({'type': 'thinking', 'content': '⚠️ Recovering from analysis hiccup...'})}\n\n"
+            yield f"data: {json.dumps({'type': 'thinking', 'content': 'Recovering from analysis hiccup...'})}\n\n"
             fallback_diag = {
                 "ocr_text": "Could not complete analysis",
                 "is_correct": False,
@@ -861,7 +868,7 @@ async def get_parent_children(parent_id: str):
 
         has_gap = days_since >= 3 or fraction_mastery < 0.5
         alert_msg = (
-            "⚠️ Has not practiced fractions in 3 days!"
+            "Notice: Has not practiced fractions in 3 days"
             if has_gap
             else "Practiced fractions recently"
         )
@@ -922,4 +929,94 @@ async def get_child_details(parent_id: str, child_id: str):
         "sessions": sessions_res.data or [],
         "recent_events": events_res.data or [],
     }
+
+
+# ── Neo AI Platform Assistant Endpoints ─────────────────────────────────────
+
+@app.get("/neo/suggestions")
+async def get_neo_suggestions():
+    """Return default prompt suggestions for the Neo AI assistant."""
+    return {"suggestions": DEFAULT_SUGGESTIONS}
+
+
+@app.post("/neo/chat")
+async def neo_chat(
+    req: NeoChatRequest,
+    request: Request,
+    authorization: str | None = Header(None),
+    x_session_token: str | None = Header(None),
+    x_parent_id: str | None = Header(None),
+    x_visitor_id: str | None = Header(None),
+):
+    """
+    Neo AI Assistant Endpoint — Guardrailed strictly to AINerd platform content.
+    Supports authenticated users (Student/Parent) and visitors with sliding rate limits.
+    """
+    clean_msg = sanitize_input(req.message, max_length=1000)
+    if not clean_msg:
+        raise HTTPException(status_code=400, detail="Please provide a message for Neo.")
+
+    # 1. Resolve Auth / User Context
+    user_context = {"role": "visitor", "authenticated": False}
+    token = None
+    if authorization:
+        parts = authorization.split(" ")
+        token = parts[1] if len(parts) == 2 and parts[0].lower() == "bearer" else parts[0]
+    elif x_session_token:
+        token = x_session_token
+
+    client_identifier = req.visitor_id or x_visitor_id or (request.client.host if request.client else "visitor_anon")
+
+    if x_parent_id:
+        user_context = {
+            "role": "parent",
+            "parent_id": x_parent_id,
+            "authenticated": True,
+            "name": "Parent",
+        }
+        client_identifier = f"parent_{x_parent_id}"
+    elif token:
+        try:
+            payload = verify_session_token(token)
+            user_context = {
+                "role": payload.get("role", "student"),
+                "student_id": payload.get("sub"),
+                "name": payload.get("name", "Student"),
+                "authenticated": True,
+            }
+            client_identifier = f"student_{payload.get('sub')}"
+        except Exception:
+            # Check for demo user token or decode claims
+            if "parent" in str(token).lower():
+                user_context = {"role": "parent", "name": "Parent", "authenticated": True}
+                client_identifier = "demo_parent"
+            elif "student" in str(token).lower():
+                user_context = {"role": "student", "name": "Student", "authenticated": True}
+                client_identifier = "demo_student"
+
+    # 2. Rate Limiting Protection (burst: 1s, window: 30 msgs/min for auth, 20 msgs/min for guests)
+    max_rate = 35 if user_context["authenticated"] else 20
+    limiter.enforce_cooldown(
+        key=f"neo_{client_identifier}",
+        cooldown_seconds=1.0,
+        action="Neo message",
+        max_per_minute=max_rate,
+    )
+
+    # 3. Execute Neo Agent with grounded guardrails
+    result = run_neo_agent(
+        user_message=clean_msg,
+        conversation_history=req.history,
+        user_context=user_context,
+    )
+
+    return {
+        "status": "ok",
+        "reply": result["reply"],
+        "guardrailed": result["guardrailed"],
+        "guardrail_reason": result.get("guardrail_reason"),
+        "suggested_actions": result.get("suggested_actions", DEFAULT_SUGGESTIONS),
+        "user_role": user_context["role"],
+    }
+
 

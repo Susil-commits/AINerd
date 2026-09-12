@@ -1,25 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Brain,
-  Mic,
-  Camera,
-  BarChart3,
-  ChevronRight,
-  Zap,
-  Mail,
-  Lock,
-  Check,
-  ShieldCheck,
-  LogOut,
-  ArrowRight,
-  Fingerprint,
-  RefreshCw,
-  UserCheck,
-  ArrowLeft,
-  Sparkles,
-  KeyRound,
-} from 'lucide-react'
 import { checkHealth } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import AnimatedIntro from '../components/AnimatedIntro'
@@ -27,27 +7,27 @@ import SocraticPreview from '../components/SocraticPreview'
 import './Landing.css'
 
 const STATS = [
-  { value: '3', label: 'Smart AI Helpers', icon: <Brain size={20} /> },
-  { value: '10', label: 'Core Math Topics', icon: <BarChart3 size={20} /> },
-  { value: '20+', label: 'Practice Problems', icon: <ChevronRight size={20} /> },
-  { value: 'Instant', label: 'Step-by-Step Feedback', icon: <Zap size={20} /> },
+  { value: '3', label: 'Smart AI Helpers' },
+  { value: '10', label: 'Core Math Topics' },
+  { value: '20+', label: 'Practice Problems' },
+  { value: 'Instant', label: 'Step-by-Step Feedback' },
 ]
 
 const FEATURES = [
   {
-    icon: '🎓',
     title: 'The Socratic Tutor',
     desc: 'Never just hands you the answer. Asks friendly guiding questions that help you solve problems on your own.',
+    tag: 'Socratic Method',
   },
   {
-    icon: '📷',
     title: 'Paper Work Reader',
     desc: 'Snap a picture of your handwritten work. It checks each step and pinpoints tricky spots — like flipped signs or mixed-up fractions.',
+    tag: 'Vision OCR',
   },
   {
-    icon: '📊',
     title: 'Real Progress Tracker',
     desc: 'Watches how you grow across every math topic so you always practice problems that are just the right challenge.',
+    tag: 'BKT Analytics',
   },
 ]
 
@@ -425,7 +405,7 @@ export default function Landing() {
       <header className="landing-navbar">
         <div className="navbar-container">
           <div className="navbar-brand">
-            <span className="brand-icon">📐</span>
+            <span className="brand-badge">AINERD</span>
             <span className="brand-name">Veritas<span className="brand-dot">.</span></span>
             <span className="brand-tag">Socratic Math</span>
           </div>
@@ -482,7 +462,7 @@ export default function Landing() {
           {user ? (
             <div className="auth-logged-in-card animate-fadein">
               <div className="logged-in-badge">
-                <span className="logged-in-avatar">{role === 'parent' ? '👨‍👩‍👧' : '🎓'}</span>
+                <span className="logged-in-avatar">{role === 'parent' ? 'P' : 'S'}</span>
                 <div>
                   <div className="logged-in-title">Signed In as <strong>{user.email}</strong></div>
                   <div className="logged-in-role">Active Role: <span className="badge badge-violet">{role === 'parent' ? 'Parent' : 'Student'}</span></div>
@@ -493,7 +473,7 @@ export default function Landing() {
                   className="btn btn-violet btn-lg"
                   onClick={handleEnterSession}
                 >
-                  {role === 'parent' ? 'Enter Parent Dashboard' : 'Start Practice Session'} <ArrowRight size={18} />
+                  {role === 'parent' ? 'Enter Parent Dashboard' : 'Start Practice Session'}
                 </button>
                 <button
                   className="btn btn-ghost"
@@ -503,7 +483,7 @@ export default function Landing() {
                     setAuthScreen('form')
                   }}
                 >
-                  <LogOut size={16} /> Switch Account / Sign Out
+                  Switch Account / Sign Out
                 </button>
               </div>
             </div>
@@ -512,10 +492,9 @@ export default function Landing() {
               {/* Left Panel */}
               <div className="auth-card-left">
                 <div className="auth-brand-row">
-                  <span className="auth-brand-logo">📐</span>
+                  <span className="auth-brand-badge">AUTH</span>
                   <span className="auth-brand-name">Veritas<span className="auth-brand-dot">.</span></span>
                   <span className="auth-security-pill">
-                    <ShieldCheck size={13} />
                     <span>Safe Socratic Auth</span>
                   </span>
                 </div>
@@ -524,7 +503,7 @@ export default function Landing() {
                 {rememberedProfile && !rememberedDismissed ? (
                   <div className="auth-remembered-card animate-fadein">
                     <div className="remembered-header">
-                      <span className="remembered-avatar">{rememberedProfile.avatar || '🎓'}</span>
+                      <span className="remembered-avatar">{rememberedProfile.role === 'parent' ? 'P' : 'S'}</span>
                       <div className="remembered-info">
                         <div className="remembered-name-row">
                           <span className="remembered-name">{rememberedProfile.name}</span>
@@ -540,7 +519,7 @@ export default function Landing() {
                         onClick={handleFastResume}
                         disabled={authLoading}
                       >
-                        <UserCheck size={16} /> Continue as {rememberedProfile.name.split(' ')[0]}
+                        Continue as {rememberedProfile.name.split(' ')[0]}
                       </button>
                       <button
                         type="button"
@@ -565,7 +544,7 @@ export default function Landing() {
                           setAuthError('')
                         }}
                       >
-                        <ArrowLeft size={15} /> Change Email
+                        Change Email
                       </button>
                       <span className="otp-email-chip">{magicLinkEmail || email}</span>
                     </div>
@@ -608,21 +587,21 @@ export default function Landing() {
 
                     {/* Evaluator Fast Test Code Chips */}
                     <div className="otp-evaluator-box">
-                      <span className="evaluator-label">⚡ Evaluator Quick Autofill Codes:</span>
+                      <span className="evaluator-label">Evaluator Quick Autofill Codes:</span>
                       <div className="evaluator-chips-grid">
                         <button
                           type="button"
                           className="evaluator-code-btn evaluator-code-student"
                           onClick={() => handleAutofillOtp('777888', 'student')}
                         >
-                          🎓 Student Code: <code>777888</code>
+                          Student Code: <code>777888</code>
                         </button>
                         <button
                           type="button"
                           className="evaluator-code-btn evaluator-code-parent"
                           onClick={() => handleAutofillOtp('123456', 'parent')}
                         >
-                          👨‍👩‍👧 Parent Code: <code>123456</code>
+                          Parent Code: <code>123456</code>
                         </button>
                       </div>
                     </div>
@@ -637,7 +616,7 @@ export default function Landing() {
                           onClick={() => handleSendMagicLinkOrOtp()}
                           disabled={authLoading}
                         >
-                          <RefreshCw size={13} /> Resend verification code
+                          Resend verification code
                         </button>
                       )}
                     </div>
@@ -657,7 +636,6 @@ export default function Landing() {
                           <span className="auth-helper-tag">Passwordless</span>
                         </div>
                         <div className="auth-input-wrapper">
-                          <Mail size={16} className="auth-input-icon" />
                           <input
                             id="auth-email-input"
                             type="email"
@@ -697,7 +675,6 @@ export default function Landing() {
                             className={`auth-role-tab ${role === 'student' ? 'auth-role-tab--active' : ''}`}
                             onClick={() => setRole('student')}
                           >
-                            <span className="role-tab-icon">🎓</span>
                             <div className="role-tab-text">
                               <span className="role-tab-title">Student</span>
                               <span className="role-tab-desc">Socratic math tutor</span>
@@ -709,7 +686,6 @@ export default function Landing() {
                             className={`auth-role-tab ${role === 'parent' ? 'auth-role-tab--active' : ''}`}
                             onClick={() => setRole('parent')}
                           >
-                            <span className="role-tab-icon">👨‍👩‍👧</span>
                             <div className="role-tab-text">
                               <span className="role-tab-title">Parent</span>
                               <span className="role-tab-desc">Live radar & history</span>
@@ -738,27 +714,27 @@ export default function Landing() {
                             setAuthError('')
                           }}
                         >
-                          <KeyRound size={14} /> Already have a 6-digit code? Enter code →
+                          Already have a 6-digit code? Enter code
                         </button>
                       </div>
 
                       {/* Quick Evaluator Access */}
                       <div className="auth-demo-section">
-                        <span className="demo-label">⚡ Instant Evaluator Demo Access:</span>
+                        <span className="demo-label">Instant Evaluator Demo Access:</span>
                         <div className="demo-buttons-grid">
                           <button
                             type="button"
                             className="demo-pill-btn demo-pill-parent"
                             onClick={() => handleDemoLogin('parent')}
                           >
-                            👨‍👩‍👧 Demo as Parent
+                            Demo as Parent
                           </button>
                           <button
                             type="button"
                             className="demo-pill-btn demo-pill-student"
                             onClick={() => handleDemoLogin('student')}
                           >
-                            🎓 Demo as Student
+                            Demo as Student
                           </button>
                         </div>
                       </div>
@@ -769,16 +745,13 @@ export default function Landing() {
 
               {/* Right Panel: Interactive Biometric Passkey Authenticator */}
               <div className="auth-card-right">
-                <div className="auth-art-clouds">
-                  <span className="art-cloud art-cloud--top">☁️</span>
-                  <span className="art-cloud art-cloud--bottom">☁️</span>
-                </div>
+                <div className="auth-art-clouds" />
 
                 <div className="mockup-device-wrapper">
                   <div className={`mockup-device-body ${bioState === 'scanning' ? 'mockup-device-body--scanning' : ''}`}>
                     <div className="device-notch" />
                     <div className={`device-verified-bubble ${bioState === 'success' ? 'device-verified-bubble--active' : ''}`}>
-                      <Check size={18} />
+                      Verified
                     </div>
 
                     <button
@@ -792,9 +765,9 @@ export default function Landing() {
                         {bioState === 'scanning' ? (
                           <div className="biometric-laser-beam" />
                         ) : bioState === 'success' ? (
-                          <Check size={36} className="bio-check-icon animate-scalein" />
+                          <span className="bio-check-icon animate-scalein">Verified</span>
                         ) : (
-                          <Fingerprint size={36} />
+                          <span className="bio-prompt-text">Touch Sensor</span>
                         )}
                         {bioState === 'scanning' && <div className="biometric-pulse-ring" />}
                       </div>
@@ -808,18 +781,17 @@ export default function Landing() {
                       </p>
 
                       <span className="scanner-touch-hint">
-                        <Sparkles size={12} /> {bioState === 'scanning' ? 'Reading sensor…' : 'One-Tap WebAuthn'}
+                        {bioState === 'scanning' ? 'Reading sensor…' : 'One-Tap WebAuthn'}
                       </span>
                     </button>
                   </div>
 
                   <div className="mockup-lock-badge">
-                    <Lock size={22} />
+                    <span>Encrypted</span>
                   </div>
                 </div>
 
                 <div className="auth-art-footer">
-                  <ShieldCheck size={16} />
                   <span>WebAuthn Passkey • Passwordless Auth</span>
                 </div>
               </div>
@@ -829,28 +801,24 @@ export default function Landing() {
           {/* Platform Safety & Compliance Trust Strip */}
           <div className="auth-trust-strip">
             <div className="trust-item">
-              <ShieldCheck size={18} className="trust-icon trust-icon--emerald" />
               <div className="trust-text">
                 <strong>FERPA & COPPA Child Safe</strong>
                 <span>Zero tracking, student privacy protected</span>
               </div>
             </div>
             <div className="trust-item">
-              <Lock size={18} className="trust-icon trust-icon--violet" />
               <div className="trust-text">
                 <strong>HMAC-SHA256 Encrypted</strong>
                 <span>Cryptographically scoped session tokens</span>
               </div>
             </div>
             <div className="trust-item">
-              <Zap size={18} className="trust-icon trust-icon--amber" />
               <div className="trust-text">
                 <strong>Brute-Force Shield Active</strong>
                 <span>Intelligent rate-limiting & cooldowns</span>
               </div>
             </div>
             <div className="trust-item">
-              <Brain size={18} className="trust-icon trust-icon--cyan" />
               <div className="trust-text">
                 <strong>Socratic AI Guardrails</strong>
                 <span>Anti-prompt injection & leak defense</span>
@@ -863,7 +831,6 @@ export default function Landing() {
         <div className="stats-grid">
           {STATS.map(s => (
             <div key={s.label} className="stat-card">
-              <div className="stat-icon">{s.icon}</div>
               <div className="stat-value">{s.value}</div>
               <div className="stat-label">{s.label}</div>
             </div>
@@ -880,7 +847,6 @@ export default function Landing() {
       <section id="features" className="features">
         {FEATURES.map(f => (
           <div key={f.title} className="feature-card card">
-            <div className="feature-icon">{f.icon}</div>
             <h3>{f.title}</h3>
             <p>{f.desc}</p>
           </div>
@@ -901,7 +867,7 @@ export default function Landing() {
           <div className="agent-card card">
             <div className="agent-header">
               <span className="agent-tag badge badge-violet">Helper 1 · Conversation</span>
-              <h3>🎓 The Friendly Tutor</h3>
+              <h3>The Friendly Tutor</h3>
             </div>
             <p className="agent-desc">
               Guides your thinking with warm, step-by-step questions. Instead of giving away the solution, it prompts you to notice patterns and discover the answer yourself.
@@ -914,7 +880,7 @@ export default function Landing() {
           <div className="agent-card card">
             <div className="agent-header">
               <span className="agent-tag badge badge-amber">Helper 2 · Homework Checker</span>
-              <h3>📷 Handwritten Work Reader</h3>
+              <h3>Handwritten Work Reader</h3>
             </div>
             <p className="agent-desc">
               Snap a quick picture of your paper math work. It reads your handwriting, verifies each line of working, and points out where a step went off track.
@@ -927,7 +893,7 @@ export default function Landing() {
           <div className="agent-card card">
             <div className="agent-header">
               <span className="agent-tag badge badge-emerald">Helper 3 · Practice Guide</span>
-              <h3>📚 Smart Problem Finder</h3>
+              <h3>Smart Problem Finder</h3>
             </div>
             <p className="agent-desc">
               Chooses the next problem tailored to how well you understand the topic. When you're cruising, it adds a fun challenge; when you're stuck, it gives you an easier practice step.
@@ -940,7 +906,7 @@ export default function Landing() {
           <div className="agent-card card card-highlight">
             <div className="agent-header">
               <span className="agent-tag badge badge-indigo">Progress Engine</span>
-              <h3>📈 Live Skill Tracker</h3>
+              <h3>Live Skill Tracker</h3>
             </div>
             <p className="agent-desc">
               Keeps a live map of your skills as you practice. Every completed problem updates your progress so parents, teachers, and you can see real growth across fractions, word problems, and equations.
@@ -956,14 +922,14 @@ export default function Landing() {
           <span className="pipeline-label">HOW EACH PRACTICE STEP WORKS:</span>
           <div className="pipeline-steps">
             {[
-              { icon: <Mic size={18} />, label: 'Student Voice / Text', color: 'var(--violet)' },
-              { icon: '🧠', label: 'Tutor Thinks & Guides', color: 'var(--indigo)' },
-              { icon: <Camera size={18} />, label: 'Checks Paper Work Photo', color: 'var(--amber)' },
-              { icon: <BarChart3 size={18} />, label: 'Updates Your Skill Map', color: 'var(--emerald)' },
-            ].map((step, i) => (
+              { step: '1', label: 'Student Voice / Text', color: 'var(--violet)' },
+              { step: '2', label: 'Tutor Thinks & Guides', color: 'var(--indigo)' },
+              { step: '3', label: 'Checks Paper Work Photo', color: 'var(--amber)' },
+              { step: '4', label: 'Updates Your Skill Map', color: 'var(--emerald)' },
+            ].map((stepItem, i) => (
               <div key={i} className="pipeline-step-item">
-                <span className="step-badge" style={{ borderColor: step.color }}>{step.icon}</span>
-                <span className="step-name">{step.label}</span>
+                <span className="step-badge" style={{ borderColor: stepItem.color }}>Step {stepItem.step}</span>
+                <span className="step-name">{stepItem.label}</span>
                 {i < 3 && <span className="step-arrow">→</span>}
               </div>
             ))}
@@ -1012,7 +978,6 @@ export default function Landing() {
         <div className="citations-grid">
           <div className="citation-card card">
             <div className="citation-header">
-              <span className="citation-icon">📈</span>
               <h4>Real Student Practice Data</h4>
             </div>
             <p>
@@ -1023,7 +988,6 @@ export default function Landing() {
 
           <div className="citation-card card">
             <div className="citation-header">
-              <span className="citation-icon">🔬</span>
               <h4>Common Mistake Patterns</h4>
             </div>
             <p>
@@ -1034,7 +998,6 @@ export default function Landing() {
 
           <div className="citation-card card">
             <div className="citation-header">
-              <span className="citation-icon">📐</span>
               <h4>Step-by-Step Word Problems</h4>
             </div>
             <p>
@@ -1045,7 +1008,6 @@ export default function Landing() {
 
           <div className="citation-card card">
             <div className="citation-header">
-              <span className="citation-icon">🎯</span>
               <h4>Grade-Level Standards</h4>
             </div>
             <p>

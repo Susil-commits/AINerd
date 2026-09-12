@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mic, MicOff, Send, Volume2, LayoutDashboard, Lightbulb, LogOut } from 'lucide-react'
 import { streamMessage, startSession } from '../lib/api'
 import { useSpeechInput, useTTS } from '../hooks/useVoice'
 import { useAuth } from '../context/AuthContext'
@@ -124,7 +123,7 @@ export default function TutorSession() {
   const handleRequestHint = useCallback(() => {
     if (!session || isStreaming) return
     const hintPrompt = "I'm feeling a bit stuck on this step. Can you give me a small guiding hint to help me think about the first step without telling me the answer?"
-    const userMsg: Message = { role: 'student', content: "💡 I'm stuck. Can I get a hint?", timestamp: new Date() }
+    const userMsg: Message = { role: 'student', content: "I'm stuck. Can I get a hint?", timestamp: new Date() }
     setMessages(prev => [...prev, userMsg])
     setThinkingSteps([])
     setIsStreaming(true)
@@ -174,7 +173,7 @@ export default function TutorSession() {
       {/* ── Left sidebar: problem + upload ── */}
       <aside className="session-sidebar">
         <div className="session-header-mini">
-          <span className="badge badge-violet">🎓 {session.student_name}</span>
+          <span className="badge badge-violet">{session.student_name}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {role === 'parent' && (
               <button
@@ -193,7 +192,7 @@ export default function TutorSession() {
               aria-label="View learning dashboard"
               title="View Student Progress Dashboard"
             >
-              <LayoutDashboard size={14} /> Dashboard
+              Dashboard
             </button>
             {user && (
               <button
@@ -206,7 +205,7 @@ export default function TutorSession() {
                 aria-label="Sign out"
                 title="Sign out"
               >
-                <LogOut size={14} />
+                Sign Out
               </button>
             )}
           </div>
@@ -241,7 +240,7 @@ export default function TutorSession() {
             msg.role === 'system' ? null : (
               <div key={i} className={`chat-bubble ${msg.role} animate-fadein`}>
                 {msg.role === 'tutor' && (
-                  <div className="tutor-avatar">🤖</div>
+                  <div className="tutor-avatar">AI</div>
                 )}
                 <div className="bubble-body">
                   <p className="bubble-text">{msg.content || <span className="typing">…</span>}</p>
@@ -276,7 +275,7 @@ export default function TutorSession() {
             aria-label="Request a hint from the tutor"
             title="Ask the tutor for a small guiding hint without giving away the answer"
           >
-            <Lightbulb size={14} /> Need a hint?
+            Need a hint?
           </button>
         </div>
 
@@ -301,7 +300,7 @@ export default function TutorSession() {
                 : 'Speak your answer with microphone'
             }
           >
-            {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+            {isListening ? 'Mute' : 'Mic'}
           </button>
 
           <input
@@ -320,12 +319,12 @@ export default function TutorSession() {
             disabled={!input.trim() || isStreaming || isListening}
             aria-label="Send answer to tutor"
           >
-            {isStreaming ? <span className="spinner" /> : <Send size={18} />}
+            {isStreaming ? <span className="spinner" /> : 'Send'}
           </button>
 
           {isSpeaking && (
             <div className="speaking-badge" role="status">
-              <Volume2 size={14} /> Speaking
+              Speaking
             </div>
           )}
         </div>

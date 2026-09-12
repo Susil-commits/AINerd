@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Sparkles, HelpCircle, CheckCircle2, ArrowRight } from 'lucide-react'
 import './SocraticPreview.css'
 
 interface Scenario {
@@ -87,7 +86,6 @@ export default function SocraticPreview() {
         {/* Left Column: Problem & Student Work */}
         <div className="preview-col student-col">
           <div className="col-label">
-            <HelpCircle size={16} className="col-icon" />
             <span>Problem & Student Attempt</span>
           </div>
 
@@ -108,13 +106,12 @@ export default function SocraticPreview() {
 
         {/* Middle Connector */}
         <div className="preview-connector" aria-hidden="true">
-          <ArrowRight size={22} className="connector-arrow" />
+          <span className="connector-arrow">→</span>
         </div>
 
         {/* Right Column: AI Tutor Reasoning & Guiding Question */}
         <div className="preview-col tutor-col">
           <div className="col-label">
-            <Sparkles size={16} className="col-icon col-icon--tutor" />
             <span>Tutor Diagnostic & Guiding Question</span>
           </div>
 
@@ -129,7 +126,6 @@ export default function SocraticPreview() {
           </div>
 
           <div className="why-box">
-            <CheckCircle2 size={16} className="why-icon" />
             <p><strong>The Takeaway:</strong> {activeScenario.whyItWorks}</p>
           </div>
         </div>

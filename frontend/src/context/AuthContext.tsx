@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: currentSession.user.user_metadata?.name || (userMetaRole === 'parent' ? 'Parent' : 'Student'),
           role: userMetaRole || 'student',
           lastActive: new Date().toISOString(),
-          avatar: userMetaRole === 'parent' ? '👨‍👩‍👧' : '🎓',
+          avatar: userMetaRole === 'parent' ? 'P' : 'S',
         })
       } else {
         // Check if demo user is stored
@@ -112,7 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: newSession.user.user_metadata?.name || (userMetaRole === 'parent' ? 'Parent' : 'Student'),
           role: userMetaRole || 'student',
           lastActive: new Date().toISOString(),
-          avatar: userMetaRole === 'parent' ? '👨‍👩‍👧' : '🎓',
+          avatar: userMetaRole === 'parent' ? 'P' : 'S',
         })
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
@@ -180,7 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: data.user.user_metadata?.name || (targetRole === 'parent' ? 'Parent' : 'Student'),
           role: targetRole,
           lastActive: new Date().toISOString(),
-          avatar: targetRole === 'parent' ? '👨‍👩‍👧' : '🎓',
+          avatar: targetRole === 'parent' ? 'P' : 'S',
         })
       }
       return { error: null }
@@ -219,7 +219,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name,
       role: targetRole,
       lastActive: new Date().toISOString(),
-      avatar: isParent ? '👨‍👩‍👧' : '🎓',
+      avatar: isParent ? 'P' : 'S',
     })
   }
 
@@ -256,7 +256,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name,
         role: targetRole,
         lastActive: new Date().toISOString(),
-        avatar: isParent ? '👨‍👩‍👧' : '🎓',
+        avatar: isParent ? 'P' : 'S',
       })
 
       return { success: true }

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, TrendingUp, FileText } from 'lucide-react'
 import { getMastery, getSummary } from '../lib/api'
 import MasteryRadar from '../components/MasteryRadar'
 import './Dashboard.css'
@@ -56,7 +55,7 @@ export default function Dashboard() {
     <div className="dashboard">
       <header className="dash-header">
         <button className="btn btn-ghost" onClick={() => navigate('/session')} aria-label="Back to Session">
-          <ArrowLeft size={16} /> Back to Session
+          Back to Session
         </button>
         <div>
           <h2>{studentName}'s Learning Dashboard</h2>
@@ -110,7 +109,7 @@ export default function Dashboard() {
 
           <div className="dash-right">
             <div className="card summary-card">
-              <h3><FileText size={18} /> Session Summary</h3>
+              <h3>Session Summary</h3>
               {summary ? (
                 <p className="summary-text">{summary}</p>
               ) : (
@@ -121,9 +120,9 @@ export default function Dashboard() {
             </div>
 
             <div className="card recommendations-card">
-              <h3><TrendingUp size={18} /> Recommendations</h3>
+              <h3>Recommendations</h3>
               {weakSkills.length === 0 ? (
-                <p className="rec-good">🎉 All skills are developing or strong!</p>
+                <p className="rec-good">All skills are developing or strong!</p>
               ) : (
                 <ul className="rec-list">
                   {weakSkills.slice(0, 3).map(s => (
@@ -140,7 +139,7 @@ export default function Dashboard() {
                   <ul className="rec-list">
                     {strongSkills.slice(0, 2).map(s => (
                       <li key={s.skill_id}>
-                        <span className="badge badge-emerald">✓</span>
+                        <span className="badge badge-emerald">Mastered</span>
                         {s.name}
                       </li>
                     ))}

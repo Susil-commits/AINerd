@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Landing from './pages/Landing'
 import ShiningDots from './components/ShiningDots'
+import NeoChat from './components/NeoChat'
 import { AuthProvider } from './context/AuthContext'
 import './index.css'
 
@@ -48,6 +49,7 @@ export default function App() {
             <Route path="/dashboard/:studentId" element={<Dashboard />} />
           </Routes>
         </Suspense>
+        <NeoChat />
       </AuthProvider>
     </BrowserRouter>
   )

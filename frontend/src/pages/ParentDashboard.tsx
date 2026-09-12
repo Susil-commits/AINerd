@@ -1,16 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Users,
-  UserPlus,
-  AlertTriangle,
-  CheckCircle2,
-  ExternalLink,
-  LogOut,
-  ArrowRight,
-  TrendingUp,
-  BookOpen,
-} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { getParentChildren, addChild, getChildDetails, type ChildItem } from '../lib/api'
 import { supabase } from '../lib/supabase'
@@ -102,61 +91,45 @@ export default function ParentDashboard() {
         .on(
           'postgres_changes',
           {
-            event: '*',
+            event: 'INSERT',
             schema: 'public',
-            table: 'student_skill_mastery',
+            table: 'learning_events',
             filter: `student_id=eq.${selectedChildId}`,
           },
-          () => {
+          (payload) => {
+            console.log('Realtime learning event received:', payload)
             setLiveIndicator(true)
             setTimeout(() => setLiveIndicator(false), 2000)
             refreshChildDetails(selectedChildId)
-            refreshChildren()
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'sessions',
-            filter: `student_id=eq.${selectedChildId}`,
-          },
-          () => {
-            refreshChildDetails(selectedChildId)
-            refreshChildren()
           }
         )
         .subscribe()
 
       realtimeChannelRef.current = channel
-    } catch (e) {
-      console.warn('Realtime subscription error:', e)
+    } catch (err) {
+      console.warn('Supabase realtime subscription failed:', err)
     }
 
-    // 2. Polling fallback every 3.5s for seamless live demo updates
-    const timer = setInterval(() => {
+    // 2. High-frequency polling fallback (every 3 seconds) for live demo responsiveness
+    const pollTimer = setInterval(() => {
       refreshChildDetails(selectedChildId)
-    }, 3500)
+    }, 3000)
 
     return () => {
-      clearInterval(timer)
+      clearInterval(pollTimer)
       if (realtimeChannelRef.current) {
         supabase.removeChannel(realtimeChannelRef.current)
       }
     }
-  }, [selectedChildId, refreshChildDetails, refreshChildren])
+  }, [selectedChildId, refreshChildDetails])
 
   const handleAddChild = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newChildEmail.trim()) {
-      setAddError('Please enter the child’s email.')
-      return
-    }
+    if (!newChildEmail) return
     setAddingChild(true)
     setAddError('')
     try {
-      const res = await addChild(parentId, newChildEmail.trim(), newChildName.trim() || undefined, parentEmail)
+      const res = await addChild(parentId, newChildEmail, newChildName)
       setShowAddModal(false)
       setNewChildEmail('')
       setNewChildName('')
@@ -165,7 +138,7 @@ export default function ParentDashboard() {
         setSelectedChildId(res.child.student_id)
       }
     } catch (err: any) {
-      setAddError(err?.response?.data?.detail || 'Could not link child. Please try again.')
+      setAddError(err?.response?.data?.detail || err?.message || 'Could not link child. Please try again.')
     } finally {
       setAddingChild(false)
     }
@@ -183,7 +156,6 @@ export default function ParentDashboard() {
       <header className="parent-navbar">
         <div className="parent-nav-left">
           <div className="parent-brand" onClick={() => navigate('/')}>
-            <span className="brand-logo">📐</span>
             <span className="brand-title">Veritas<span className="brand-dot">.</span></span>
             <span className="parent-badge">Parent Portal</span>
           </div>
@@ -195,7 +167,7 @@ export default function ParentDashboard() {
 
         <div className="parent-nav-right">
           <div className="parent-user-pill">
-            <span className="parent-avatar">👨‍👩‍👧</span>
+            <span className="parent-avatar">P</span>
             <span className="parent-email">{parentEmail}</span>
           </div>
           <button
@@ -205,7 +177,7 @@ export default function ParentDashboard() {
               navigate('/')
             }}
           >
-            <LogOut size={15} /> Sign Out
+            Sign Out
           </button>
         </div>
       </header>
@@ -215,7 +187,6 @@ export default function ParentDashboard() {
         <section className="children-ribbon">
           <div className="ribbon-header">
             <div className="ribbon-title">
-              <Users size={18} className="text-violet" />
               <h3>Your Children</h3>
               <span className="children-count">{childrenList.length}</span>
             </div>
@@ -224,7 +195,7 @@ export default function ParentDashboard() {
               onClick={() => setShowAddModal(true)}
               id="add-child-btn"
             >
-              <UserPlus size={15} /> Add Child
+              Add Child
             </button>
           </div>
 
@@ -238,7 +209,7 @@ export default function ParentDashboard() {
                   onClick={() => setSelectedChildId(child.student_id)}
                 >
                   <div className="child-card-header">
-                    <div className="child-avatar">🎓</div>
+                    <div className="child-avatar">S</div>
                     <div className="child-meta">
                       <h4>{child.student_name}</h4>
                       <p>{child.student_email}</p>
@@ -246,14 +217,13 @@ export default function ParentDashboard() {
                   </div>
                   {child.has_fraction_gap && (
                     <div className="gap-pill">
-                      <AlertTriangle size={12} />
                       <span>{child.fraction_alert_message}</span>
                     </div>
                   )}
                   <div className="child-card-footer">
                     <span>{child.session_count} sessions</span>
                     <span className="footer-link">
-                      View Radar <ArrowRight size={12} />
+                      View Radar
                     </span>
                   </div>
                 </div>
@@ -268,9 +238,6 @@ export default function ParentDashboard() {
             {/* Demo Highlight Banner */}
             {selectedChild.has_fraction_gap && (
               <div className="alert-banner">
-                <div className="alert-icon-box">
-                  <AlertTriangle size={24} />
-                </div>
                 <div className="alert-content">
                   <h4>Inactivity Warning — Practice Gap Spotted</h4>
                   <p>
@@ -292,7 +259,7 @@ export default function ParentDashboard() {
                     window.open('/student-session', '_blank')
                   }}
                 >
-                  Start Kid Session <ExternalLink size={15} />
+                  Start Kid Session
                 </button>
               </div>
             )}
@@ -309,7 +276,6 @@ export default function ParentDashboard() {
                     </p>
                   </div>
                   <div className="overall-badge">
-                    <TrendingUp size={16} />
                     <span>{avgMastery}% Overall</span>
                   </div>
                 </div>
@@ -375,7 +341,7 @@ export default function ParentDashboard() {
                       {childDetails.sessions.map((sess: any, i: number) => (
                         <div key={sess.id || i} className="session-history-item">
                           <div className="session-icon">
-                            <BookOpen size={16} />
+                            <span className="session-bullet">•</span>
                           </div>
                           <div className="session-meta">
                             <span className="session-date">
@@ -403,7 +369,7 @@ export default function ParentDashboard() {
                       {childDetails.recent_events.map((evt: any, i: number) => (
                         <div key={evt.id || i} className="event-history-item">
                           <div className={`event-status ${evt.is_correct ? 'event-status--correct' : 'event-status--attempt'}`}>
-                            {evt.is_correct ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                            <span className="status-text">{evt.is_correct ? 'Correct' : 'Needs Work'}</span>
                           </div>
                           <div className="event-info">
                             <h5>{evt.problems?.title || 'Math Practice'}</h5>
@@ -427,11 +393,10 @@ export default function ParentDashboard() {
         ) : (
           <div className="no-child-selected">
             <div className="no-child-card">
-              <Users size={48} className="text-violet" />
               <h3>No Child Linked Yet</h3>
               <p>Add your child’s email to start viewing their real-time math mastery radar and learning history.</p>
               <button className="btn btn-violet" onClick={() => setShowAddModal(true)}>
-                <UserPlus size={16} /> Link Your First Child
+                Link Your First Child
               </button>
             </div>
           </div>
@@ -444,11 +409,10 @@ export default function ParentDashboard() {
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title-box">
-                <UserPlus size={20} className="text-violet" />
                 <h3>Link Child to Your Dashboard</h3>
               </div>
               <button className="close-btn" onClick={() => setShowAddModal(false)}>
-                ✕
+                Close
               </button>
             </div>
 
