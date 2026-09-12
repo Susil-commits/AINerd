@@ -61,7 +61,7 @@ export default function SocraticPreview() {
           <span className="badge badge-amber">Interactive Demo</span>
           <h2>See How The Socratic Method Works</h2>
           <p className="preview-sub">
-            Notice the difference: A standard app just spits out the answer. AINerd diagnoses where thinking went off track and asks the exact guiding question to help you discover the rule yourself.
+            Notice the difference: A standard app just spits out the answer. Veritas diagnoses where thinking went off track and asks the exact guiding question to help you discover the rule yourself.
           </p>
         </div>
       </div>

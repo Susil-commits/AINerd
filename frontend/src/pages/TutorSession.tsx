@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mic, MicOff, Send, Volume2, LayoutDashboard, Lightbulb } from 'lucide-react'
-import { streamMessage } from '../lib/api'
+import { Mic, MicOff, Send, Volume2, LayoutDashboard, Lightbulb, LogOut } from 'lucide-react'
+import { streamMessage, startSession } from '../lib/api'
 import { useSpeechInput, useTTS } from '../hooks/useVoice'
+import { useAuth } from '../context/AuthContext'
 import WorkUpload from '../components/WorkUpload'
 import ThinkingTrace from '../components/ThinkingTrace'
 import MasteryRadar from '../components/MasteryRadar'
@@ -17,6 +18,7 @@ interface Message {
 
 export default function TutorSession() {
   const navigate = useNavigate()
+  const { user, signOut, role } = useAuth()
   const [session, setSession] = useState<SessionData | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -31,21 +33,58 @@ export default function TutorSession() {
     (text) => { setInput(text) }
   )
 
-  // Load session from sessionStorage
+  // Load session from sessionStorage or initialize from logged-in user
   useEffect(() => {
-    const raw = sessionStorage.getItem('session')
-    if (!raw) { navigate('/'); return }
-    const s: SessionData = JSON.parse(raw)
-    setSession(s)
-    document.title = `AINerd — Math Practice (${s.student_name})`
-    setMasteryState(s.mastery_state)
-    setCurrentProblem(s.current_problem)
-    setMessages([
-      { role: 'system', content: `Session started for ${s.student_name}`, timestamp: new Date() },
-      { role: 'tutor', content: s.welcome_message, timestamp: new Date() },
-    ])
-    speak(s.welcome_message)
-  }, [navigate])
+    let mounted = true
+
+    async function initSession() {
+      const raw = sessionStorage.getItem('session')
+      if (raw) {
+        try {
+          const s: SessionData = JSON.parse(raw)
+          if (s && s.session_id) {
+            setSession(s)
+            document.title = `Veritas — Math Practice (${s.student_name})`
+            setMasteryState(s.mastery_state || {})
+            setCurrentProblem(s.current_problem || null)
+            setMessages([
+              { role: 'system', content: `Session started for ${s.student_name}`, timestamp: new Date() },
+              { role: 'tutor', content: s.welcome_message, timestamp: new Date() },
+            ])
+            speak(s.welcome_message)
+            return
+          }
+        } catch {}
+      }
+
+      // If user is authenticated, start session directly with their user.id
+      if (user) {
+        try {
+          const studentName = user.user_metadata?.name || user.email?.split('@')[0] || 'Student'
+          const s = await startSession(studentName, user.id, user.email)
+          if (!mounted) return
+          sessionStorage.setItem('session', JSON.stringify(s))
+          setSession(s)
+          document.title = `Veritas — Math Practice (${s.student_name})`
+          setMasteryState(s.mastery_state || {})
+          setCurrentProblem(s.current_problem || null)
+          setMessages([
+            { role: 'system', content: `Session started for ${s.student_name}`, timestamp: new Date() },
+            { role: 'tutor', content: s.welcome_message, timestamp: new Date() },
+          ])
+          speak(s.welcome_message)
+          return
+        } catch (e) {
+          console.warn('Could not auto-start session:', e)
+        }
+      }
+
+      navigate('/')
+    }
+
+    initSession()
+    return () => { mounted = false }
+  }, [navigate, user, speak])
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
@@ -136,14 +175,41 @@ export default function TutorSession() {
       <aside className="session-sidebar">
         <div className="session-header-mini">
           <span className="badge badge-violet">🎓 {session.student_name}</span>
-          <button
-            className="btn btn-ghost"
-            style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-            onClick={() => navigate(`/dashboard/${session.student_id}`)}
-            aria-label="View learning dashboard"
-          >
-            <LayoutDashboard size={14} /> Dashboard
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {role === 'parent' && (
+              <button
+                className="btn btn-ghost"
+                style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                onClick={() => navigate('/parent-dashboard')}
+                title="Go to Parent Portal"
+              >
+                Parent Portal
+              </button>
+            )}
+            <button
+              className="btn btn-ghost"
+              style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+              onClick={() => navigate(`/dashboard/${session.student_id}`)}
+              aria-label="View learning dashboard"
+              title="View Student Progress Dashboard"
+            >
+              <LayoutDashboard size={14} /> Dashboard
+            </button>
+            {user && (
+              <button
+                className="btn btn-ghost"
+                style={{ padding: '6px 8px', fontSize: '0.78rem' }}
+                onClick={async () => {
+                  await signOut()
+                  navigate('/')
+                }}
+                aria-label="Sign out"
+                title="Sign out"
+              >
+                <LogOut size={14} />
+              </button>
+            )}
+          </div>
         </div>
 
         {currentProblem && (

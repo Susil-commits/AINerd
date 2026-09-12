@@ -62,6 +62,36 @@ class RateLimiter:
             self._last_request_time = {k: v for k, v in self._last_request_time.items() if v > threshold}
             self._request_history = defaultdict(list, {k: v for k, v in self._request_history.items() if v and v[-1] > threshold})
 
+    def enforce_auth_rate_limit(
+        self,
+        key: str,
+        max_attempts: int = 5,
+        window_seconds: float = 60.0,
+    ):
+        """
+        Protects authentication, OTP checks, and login verification from brute-force guessing.
+        Allows up to max_attempts within window_seconds. Throws HTTP 429 if exceeded.
+        """
+        now = time.time()
+        auth_key = f"auth_{key}"
+        history = self._request_history[auth_key]
+        window_start = now - window_seconds
+        active_attempts = [t for t in history if t > window_start]
+
+        if len(active_attempts) >= max_attempts:
+            oldest_active = active_attempts[0]
+            remaining_lockout = max(1, int(window_seconds - (now - oldest_active)))
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Too many authentication attempts. Please wait {remaining_lockout} seconds before trying again.",
+                headers={"Retry-After": str(remaining_lockout)},
+            )
+
+        active_attempts.append(now)
+        self._request_history[auth_key] = active_attempts
+        self._last_request_time[auth_key] = now
+
 
 # Global singleton instance
 limiter = RateLimiter()
+

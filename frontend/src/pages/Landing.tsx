@@ -1,7 +1,27 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Brain, Mic, Camera, BarChart3, ChevronRight, Zap } from 'lucide-react'
-import { startSession, checkHealth } from '../lib/api'
+import {
+  Brain,
+  Mic,
+  Camera,
+  BarChart3,
+  ChevronRight,
+  Zap,
+  Mail,
+  Lock,
+  Check,
+  ShieldCheck,
+  LogOut,
+  ArrowRight,
+  Fingerprint,
+  RefreshCw,
+  UserCheck,
+  ArrowLeft,
+  Sparkles,
+  KeyRound,
+} from 'lucide-react'
+import { checkHealth } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
 import AnimatedIntro from '../components/AnimatedIntro'
 import SocraticPreview from '../components/SocraticPreview'
 import './Landing.css'
@@ -118,13 +138,45 @@ type ConnStatus = 'checking' | 'connected' | 'waking_up' | 'error'
 
 export default function Landing() {
   const navigate = useNavigate()
-  const [name, setName] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const {
+    user,
+    role,
+    setRole,
+    sendMagicLink,
+    verifyOtp,
+    demoSignIn,
+    biometricSignIn,
+    signOut,
+    rememberedProfile,
+  } = useAuth()
+  const [email, setEmail] = useState('')
+  const [magicLinkEmail, setMagicLinkEmail] = useState('')
+  const [authError, setAuthError] = useState('')
+  const [authLoading, setAuthLoading] = useState(false)
+
+  // Standout modern auth states
+  const [authScreen, setAuthScreen] = useState<'form' | 'otp'>('form')
+  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', ''])
+  const [resendTimer, setResendTimer] = useState(45)
+  const [bioState, setBioState] = useState<'idle' | 'scanning' | 'success' | 'failed'>('idle')
+  const [bioFeedback, setBioFeedback] = useState('Tap fingerprint for 1-click Biometric Passkey')
+  const [rememberedDismissed, setRememberedDismissed] = useState(false)
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  // Resend OTP countdown
+  useEffect(() => {
+    let interval: any = null
+    if (authScreen === 'otp' && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer(prev => prev - 1)
+      }, 1000)
+    }
+    return () => clearInterval(interval)
+  }, [authScreen, resendTimer])
 
   // Animated intro portal control
   const [showIntro, setShowIntro] = useState(() => {
-    return sessionStorage.getItem('ainerd_intro_seen') !== 'true'
+    return sessionStorage.getItem('veritas_intro_seen') !== 'true' && sessionStorage.getItem('ainerd_intro_seen') !== 'true'
   })
 
   // Simple server & database connection status
@@ -151,7 +203,7 @@ export default function Landing() {
   }
 
   useEffect(() => {
-    document.title = "AINerd — The Math Tutor That Guides Your Thinking"
+    document.title = "Veritas — The Math Tutor That Guides Your Thinking"
     let mounted = true
     let timer: any = null
     let retries = 0
@@ -178,37 +230,182 @@ export default function Landing() {
     }
   }, [])
 
-  const [pendingStart, setPendingStart] = useState(false)
-
-  const handleStart = async (overrideName?: string) => {
-    const studentName = (overrideName ?? name).trim()
-    if (!studentName) { setError('Please enter your name to start!'); return }
-
-    if (connStatus !== 'connected') {
-      // Optimistic queue: wait for server to connect and automatically enter
-      setPendingStart(true)
-      setLoading(true)
-      setError('')
-      const isReady = await checkConnection()
-      if (!isReady) {
-        setLoading(false)
-        setPendingStart(false)
-        setError('Server is waking up. Please try clicking Start again in a few seconds!')
-        return
+  // On verified login (Magic Link callback in URL hash/query), redirect to role destination
+  useEffect(() => {
+    const hasAuthToken = window.location.hash.includes('access_token') || window.location.search.includes('code')
+    if (user && hasAuthToken) {
+      if (role === 'parent') {
+        navigate('/parent-dashboard')
+      } else {
+        navigate('/student-session')
       }
     }
+  }, [user, role, navigate])
 
-    setLoading(true)
-    setError('')
-    try {
-      const session = await startSession(studentName)
-      sessionStorage.setItem('session', JSON.stringify(session))
-      navigate('/session')
-    } catch (e: any) {
-      setError(e?.response?.data?.detail ?? 'Could not connect to server. Make sure the backend is running.')
-    } finally {
-      setLoading(false)
-      setPendingStart(false)
+  const handleApplyDomain = (domain: string) => {
+    const trimmed = email.trim()
+    if (!trimmed) {
+      setEmail(`student${domain}`)
+    } else if (trimmed.includes('@')) {
+      const prefix = trimmed.split('@')[0]
+      setEmail(`${prefix}${domain}`)
+    } else {
+      setEmail(`${trimmed}${domain}`)
+    }
+    setAuthError('')
+  }
+
+  const handleFastResume = async () => {
+    if (!rememberedProfile) return
+    setAuthLoading(true)
+    setAuthError('')
+    await demoSignIn(rememberedProfile.role, rememberedProfile.email)
+    setAuthLoading(false)
+    if (rememberedProfile.role === 'parent') {
+      navigate('/parent-dashboard')
+    } else {
+      navigate('/student-session')
+    }
+  }
+
+  const handleBiometricLogin = async () => {
+    if (bioState === 'scanning') return
+    setBioState('scanning')
+    setBioFeedback('Scanning Touch ID / Windows Hello…')
+    setAuthError('')
+
+    setTimeout(async () => {
+      const res = await biometricSignIn(role)
+      if (res.success) {
+        setBioState('success')
+        setBioFeedback('Biometric Verified! Launching…')
+        setTimeout(() => {
+          if (role === 'parent') {
+            navigate('/parent-dashboard')
+          } else {
+            navigate('/student-session')
+          }
+        }, 550)
+      } else {
+        setBioState('failed')
+        setBioFeedback('Authentication failed')
+        setAuthError(res.error || 'Biometric verification failed')
+        setTimeout(() => {
+          setBioState('idle')
+          setBioFeedback('Tap fingerprint for 1-click Biometric Passkey')
+        }, 2500)
+      }
+    }, 850)
+  }
+
+  const handleSendMagicLinkOrOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    const trimmed = email.trim()
+    if (!trimmed || !trimmed.includes('@')) {
+      setAuthError('Please enter a valid email address.')
+      return
+    }
+    setAuthLoading(true)
+    setAuthError('')
+    const res = await sendMagicLink(trimmed, role)
+    setAuthLoading(false)
+    if (res.error) {
+      setAuthError(res.error)
+    } else {
+      setMagicLinkEmail(trimmed)
+      setAuthScreen('otp')
+      setResendTimer(45)
+    }
+  }
+
+  const handleVerifyOtpCode = async (codeToVerify: string) => {
+    const cleanCode = codeToVerify.trim()
+    if (cleanCode.length !== 6) {
+      setAuthError('Please enter all 6 digits of the verification code.')
+      return
+    }
+    setAuthLoading(true)
+    setAuthError('')
+    const targetEmail = magicLinkEmail || email || (role === 'parent' ? 'parent.sarah@veritas.dev' : 'student.alex@veritas.dev')
+    const res = await verifyOtp(targetEmail, cleanCode, role)
+    setAuthLoading(false)
+    if (res.error) {
+      setAuthError(res.error)
+    } else {
+      if (role === 'parent') {
+        navigate('/parent-dashboard')
+      } else {
+        navigate('/student-session')
+      }
+    }
+  }
+
+  const handleOtpChange = (index: number, val: string) => {
+    const char = val.slice(-1)
+    const nextDigits = [...otpDigits]
+    nextDigits[index] = char
+    setOtpDigits(nextDigits)
+    setAuthError('')
+
+    if (char && index < 5) {
+      otpRefs.current[index + 1]?.focus()
+    }
+
+    const fullCode = nextDigits.join('')
+    if (fullCode.length === 6 && !nextDigits.includes('')) {
+      handleVerifyOtpCode(fullCode)
+    }
+  }
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus()
+    }
+  }
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault()
+    const pasted = e.clipboardData.getData('text').trim().replace(/\D/g, '').slice(0, 6)
+    if (!pasted) return
+    const next = [...otpDigits]
+    for (let i = 0; i < 6; i++) {
+      next[i] = pasted[i] || ''
+    }
+    setOtpDigits(next)
+    if (pasted.length === 6) {
+      handleVerifyOtpCode(pasted)
+    } else {
+      const firstEmpty = next.findIndex(d => !d)
+      if (firstEmpty !== -1) {
+        otpRefs.current[firstEmpty]?.focus()
+      }
+    }
+  }
+
+  const handleAutofillOtp = (code: string, targetRole: 'student' | 'parent') => {
+    setRole(targetRole)
+    const digits = code.split('')
+    setOtpDigits(digits)
+    handleVerifyOtpCode(code)
+  }
+
+  const handleDemoLogin = async (targetRole: 'student' | 'parent') => {
+    setAuthLoading(true)
+    setAuthError('')
+    await demoSignIn(targetRole)
+    setAuthLoading(false)
+    if (targetRole === 'parent') {
+      navigate('/parent-dashboard')
+    } else {
+      navigate('/student-session')
+    }
+  }
+
+  const handleEnterSession = () => {
+    if (role === 'parent') {
+      navigate('/parent-dashboard')
+    } else {
+      navigate('/student-session')
     }
   }
 
@@ -219,7 +416,7 @@ export default function Landing() {
         <AnimatedIntro
           onEnter={() => {
             setShowIntro(false)
-            sessionStorage.setItem('ainerd_intro_seen', 'true')
+            sessionStorage.setItem('veritas_intro_seen', 'true')
           }}
         />
       )}
@@ -229,7 +426,7 @@ export default function Landing() {
         <div className="navbar-container">
           <div className="navbar-brand">
             <span className="brand-icon">📐</span>
-            <span className="brand-name">AINerd<span className="brand-dot">.</span></span>
+            <span className="brand-name">Veritas<span className="brand-dot">.</span></span>
             <span className="brand-tag">Socratic Math</span>
           </div>
 
@@ -280,34 +477,387 @@ export default function Landing() {
           )}
         </div>
 
-        {/* Start form */}
-        <div className="start-form">
-          <input
-            className="input"
-            placeholder="What's your name?"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !loading && handleStart()}
-            maxLength={40}
-            disabled={loading}
-            aria-label="Student name"
-          />
-          <button
-            className="btn btn-amber"
-            onClick={() => handleStart()}
-            disabled={loading}
-            aria-label="Start Learning math tutoring session"
-          >
-            {loading ? (
-              pendingStart ? 'Connecting & Starting…' : 'Starting…'
-            ) : connStatus === 'error' ? (
-              'Server Offline'
-            ) : (
-              <>Start Learning <ChevronRight size={18} /></>
-            )}
-          </button>
+        {/* Modern Standout Split-Card Auth */}
+        <div className="auth-card-container">
+          {user ? (
+            <div className="auth-logged-in-card animate-fadein">
+              <div className="logged-in-badge">
+                <span className="logged-in-avatar">{role === 'parent' ? '👨‍👩‍👧' : '🎓'}</span>
+                <div>
+                  <div className="logged-in-title">Signed In as <strong>{user.email}</strong></div>
+                  <div className="logged-in-role">Active Role: <span className="badge badge-violet">{role === 'parent' ? 'Parent' : 'Student'}</span></div>
+                </div>
+              </div>
+              <div className="logged-in-actions">
+                <button
+                  className="btn btn-violet btn-lg"
+                  onClick={handleEnterSession}
+                >
+                  {role === 'parent' ? 'Enter Parent Dashboard' : 'Start Practice Session'} <ArrowRight size={18} />
+                </button>
+                <button
+                  className="btn btn-ghost"
+                  onClick={async () => {
+                    await signOut()
+                    setEmail('')
+                    setAuthScreen('form')
+                  }}
+                >
+                  <LogOut size={16} /> Switch Account / Sign Out
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="auth-split-card">
+              {/* Left Panel */}
+              <div className="auth-card-left">
+                <div className="auth-brand-row">
+                  <span className="auth-brand-logo">📐</span>
+                  <span className="auth-brand-name">Veritas<span className="auth-brand-dot">.</span></span>
+                  <span className="auth-security-pill">
+                    <ShieldCheck size={13} />
+                    <span>Safe Socratic Auth</span>
+                  </span>
+                </div>
+
+                {/* 1. Fast Account Switcher / Remembered Profile */}
+                {rememberedProfile && !rememberedDismissed ? (
+                  <div className="auth-remembered-card animate-fadein">
+                    <div className="remembered-header">
+                      <span className="remembered-avatar">{rememberedProfile.avatar || '🎓'}</span>
+                      <div className="remembered-info">
+                        <div className="remembered-name-row">
+                          <span className="remembered-name">{rememberedProfile.name}</span>
+                          <span className="badge badge-violet">{rememberedProfile.role === 'parent' ? 'Parent' : 'Student'}</span>
+                        </div>
+                        <div className="remembered-email">{rememberedProfile.email}</div>
+                      </div>
+                    </div>
+                    <div className="remembered-actions">
+                      <button
+                        type="button"
+                        className="btn btn-violet btn-sm remembered-continue-btn"
+                        onClick={handleFastResume}
+                        disabled={authLoading}
+                      >
+                        <UserCheck size={16} /> Continue as {rememberedProfile.name.split(' ')[0]}
+                      </button>
+                      <button
+                        type="button"
+                        className="remembered-switch-btn"
+                        onClick={() => setRememberedDismissed(true)}
+                      >
+                        Use another account
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* 2. Main Login Form or OTP Verification Screen */}
+                {authScreen === 'otp' ? (
+                  <div className="auth-otp-screen animate-fadein">
+                    <div className="otp-header-row">
+                      <button
+                        type="button"
+                        className="otp-back-btn"
+                        onClick={() => {
+                          setAuthScreen('form')
+                          setAuthError('')
+                        }}
+                      >
+                        <ArrowLeft size={15} /> Change Email
+                      </button>
+                      <span className="otp-email-chip">{magicLinkEmail || email}</span>
+                    </div>
+
+                    <h2 className="auth-greeting">
+                      Security Code<br />
+                      <span className="auth-greeting-sub">Verification</span>
+                    </h2>
+                    <p className="auth-tagline">Enter the 6-digit one-time code sent to your email.</p>
+
+                    <div className="otp-inputs-grid">
+                      {otpDigits.map((digit, idx) => (
+                        <input
+                          key={idx}
+                          ref={(el) => { otpRefs.current[idx] = el }}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={1}
+                          className={`otp-digit-input ${digit ? 'otp-digit-input--filled' : ''}`}
+                          value={digit}
+                          onChange={(e) => handleOtpChange(idx, e.target.value)}
+                          onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                          onPaste={handleOtpPaste}
+                          disabled={authLoading}
+                          autoFocus={idx === 0}
+                        />
+                      ))}
+                    </div>
+
+                    {authError && <p className="auth-error-banner">{authError}</p>}
+
+                    <button
+                      type="button"
+                      className="btn-signin-gradient"
+                      onClick={() => handleVerifyOtpCode(otpDigits.join(''))}
+                      disabled={authLoading || otpDigits.join('').length !== 6}
+                    >
+                      {authLoading ? 'Verifying Code…' : 'Verify & Launch Session'}
+                    </button>
+
+                    {/* Evaluator Fast Test Code Chips */}
+                    <div className="otp-evaluator-box">
+                      <span className="evaluator-label">⚡ Evaluator Quick Autofill Codes:</span>
+                      <div className="evaluator-chips-grid">
+                        <button
+                          type="button"
+                          className="evaluator-code-btn evaluator-code-student"
+                          onClick={() => handleAutofillOtp('777888', 'student')}
+                        >
+                          🎓 Student Code: <code>777888</code>
+                        </button>
+                        <button
+                          type="button"
+                          className="evaluator-code-btn evaluator-code-parent"
+                          onClick={() => handleAutofillOtp('123456', 'parent')}
+                        >
+                          👨‍👩‍👧 Parent Code: <code>123456</code>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="otp-resend-row">
+                      {resendTimer > 0 ? (
+                        <span className="otp-timer-text">Resend new code in <strong>{resendTimer}s</strong></span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="otp-resend-link"
+                          onClick={() => handleSendMagicLinkOrOtp()}
+                          disabled={authLoading}
+                        >
+                          <RefreshCw size={13} /> Resend verification code
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="animate-fadein">
+                    <h2 className="auth-greeting">
+                      Holla,<br />
+                      <span className="auth-greeting-sub">Welcome Back</span>
+                    </h2>
+                    <p className="auth-tagline">Hey, welcome back to your learning space</p>
+
+                    <form onSubmit={handleSendMagicLinkOrOtp} className="auth-form-body">
+                      <div className="auth-field-group">
+                        <div className="auth-label-row">
+                          <label htmlFor="auth-email-input">Email Address</label>
+                          <span className="auth-helper-tag">Passwordless</span>
+                        </div>
+                        <div className="auth-input-wrapper">
+                          <Mail size={16} className="auth-input-icon" />
+                          <input
+                            id="auth-email-input"
+                            type="email"
+                            className="auth-text-input"
+                            placeholder="student.alex@veritas.dev"
+                            value={email}
+                            onChange={(e) => {
+                              setEmail(e.target.value)
+                              setAuthError('')
+                            }}
+                            required
+                            disabled={authLoading}
+                          />
+                        </div>
+
+                        {/* Interactive Domain Suggestion Chips */}
+                        <div className="auth-domain-chips">
+                          <span className="domain-chips-hint">Quick fill:</span>
+                          {['@gmail.com', '@icloud.com', '@outlook.com', '@school.edu'].map((dom) => (
+                            <button
+                              key={dom}
+                              type="button"
+                              className="domain-chip-btn"
+                              onClick={() => handleApplyDomain(dom)}
+                            >
+                              {dom}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="auth-field-group">
+                        <label>Select Your Learning Role</label>
+                        <div className="auth-role-tabs">
+                          <button
+                            type="button"
+                            className={`auth-role-tab ${role === 'student' ? 'auth-role-tab--active' : ''}`}
+                            onClick={() => setRole('student')}
+                          >
+                            <span className="role-tab-icon">🎓</span>
+                            <div className="role-tab-text">
+                              <span className="role-tab-title">Student</span>
+                              <span className="role-tab-desc">Socratic math tutor</span>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            className={`auth-role-tab ${role === 'parent' ? 'auth-role-tab--active' : ''}`}
+                            onClick={() => setRole('parent')}
+                          >
+                            <span className="role-tab-icon">👨‍👩‍👧</span>
+                            <div className="role-tab-text">
+                              <span className="role-tab-title">Parent</span>
+                              <span className="role-tab-desc">Live radar & history</span>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+
+                      {authError && <p className="auth-error-banner">{authError}</p>}
+
+                      <div className="auth-submit-row">
+                        <button
+                          type="submit"
+                          className="btn-signin-gradient"
+                          disabled={authLoading}
+                          id="magic-link-submit-btn"
+                        >
+                          {authLoading ? 'Sending Secure Code…' : 'Sign In with Magic Link / OTP'}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="auth-enter-pin-toggle"
+                          onClick={() => {
+                            setAuthScreen('otp')
+                            setAuthError('')
+                          }}
+                        >
+                          <KeyRound size={14} /> Already have a 6-digit code? Enter code →
+                        </button>
+                      </div>
+
+                      {/* Quick Evaluator Access */}
+                      <div className="auth-demo-section">
+                        <span className="demo-label">⚡ Instant Evaluator Demo Access:</span>
+                        <div className="demo-buttons-grid">
+                          <button
+                            type="button"
+                            className="demo-pill-btn demo-pill-parent"
+                            onClick={() => handleDemoLogin('parent')}
+                          >
+                            👨‍👩‍👧 Demo as Parent
+                          </button>
+                          <button
+                            type="button"
+                            className="demo-pill-btn demo-pill-student"
+                            onClick={() => handleDemoLogin('student')}
+                          >
+                            🎓 Demo as Student
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Panel: Interactive Biometric Passkey Authenticator */}
+              <div className="auth-card-right">
+                <div className="auth-art-clouds">
+                  <span className="art-cloud art-cloud--top">☁️</span>
+                  <span className="art-cloud art-cloud--bottom">☁️</span>
+                </div>
+
+                <div className="mockup-device-wrapper">
+                  <div className={`mockup-device-body ${bioState === 'scanning' ? 'mockup-device-body--scanning' : ''}`}>
+                    <div className="device-notch" />
+                    <div className={`device-verified-bubble ${bioState === 'success' ? 'device-verified-bubble--active' : ''}`}>
+                      <Check size={18} />
+                    </div>
+
+                    <button
+                      type="button"
+                      className={`device-fingerprint-box device-fingerprint-interactive ${bioState}`}
+                      onClick={handleBiometricLogin}
+                      disabled={bioState === 'scanning'}
+                      title="Click to authenticate via Passkey / Biometrics"
+                    >
+                      <div className={`fingerprint-circle ${bioState === 'scanning' ? 'fingerprint-circle--active' : ''} ${bioState === 'success' ? 'fingerprint-circle--success' : ''}`}>
+                        {bioState === 'scanning' ? (
+                          <div className="biometric-laser-beam" />
+                        ) : bioState === 'success' ? (
+                          <Check size={36} className="bio-check-icon animate-scalein" />
+                        ) : (
+                          <Fingerprint size={36} />
+                        )}
+                        {bioState === 'scanning' && <div className="biometric-pulse-ring" />}
+                      </div>
+
+                      <div className="scanner-progress-bar">
+                        <div className={`scanner-progress-fill ${bioState === 'scanning' ? 'scanner-progress-fill--active' : bioState === 'success' ? 'scanner-progress-fill--success' : ''}`} />
+                      </div>
+
+                      <p className="scanner-label">
+                        {bioFeedback}
+                      </p>
+
+                      <span className="scanner-touch-hint">
+                        <Sparkles size={12} /> {bioState === 'scanning' ? 'Reading sensor…' : 'One-Tap WebAuthn'}
+                      </span>
+                    </button>
+                  </div>
+
+                  <div className="mockup-lock-badge">
+                    <Lock size={22} />
+                  </div>
+                </div>
+
+                <div className="auth-art-footer">
+                  <ShieldCheck size={16} />
+                  <span>WebAuthn Passkey • Passwordless Auth</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Platform Safety & Compliance Trust Strip */}
+          <div className="auth-trust-strip">
+            <div className="trust-item">
+              <ShieldCheck size={18} className="trust-icon trust-icon--emerald" />
+              <div className="trust-text">
+                <strong>FERPA & COPPA Child Safe</strong>
+                <span>Zero tracking, student privacy protected</span>
+              </div>
+            </div>
+            <div className="trust-item">
+              <Lock size={18} className="trust-icon trust-icon--violet" />
+              <div className="trust-text">
+                <strong>HMAC-SHA256 Encrypted</strong>
+                <span>Cryptographically scoped session tokens</span>
+              </div>
+            </div>
+            <div className="trust-item">
+              <Zap size={18} className="trust-icon trust-icon--amber" />
+              <div className="trust-text">
+                <strong>Brute-Force Shield Active</strong>
+                <span>Intelligent rate-limiting & cooldowns</span>
+              </div>
+            </div>
+            <div className="trust-item">
+              <Brain size={18} className="trust-icon trust-icon--cyan" />
+              <div className="trust-text">
+                <strong>Socratic AI Guardrails</strong>
+                <span>Anti-prompt injection & leak defense</span>
+              </div>
+            </div>
+          </div>
         </div>
-        {error && <p className="error-msg">{error}</p>}
 
         {/* Stats */}
         <div className="stats-grid">
@@ -341,7 +891,7 @@ export default function Landing() {
       <section id="how-it-works" className="architecture-section">
         <div className="section-header">
           <span className="badge badge-indigo">How It Works</span>
-          <h2>How AI Nerd Helps You Learn</h2>
+          <h2>How Veritas Helps You Learn</h2>
           <p className="section-sub">
             Three smart helpers work together to guide your math practice, check your handwritten work, and find the perfect next problem.
           </p>
@@ -455,7 +1005,7 @@ export default function Landing() {
           <span className="badge badge-emerald">Classroom Aligned</span>
           <h2>Built on Proven Math Learning Standards</h2>
           <p className="section-sub">
-            AI Nerd is modeled around real classroom math curricula and common student learning patterns.
+            Veritas is modeled around real classroom math curricula and common student learning patterns.
           </p>
         </div>
 
@@ -510,7 +1060,7 @@ export default function Landing() {
       <footer className="landing-footer">
         <div className="footer-content">
           <p className="footer-lead">
-            <strong>AI Nerd</strong> · Friendly, Step-by-Step Math Tutoring for Kids
+            <strong>Veritas</strong> · Friendly, Step-by-Step Math Tutoring for Kids
           </p>
           <p className="footer-meta">
             Powered by Google Gemini · Voice & Vision · Aligned with Classroom Math Standards

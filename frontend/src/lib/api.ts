@@ -68,10 +68,11 @@ export async function checkHealth(): Promise<{ status: string; db?: boolean }> {
   return data
 }
 
-export async function startSession(studentName: string, studentId?: string): Promise<SessionData> {
+export async function startSession(studentName: string, studentId?: string, studentEmail?: string): Promise<SessionData> {
   const { data } = await api.post('/session/start', {
     student_name: studentName,
     student_id: studentId,
+    student_email: studentEmail,
   })
   return data
 }
@@ -90,6 +91,44 @@ export async function getSummary(studentId: string, sessionId: string) {
   })
   return data
 }
+
+export interface ChildItem {
+  student_id: string
+  student_name: string
+  student_email: string
+  last_session_at: string | null
+  days_since_practice: number
+  has_fraction_gap: boolean
+  fraction_alert_message: string
+  fraction_mastery: number
+  session_count: number
+}
+
+export async function getParentChildren(parentId: string): Promise<{ children: ChildItem[] }> {
+  const { data } = await api.get(`/parent/${parentId}/children`)
+  return data
+}
+
+export async function addChild(
+  parentId: string,
+  childEmail: string,
+  childName?: string,
+  parentEmail?: string,
+): Promise<{ status: string; child: { student_id: string; student_name: string; student_email: string } }> {
+  const { data } = await api.post('/parent/add-child', {
+    parent_id: parentId,
+    child_email: childEmail,
+    child_name: childName,
+    parent_email: parentEmail,
+  })
+  return data
+}
+
+export async function getChildDetails(parentId: string, childId: string) {
+  const { data } = await api.get(`/parent/${parentId}/child/${childId}/details`)
+  return data
+}
+
 
 export function streamMessage(
   sessionId: string,

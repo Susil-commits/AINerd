@@ -2,10 +2,12 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Landing from './pages/Landing'
 import ShiningDots from './components/ShiningDots'
+import { AuthProvider } from './context/AuthContext'
 import './index.css'
 
 const TutorSession = lazy(() => import('./pages/TutorSession'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
+const ParentDashboard = lazy(() => import('./pages/ParentDashboard'))
 
 function PageFallback() {
   return (
@@ -35,14 +37,18 @@ function PageFallback() {
 export default function App() {
   return (
     <BrowserRouter>
-      <ShiningDots />
-      <Suspense fallback={<PageFallback />}>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/session" element={<TutorSession />} />
-          <Route path="/dashboard/:studentId" element={<Dashboard />} />
-        </Routes>
-      </Suspense>
+      <AuthProvider>
+        <ShiningDots />
+        <Suspense fallback={<PageFallback />}>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/student-session" element={<TutorSession />} />
+            <Route path="/session" element={<TutorSession />} />
+            <Route path="/parent-dashboard" element={<ParentDashboard />} />
+            <Route path="/dashboard/:studentId" element={<Dashboard />} />
+          </Routes>
+        </Suspense>
+      </AuthProvider>
     </BrowserRouter>
   )
 }

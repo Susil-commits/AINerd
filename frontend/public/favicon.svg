@@ -38,7 +38,7 @@
   <!-- Crossbar with Golden Measure Line -->
   <path d="M22 37h20" stroke="url(#goldGrad)" stroke-width="3" stroke-linecap="round" filter="url(#glow)" />
 
-  <!-- Center Radiant Focus Star (AINerd Intelligence Node) -->
+  <!-- Center Radiant Focus Star (Veritas Intelligence Node) -->
   <circle cx="32" cy="15" r="4" fill="url(#goldGrad)" filter="url(#glow)" />
   <circle cx="32" cy="15" r="1.5" fill="#FFFFFF" />
 

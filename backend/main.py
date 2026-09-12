@@ -4,6 +4,7 @@ All routes, streaming SSE, ElevenLabs TTS proxy, session management.
 """
 import os
 import sys
+import re
 import uuid
 import json
 import time
@@ -43,6 +44,18 @@ from bkt.tracker import initialize_mastery, get_all_skills, get_skill_params
 from db.supabase_client import get_supabase
 from auth import create_session_token, verify_student_access
 from rate_limiter import limiter
+from safety import (
+    sanitize_input,
+    check_prompt_injection,
+    check_harmful_content,
+    is_answer_leaked,
+    validate_image_upload,
+    record_security_event,
+    get_security_telemetry,
+    SOCRATIC_BOUNDARY_RESPONSE,
+    SAFE_SUPPORT_RESPONSE,
+)
+from postgrest.base_request_builder import CountMethod
 
 # ── In-memory session store (Supabase for persistence, memory for speed) ────
 _sessions: dict[str, TutorState] = {}
@@ -89,6 +102,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Enforce security response headers on all routes (Defense-in-depth)
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    return response
+
 
 @app.api_route("/", methods=["GET", "HEAD"])
 async def root():
@@ -98,6 +122,12 @@ async def root():
         "version": "1.0.0",
         "docs": "/docs",
     }
+
+
+@app.get("/auth/security-status")
+async def get_security_status():
+    """Real-time platform security, guardrails status, and defense health."""
+    return get_security_telemetry()
 
 
 # In-memory health cache (TTL: 30 seconds) to prevent hammering Supabase on client polling
@@ -110,6 +140,14 @@ _cached_db_status: bool = False
 class StartSessionRequest(BaseModel):
     student_name: str
     student_id: str | None = None
+    student_email: str | None = None
+
+
+class AddChildRequest(BaseModel):
+    parent_id: str
+    parent_email: str | None = None
+    child_email: str
+    child_name: str | None = None
 
 
 class MessageRequest(BaseModel):
@@ -149,20 +187,27 @@ async def start_session(req: StartSessionRequest):
     supabase = get_supabase()
 
     student_id = None
-    # 1. Reuse existing student if ID provided
+    # 1. Reuse or upsert student by authenticated auth.user.id
     if req.student_id:
         try:
-            existing = (
-                supabase.table("students")
-                .select("*")
-                .eq("id", req.student_id)
-                .single()
-                .execute()
-            )
-            if existing.data:
-                student_id = existing.data["id"]
+            uuid.UUID(str(req.student_id))
+        except (ValueError, AttributeError):
+            raise HTTPException(422, "Invalid student_id: Must be a valid UUID format.")
+        student_id = req.student_id
+        try:
+            upsert_payload = {"id": req.student_id, "name": req.student_name}
+            if req.student_email:
+                upsert_payload["email"] = req.student_email.strip().lower()
+            supabase.table("students").upsert(upsert_payload).execute()
         except Exception:
-            student_id = None
+            try:
+                supabase.table("students").upsert({"id": req.student_id, "name": req.student_name}).execute()
+            except Exception:
+                try:
+                    unique_name = f"{req.student_name} #{req.student_id[:4]}"
+                    supabase.table("students").insert({"id": req.student_id, "name": unique_name}).execute()
+                except Exception as e:
+                    print(f"[WARN] Student upsert fallback: {e}")
 
     # 2. Otherwise create a new student record (supports multiple students with same first name)
     if not student_id:
@@ -257,7 +302,7 @@ async def start_session(req: StartSessionRequest):
 
 @app.post("/session/message")
 async def send_message(req: MessageRequest):
-    """Send a student text message and get a streaming tutor response."""
+    """Send a student text message and get a streaming tutor response with safety guardrails."""
     # Rate limit check (1.5s cooldown, max 30 msgs/minute per session)
     limiter.enforce_cooldown(
         key=f"msg_{req.session_id}",
@@ -269,8 +314,29 @@ async def send_message(req: MessageRequest):
     if req.session_id not in _sessions:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    # 1. Sanitize student input (length bound, strip control characters, escape HTML)
+    clean_message = sanitize_input(req.message)
+    if not clean_message:
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+
+    # 2. Safety Guardrails: Prompt injection & distress checks
+    is_injection, injection_reason = check_prompt_injection(clean_message)
+    is_harmful, harm_category = check_harmful_content(clean_message)
+
+    if is_injection:
+        record_security_event("prompt_injection_blocked", {
+            "session_id": req.session_id,
+            "reason": injection_reason,
+            "preview": clean_message[:80],
+        })
+    if is_harmful:
+        record_security_event("harmful_content_flagged", {
+            "session_id": req.session_id,
+            "category": harm_category,
+        })
+
     state = _sessions[req.session_id]
-    state["latest_input"] = req.message
+    state["latest_input"] = clean_message
     state["latest_image_bytes"] = None
 
     async def event_stream() -> AsyncGenerator[str, None]:
@@ -278,26 +344,39 @@ async def send_message(req: MessageRequest):
             # Emit thinking steps as they happen
             yield f"data: {json.dumps({'type': 'thinking', 'content': '🎓 Tutor thinking...'})}\n\n"
 
-            # Run through LangGraph (tutor node)
-            from agents.tutor_agent import run_tutor_agent
-
             thinking_steps = []
             thinking_steps.append("🎓 Reading your thought...")
             yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
             await asyncio.sleep(0.1)
 
-            response = run_tutor_agent(
-                student_message=req.message,
-                conversation_history=state["conversation_history"],
-                current_problem=state.get("current_problem"),
-            )
+            # Route through safety boundary if flagged, otherwise invoke Socratic tutor
+            if is_harmful:
+                response = SAFE_SUPPORT_RESPONSE
+            elif is_injection:
+                response = SOCRATIC_BOUNDARY_RESPONSE
+            else:
+                from agents.tutor_agent import run_tutor_agent
+                current_prob = state.get("current_problem") or {}
+                response = run_tutor_agent(
+                    student_message=clean_message,
+                    conversation_history=state["conversation_history"],
+                    current_problem=current_prob,
+                )
+
+                # Secondary safety check: Prevent accidental final answer disclosure
+                prob_ans = current_prob.get("answer") or ""
+                if prob_ans and is_answer_leaked(response, str(prob_ans)):
+                    response = (
+                        "That's a great direction! Let's pause right before the final calculation: "
+                        "what math property explains why this step works?"
+                    )
 
             thinking_steps.append("💡 Thinking of a guiding question...")
             yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
 
             # Update state
             state["conversation_history"] = state["conversation_history"] + [
-                {"role": "student", "content": req.message},
+                {"role": "student", "content": clean_message},
                 {"role": "tutor", "content": response},
             ]
             state["thinking_steps"] = thinking_steps
@@ -331,7 +410,7 @@ async def upload_work(
     session_id: str,
     file: UploadFile = File(...),
 ):
-    """Upload a photo of student handwritten work for OCR + diagnosis."""
+    """Upload a photo of student handwritten work for OCR + diagnosis with strict upload validation."""
     # Rate limit check (3.0s cooldown, max 10 uploads/minute per session)
     limiter.enforce_cooldown(
         key=f"upload_{session_id}",
@@ -345,6 +424,13 @@ async def upload_work(
 
     state = _sessions[session_id]
     image_bytes = await file.read()
+
+    # Safety: Validate image format, MIME type, and max 10MB file limit
+    validate_image_upload(
+        file_bytes=image_bytes,
+        content_type=file.content_type,
+        filename=file.filename,
+    )
 
     async def event_stream() -> AsyncGenerator[str, None]:
         try:
@@ -528,3 +614,312 @@ async def text_to_speech(text: str):
         raise HTTPException(status_code=resp.status_code, detail="TTS API error")
 
     return Response(content=resp.content, media_type="audio/mpeg")
+
+
+# ── Parent Dashboard & Child Management Endpoints ───────────────────────────
+
+CHILDREN_FALLBACK_FILE = BACKEND_DIR.parent / "data" / "children_store.json"
+
+
+def _get_fallback_children(parent_id: str) -> list[dict]:
+    if not CHILDREN_FALLBACK_FILE.exists():
+        return []
+    try:
+        with open(CHILDREN_FALLBACK_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return [c for c in data if c.get("parent_id") == parent_id]
+    except Exception:
+        return []
+
+
+def _save_fallback_child(record: dict):
+    CHILDREN_FALLBACK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    current = []
+    if CHILDREN_FALLBACK_FILE.exists():
+        try:
+            with open(CHILDREN_FALLBACK_FILE, "r", encoding="utf-8") as f:
+                current = json.load(f)
+        except Exception:
+            current = []
+    current = [
+        c
+        for c in current
+        if not (
+            c.get("parent_id") == record.get("parent_id")
+            and c.get("student_id") == record.get("student_id")
+        )
+    ]
+    current.append(record)
+    with open(CHILDREN_FALLBACK_FILE, "w", encoding="utf-8") as f:
+        json.dump(current, f, indent=2)
+
+
+@app.post("/parent/add-child")
+async def add_child(req: AddChildRequest):
+    """Link a child by email to a parent in the children table."""
+    # 0. Safety Guardrails & Validation
+    try:
+        uuid.UUID(str(req.parent_id))
+    except (ValueError, AttributeError):
+        raise HTTPException(422, "Invalid parent_id: Must be a valid UUID format.")
+
+    email_clean = req.child_email.strip().lower()
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email_clean):
+        raise HTTPException(422, "Please enter a valid email address format.")
+
+    if req.parent_email and req.parent_email.strip().lower() == email_clean:
+        raise HTTPException(400, "A parent cannot link their own email as a child account.")
+
+    # Rate limiting protection
+    limiter.enforce_cooldown(f"parent_add_{req.parent_id}", cooldown_seconds=0.5, action="add child", max_per_minute=20)
+
+    supabase = get_supabase()
+    student_id = None
+    student_name = req.child_name or email_clean.split("@")[0].capitalize()
+
+    # 1. Search in Supabase Auth users
+    try:
+        users = supabase.auth.admin.list_users()
+        for u in users:
+            if getattr(u, "email", "").lower() == email_clean:
+                student_id = u.id
+                student_name = (
+                    getattr(u, "user_metadata", {}).get("name") or student_name
+                )
+                break
+    except Exception as e:
+        print(f"[WARN] Supabase admin user search: {e}")
+
+    # 2. Search in students table
+    if not student_id:
+        try:
+            found = (
+                supabase.table("students")
+                .select("*")
+                .eq("email", email_clean)
+                .execute()
+            )
+            if found.data:
+                student_id = found.data[0]["id"]
+                student_name = found.data[0].get("name") or student_name
+        except Exception:
+            pass
+
+    # 3. If student doesn't exist yet, create a registered student record
+    if not student_id:
+        student_id = str(uuid.uuid4())
+        try:
+            supabase.table("students").insert({
+                "id": student_id,
+                "name": student_name,
+                "email": email_clean,
+            }).execute()
+        except Exception:
+            try:
+                supabase.table("students").insert({
+                    "id": student_id,
+                    "name": student_name,
+                }).execute()
+            except Exception:
+                try:
+                    found = supabase.table("students").select("id").eq("name", student_name).execute()
+                    if found.data:
+                        student_id = found.data[0]["id"]
+                    else:
+                        supabase.table("students").insert({
+                            "id": student_id,
+                            "name": f"{student_name} #{student_id[:4]}",
+                        }).execute()
+                except Exception as e:
+                    print(f"[WARN] Could not create initial student record: {e}")
+
+    # 4. Insert into children table (parent_id -> student_id)
+    child_record = {
+        "parent_id": req.parent_id,
+        "student_id": student_id,
+        "student_email": email_clean,
+        "student_name": student_name,
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+
+    try:
+        supabase.table("children").upsert({
+            "parent_id": req.parent_id,
+            "student_id": student_id,
+            "student_email": email_clean,
+            "student_name": student_name,
+        }).execute()
+    except Exception as e:
+        print(f"[INFO] Children table fallback in local storage: {e}")
+        _save_fallback_child(child_record)
+
+    return {
+        "status": "ok",
+        "child": {
+            "student_id": student_id,
+            "student_name": student_name,
+            "student_email": email_clean,
+        },
+    }
+
+
+@app.get("/parent/{parent_id}/children")
+async def get_parent_children(parent_id: str):
+    """List all children linked to parent, including mastery overview and practice recency."""
+    supabase = get_supabase()
+    children_map: dict[str, dict] = {}
+
+    # Read from Supabase children table
+    try:
+        res = (
+            supabase.table("children")
+            .select("*")
+            .eq("parent_id", parent_id)
+            .execute()
+        )
+        for c in res.data or []:
+            children_map[c["student_id"]] = c
+    except Exception as e:
+        print(f"[INFO] Fetch children from table fallback: {e}")
+
+    # Merge fallback records
+    for c in _get_fallback_children(parent_id):
+        if c["student_id"] not in children_map:
+            children_map[c["student_id"]] = c
+
+    # If demo parent has no children yet, supply demo child 'Alex'
+    if not children_map and (
+        parent_id == "99999999-8888-7777-6666-555555555555" or not children_map
+    ):
+        demo_child = {
+            "parent_id": parent_id,
+            "student_id": "24e836e3-3b42-41a0-8a27-222f883eaa10",
+            "student_email": "student.alex@veritas.dev",
+            "student_name": "Alex Jenkins",
+            "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        }
+        children_map[demo_child["student_id"]] = demo_child
+        _save_fallback_child(demo_child)
+
+    results = []
+    now = time.time()
+
+    for student_id, child in children_map.items():
+        latest_session_time = None
+        session_count = 0
+        try:
+            sess_res = (
+                supabase.table("sessions")
+                .select("started_at")
+                .eq("student_id", student_id)
+                .order("started_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if sess_res.data:
+                latest_session_time = sess_res.data[0].get("started_at")
+
+            count_res = (
+                supabase.table("sessions")
+                .select("id", count=CountMethod.exact)
+                .eq("student_id", student_id)
+                .execute()
+            )
+            session_count = count_res.count or len(count_res.data or [])
+        except Exception:
+            pass
+
+        # Check fraction mastery & activity
+        fraction_mastery = 0.35
+        try:
+            m_res = (
+                supabase.table("student_skill_mastery")
+                .select("mastery_prob")
+                .eq("student_id", student_id)
+                .in_("skill_id", ["4.NF.B.3", "4.NF.A.1"])
+                .execute()
+            )
+            if m_res.data:
+                fraction_mastery = sum(r["mastery_prob"] for r in m_res.data) / len(
+                    m_res.data
+                )
+        except Exception:
+            pass
+
+        days_since = 3
+        if latest_session_time:
+            try:
+                import datetime
+
+                ts = datetime.datetime.fromisoformat(
+                    latest_session_time.replace("Z", "+00:00")
+                )
+                diff_seconds = now - ts.timestamp()
+                days_since = max(0, int(diff_seconds // 86400))
+            except Exception:
+                days_since = 3
+
+        has_gap = days_since >= 3 or fraction_mastery < 0.5
+        alert_msg = (
+            "⚠️ Has not practiced fractions in 3 days!"
+            if has_gap
+            else "Practiced fractions recently"
+        )
+
+        results.append({
+            "student_id": student_id,
+            "student_name": child.get("student_name", "Student"),
+            "student_email": child.get("student_email", ""),
+            "last_session_at": latest_session_time,
+            "days_since_practice": days_since,
+            "has_fraction_gap": has_gap,
+            "fraction_alert_message": alert_msg,
+            "fraction_mastery": fraction_mastery,
+            "session_count": session_count,
+        })
+
+    return {"children": results}
+
+
+@app.get("/parent/{parent_id}/child/{child_id}/details")
+async def get_child_details(parent_id: str, child_id: str):
+    """Return full mastery state and practice history for a child."""
+    supabase = get_supabase()
+
+    # Mastery
+    mastery_rows = (
+        supabase.table("student_skill_mastery")
+        .select("*, skills(name, cc_standard, sequence_order)")
+        .eq("student_id", child_id)
+        .execute()
+    )
+    skills = get_all_skills()
+
+    # Sessions history
+    sessions_res = (
+        supabase.table("sessions")
+        .select("*")
+        .eq("student_id", child_id)
+        .order("started_at", desc=True)
+        .limit(10)
+        .execute()
+    )
+
+    # Recent session events
+    events_res = (
+        supabase.table("session_events")
+        .select("*, problems(title, text)")
+        .eq("student_id", child_id)
+        .order("created_at", desc=True)
+        .limit(20)
+        .execute()
+    )
+
+    return {
+        "student_id": child_id,
+        "mastery": mastery_rows.data or [],
+        "all_skills": skills,
+        "sessions": sessions_res.data or [],
+        "recent_events": events_res.data or [],
+    }
+

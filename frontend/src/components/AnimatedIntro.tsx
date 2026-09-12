@@ -117,11 +117,11 @@ export default function AnimatedIntro({ onEnter }: AnimatedIntroProps) {
             <button
               className="intro-enter-btn"
               onClick={handleExit}
-              aria-label="Enter AINerd math platform"
+              aria-label="Enter Veritas math platform"
             >
               <span className="btn-glow-layer" />
               <span className="btn-content">
-                <span>Enter AINerd</span>
+                <span>Enter Veritas</span>
                 <ChevronRight size={18} />
               </span>
             </button>
