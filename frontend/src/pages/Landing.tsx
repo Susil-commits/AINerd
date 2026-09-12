@@ -125,7 +125,6 @@ export default function Landing() {
     sendMagicLink,
     verifyOtp,
     demoSignIn,
-    biometricSignIn,
     signOut,
     rememberedProfile,
   } = useAuth()
@@ -138,8 +137,6 @@ export default function Landing() {
   const [authScreen, setAuthScreen] = useState<'form' | 'otp'>('form')
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', ''])
   const [resendTimer, setResendTimer] = useState(45)
-  const [bioState, setBioState] = useState<'idle' | 'scanning' | 'success' | 'failed'>('idle')
-  const [bioFeedback, setBioFeedback] = useState('Tap fingerprint for 1-click Biometric Passkey')
   const [rememberedDismissed, setRememberedDismissed] = useState(false)
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
 
@@ -246,36 +243,6 @@ export default function Landing() {
     } else {
       navigate('/student-session')
     }
-  }
-
-  const handleBiometricLogin = async () => {
-    if (bioState === 'scanning') return
-    setBioState('scanning')
-    setBioFeedback('Scanning Touch ID / Windows Hello…')
-    setAuthError('')
-
-    setTimeout(async () => {
-      const res = await biometricSignIn(role)
-      if (res.success) {
-        setBioState('success')
-        setBioFeedback('Biometric Verified! Launching…')
-        setTimeout(() => {
-          if (role === 'parent') {
-            navigate('/parent-dashboard')
-          } else {
-            navigate('/student-session')
-          }
-        }, 550)
-      } else {
-        setBioState('failed')
-        setBioFeedback('Authentication failed')
-        setAuthError(res.error || 'Biometric verification failed')
-        setTimeout(() => {
-          setBioState('idle')
-          setBioFeedback('Tap fingerprint for 1-click Biometric Passkey')
-        }, 2500)
-      }
-    }, 850)
   }
 
   const handleSendMagicLinkOrOtp = async (e?: React.FormEvent) => {
@@ -417,12 +384,15 @@ export default function Landing() {
           </nav>
 
           <div className="navbar-actions">
-            <div className={`nav-conn-pill nav-conn-pill--${connStatus}`}>
-              <span className="conn-dot" />
-              <span className="conn-pill-text">
-                {connStatus === 'connected' ? 'Ready' : connStatus === 'waking_up' ? 'Waking Up…' : 'Connecting…'}
-              </span>
-            </div>
+            {user ? (
+              <button className="btn btn-sm btn-violet" onClick={handleEnterSession}>
+                {role === 'parent' ? 'Parent Portal' : 'Math Session'}
+              </button>
+            ) : (
+              <a href="#auth-card" className="btn btn-sm btn-ghost">
+                Get Started
+              </a>
+            )}
           </div>
         </div>
       </header>
@@ -439,26 +409,28 @@ export default function Landing() {
           An encouraging math tutor that spots where you get stuck — asking helpful questions so you learn the concepts and solve problems on your own.
         </p>
 
-        {/* Simple Connection Status */}
-        <div className={`conn-status conn-status--${connStatus}`}>
-          <span className="conn-dot" />
-          <span>{connMessage}</span>
-          {connStatus === 'error' && (
-            <button
-              className="conn-retry-btn"
-              onClick={() => {
-                setConnStatus('checking')
-                setConnMessage('Reconnecting to server...')
-                checkConnection()
-              }}
-            >
-              Retry
-            </button>
-          )}
-        </div>
+        {/* Server Connection Status - only shown while connecting or on error; invisible once online */}
+        {connStatus !== 'connected' && (
+          <div className={`conn-status conn-status--${connStatus}`}>
+            <span className="conn-dot" />
+            <span>{connMessage}</span>
+            {connStatus === 'error' && (
+              <button
+                className="conn-retry-btn"
+                onClick={() => {
+                  setConnStatus('checking')
+                  setConnMessage('Reconnecting to server...')
+                  checkConnection()
+                }}
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Modern Standout Split-Card Auth */}
-        <div className="auth-card-container">
+        <div className="auth-card-container" id="auth-card">
           {user ? (
             <div className="auth-logged-in-card animate-fadein">
               <div className="logged-in-badge">
@@ -743,56 +715,28 @@ export default function Landing() {
                 )}
               </div>
 
-              {/* Right Panel: Interactive Biometric Passkey Authenticator */}
-              <div className="auth-card-right">
-                <div className="auth-art-clouds" />
-
-                <div className="mockup-device-wrapper">
-                  <div className={`mockup-device-body ${bioState === 'scanning' ? 'mockup-device-body--scanning' : ''}`}>
-                    <div className="device-notch" />
-                    <div className={`device-verified-bubble ${bioState === 'success' ? 'device-verified-bubble--active' : ''}`}>
-                      Verified
-                    </div>
-
-                    <button
-                      type="button"
-                      className={`device-fingerprint-box device-fingerprint-interactive ${bioState}`}
-                      onClick={handleBiometricLogin}
-                      disabled={bioState === 'scanning'}
-                      title="Click to authenticate via Passkey / Biometrics"
-                    >
-                      <div className={`fingerprint-circle ${bioState === 'scanning' ? 'fingerprint-circle--active' : ''} ${bioState === 'success' ? 'fingerprint-circle--success' : ''}`}>
-                        {bioState === 'scanning' ? (
-                          <div className="biometric-laser-beam" />
-                        ) : bioState === 'success' ? (
-                          <span className="bio-check-icon animate-scalein">Verified</span>
-                        ) : (
-                          <span className="bio-prompt-text">Touch Sensor</span>
-                        )}
-                        {bioState === 'scanning' && <div className="biometric-pulse-ring" />}
-                      </div>
-
-                      <div className="scanner-progress-bar">
-                        <div className={`scanner-progress-fill ${bioState === 'scanning' ? 'scanner-progress-fill--active' : bioState === 'success' ? 'scanner-progress-fill--success' : ''}`} />
-                      </div>
-
-                      <p className="scanner-label">
-                        {bioFeedback}
-                      </p>
-
-                      <span className="scanner-touch-hint">
-                        {bioState === 'scanning' ? 'Reading sensor…' : 'One-Tap WebAuthn'}
-                      </span>
-                    </button>
-                  </div>
-
-                  <div className="mockup-lock-badge">
-                    <span>Encrypted</span>
-                  </div>
+              {/* Right Panel: Socratic Learning Space Photo Showcase */}
+              <div className="auth-card-right auth-card-photo-side">
+                <div className="photo-side-image-wrapper">
+                  <img
+                    src="/student_math_learning.jpg"
+                    alt="Student actively learning math with Veritas Socratic tutor"
+                    className="photo-side-img"
+                  />
+                  <div className="photo-side-overlay" />
                 </div>
 
-                <div className="auth-art-footer">
-                  <span>WebAuthn Passkey • Passwordless Auth</span>
+                <div className="photo-side-content">
+                  <span className="photo-side-badge">Socratic Learning Space</span>
+                  <h3 className="photo-side-title">Think. Reason.<br />Master Math.</h3>
+                  <p className="photo-side-desc">
+                    Veritas never just gives away solutions. It guides your thinking step-by-step with encouraging questions so you discover patterns and build genuine understanding.
+                  </p>
+                  <div className="photo-side-chips">
+                    <span className="photo-chip">Voice & Vision OCR</span>
+                    <span className="photo-chip">Adaptive BKT</span>
+                    <span className="photo-chip">Student Privacy Protected</span>
+                  </div>
                 </div>
               </div>
             </div>

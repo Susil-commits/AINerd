@@ -1005,166 +1005,112 @@
   border-color: #93C5FD;
 }
 
-/* Right Panel: Stylized Graphic */
-.auth-card-right {
-  background: linear-gradient(135deg, #7C5DFA 0%, #6342E8 50%, #9333EA 100%);
+/* Right Panel: Socratic Learning Space Photo Showcase */
+.auth-card-right.auth-card-photo-side {
   position: relative;
+  overflow: hidden;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2.5rem 2rem;
-  overflow: hidden;
+  justify-content: flex-end;
+  min-height: 520px;
+  background: #090D1A;
 }
 
-.auth-art-clouds {
+.photo-side-image-wrapper {
   position: absolute;
   inset: 0;
-  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 1;
 }
 
-.art-cloud {
+.photo-side-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+  display: block;
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-card-photo-side:hover .photo-side-img {
+  transform: scale(1.04);
+}
+
+.photo-side-overlay {
   position: absolute;
-  font-size: 3rem;
-  opacity: 0.25;
-  filter: drop-shadow(0 4px 12px rgba(255, 255, 255, 0.4));
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0.2) 0%,
+    rgba(15, 23, 42, 0.6) 45%,
+    rgba(9, 13, 26, 0.95) 100%
+  );
+  z-index: 2;
 }
 
-.art-cloud--top {
-  top: 10%;
-  left: 10%;
-}
-
-.art-cloud--bottom {
-  bottom: 12%;
-  right: 10%;
-}
-
-.mockup-device-wrapper {
+.photo-side-content {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-}
-
-.mockup-device-body {
-  width: 190px;
-  height: 290px;
-  background: #1E1B4B;
-  border: 3px solid rgba(255, 255, 255, 0.4);
-  border-radius: 36px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(124, 93, 250, 0.3);
-  position: relative;
+  z-index: 3;
+  padding: 2.5rem 2rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 1.25rem 1rem;
-}
-
-.device-notch {
-  position: absolute;
-  top: 10px;
-  width: 44px;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 3px;
-}
-
-.device-verified-bubble {
-  position: absolute;
-  top: -15px;
-  left: -15px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #FFFFFF;
-  color: #7C5DFA;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-  animation: pulse 2.5s infinite ease-in-out;
-}
-
-.mockup-lock-badge {
-  position: absolute;
-  bottom: 10px;
-  right: -20px;
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.95);
-  color: #6342E8;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
-}
-
-.device-fingerprint-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  text-align: center;
-}
-
-.fingerprint-circle {
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  background: rgba(124, 93, 250, 0.25);
-  border: 2px dashed rgba(255, 255, 255, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  gap: 0.85rem;
+  text-align: left;
   color: #FFFFFF;
 }
 
-.scanner-progress-bar {
-  width: 100px;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.scanner-progress-fill {
-  width: 65%;
-  height: 100%;
-  background: linear-gradient(90deg, #38BDF8, #A855F7);
-  border-radius: 3px;
-  animation: scanProgress 2s infinite ease-in-out;
-}
-
-@keyframes scanProgress {
-  0% { transform: translateX(-100%); }
-  50% { transform: translateX(50%); }
-  100% { transform: translateX(100%); }
-}
-
-.scanner-label {
-  font-size: 0.7rem;
-  color: #E0E7FF;
-  margin: 0;
-  max-width: 120px;
-  line-height: 1.3;
-}
-
-.auth-art-footer {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #EDE9FE;
-  font-size: 0.75rem;
-  font-weight: 600;
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(8px);
-  padding: 6px 14px;
+.photo-side-badge {
+  display: inline-block;
+  width: fit-content;
+  padding: 5px 12px;
+  background: rgba(124, 93, 250, 0.35);
+  border: 1px solid rgba(167, 139, 250, 0.5);
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #EDE9FE;
+  backdrop-filter: blur(8px);
+}
+
+.photo-side-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #FFFFFF;
+  letter-spacing: -0.02em;
+  margin: 0;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+.photo-side-desc {
+  font-size: 0.88rem;
+  color: #CBD5E1;
+  line-height: 1.55;
+  margin: 0;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+}
+
+.photo-side-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 0.35rem;
+}
+
+.photo-chip {
+  padding: 5px 11px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #F8FAFC;
+  backdrop-filter: blur(6px);
 }
 
 /* ── Standout Modern Auth Enhancements ── */
@@ -1484,113 +1430,7 @@
   text-decoration: underline;
 }
 
-/* Interactive Biometric Scanner (Right Panel) */
-.device-fingerprint-interactive {
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-  padding: 0;
-  width: 100%;
-}
 
-.device-fingerprint-interactive:hover:not(:disabled) {
-  transform: scale(1.03);
-}
-
-.device-fingerprint-interactive:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.mockup-device-body--scanning {
-  box-shadow: 0 20px 60px rgba(99, 102, 241, 0.5), inset 0 0 30px rgba(56, 189, 248, 0.4);
-  border-color: rgba(56, 189, 248, 0.8);
-  transition: all 0.3s ease;
-}
-
-.fingerprint-circle {
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.fingerprint-circle--active {
-  background: rgba(56, 189, 248, 0.3);
-  border-color: #38BDF8;
-  box-shadow: 0 0 24px rgba(56, 189, 248, 0.6);
-  animation: pulse 1s infinite ease-in-out;
-}
-
-.fingerprint-circle--success {
-  background: rgba(16, 185, 129, 0.35);
-  border-color: #10B981;
-  box-shadow: 0 0 24px rgba(16, 185, 129, 0.7);
-}
-
-.biometric-laser-beam {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, #38BDF8, #A855F7, transparent);
-  box-shadow: 0 0 10px #38BDF8, 0 0 20px #A855F7;
-  animation: laserScan 1.2s infinite alternate ease-in-out;
-}
-
-@keyframes laserScan {
-  0% { top: 10%; }
-  100% { top: 90%; }
-}
-
-.biometric-pulse-ring {
-  position: absolute;
-  inset: -10px;
-  border-radius: 50%;
-  border: 2px solid rgba(56, 189, 248, 0.5);
-  animation: pulseRing 1.4s infinite ease-out;
-}
-
-@keyframes pulseRing {
-  0% { transform: scale(0.8); opacity: 1; }
-  100% { transform: scale(1.4); opacity: 0; }
-}
-
-.scanner-progress-fill--active {
-  background: linear-gradient(90deg, #38BDF8, #EC4899);
-  animation: scanProgress 0.9s infinite linear;
-}
-
-.scanner-progress-fill--success {
-  width: 100% !important;
-  background: #10B981 !important;
-  transform: none !important;
-  animation: none !important;
-}
-
-.device-verified-bubble--active {
-  background: #10B981 !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.8) !important;
-}
-
-.bio-check-icon {
-  color: #10B981;
-  filter: drop-shadow(0 0 8px #10B981);
-}
-
-.scanner-touch-hint {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #E0E7FF;
-  font-size: 0.65rem;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 12px;
-  margin-top: 4px;
-  letter-spacing: 0.03em;
-}
 
 /* ── Platform Safety & Compliance Trust Strip ── */
 .auth-trust-strip {
