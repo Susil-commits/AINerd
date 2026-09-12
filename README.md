@@ -170,10 +170,11 @@ The frontend is ready for Vercel with automatic SPA routing and API binding.
    - **Root Directory**: `./` (default, supported via root `vercel.json`) or `frontend`
    - **Build Command**: `npm run build` (or automatic via Vite preset)
    - **Output Directory**: `dist` (if root directory is `frontend`) or `frontend/dist` (if root directory is `./`)
-3. Add Environment Variable:
-   - **Key**: `VITE_API_URL`
-   - **Value**: Your Render backend URL (e.g., `https://ainerd-backend.onrender.com` — no trailing slash needed)
-4. Click **Deploy**.
+3. Add Environment Variables in Vercel Dashboard:
+   - **`VITE_API_URL`**: Your Render backend URL (e.g., `https://ainerd.onrender.com` — no trailing slash)
+   - **`VITE_SUPABASE_URL`**: Your Supabase project URL (`https://your-project.supabase.co`)
+   - **`VITE_SUPABASE_ANON_KEY`**: Your Supabase anon public key
+4. Click **Deploy** (or **Redeploy**).
 5. Once deployed, test the connection by starting a tutoring session! CORS in FastAPI is preconfigured to accept all `*.vercel.app` domains automatically (and custom domains via `FRONTEND_URL`).
 
 ---
