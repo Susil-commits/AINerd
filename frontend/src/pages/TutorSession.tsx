@@ -78,28 +78,27 @@ export default function TutorSession() {
 
       // If user is authenticated, start session directly with their user.id
       if (user) {
-        try {
-          const studentName = user.user_metadata?.name || user.email?.split('@')[0] || 'Student'
-          const s = await startSession(studentName, user.id, user.email)
-          if (!mounted) return
-          sessionStorage.setItem('session', JSON.stringify(s))
-          setSession(s)
-          document.title = `Veritas — Math Practice (${s.student_name})`
-          setMasteryState(s.mastery_state || {})
-          setCurrentProblem(s.current_problem || null)
-          setMessages([
-            { role: 'system', content: `Session started for ${s.student_name}`, timestamp: new Date() },
-            { role: 'tutor', content: s.welcome_message, timestamp: new Date() },
-          ])
-          speak(s.welcome_message)
-          return
-        } catch (e) {
-          console.error('Could not auto-start session:', e)
-          if (mounted) {
-            setSessionError('Could not initialize your tutoring session. The server may be warming up. Please try again.')
-          }
-          return
-        }
+        const studentName = user.user_metadata?.name || user.email?.split('@')[0] || 'Student'
+        return startSession(studentName, user.id, user.email)
+          .then((s) => {
+            if (!mounted) return
+            sessionStorage.setItem('session', JSON.stringify(s))
+            setSession(s)
+            document.title = `Veritas — Math Practice (${s.student_name})`
+            setMasteryState(s.mastery_state || {})
+            setCurrentProblem(s.current_problem || null)
+            setMessages([
+              { role: 'system', content: `Session started for ${s.student_name}`, timestamp: new Date() },
+              { role: 'tutor', content: s.welcome_message, timestamp: new Date() },
+            ])
+            speak(s.welcome_message)
+          })
+          .catch((e) => {
+            console.error('Could not auto-start session:', e)
+            if (mounted) {
+              setSessionError('Could not initialize your tutoring session. The server may be warming up. Please try again.')
+            }
+          })
       }
 
       if (mounted) {
@@ -107,7 +106,9 @@ export default function TutorSession() {
       }
     }
 
-    initSession()
+    initSession().catch((e) => {
+      console.error('initSession unexpected error:', e)
+    })
     return () => { mounted = false }
   }, [navigate, user, speak, sessionRetryCount])
 
@@ -292,9 +293,13 @@ export default function TutorSession() {
               <button
                 className="btn btn-ghost"
                 style={{ padding: '6px 8px', fontSize: '0.78rem' }}
-                onClick={async () => {
-                  await signOut()
-                  navigate('/')
+                onClick={() => {
+                  signOut()
+                    .then(() => navigate('/'))
+                    .catch((err) => {
+                      console.error('Sign out error:', err)
+                      navigate('/')
+                    })
                 }}
                 aria-label="Sign out"
                 title="Sign out"

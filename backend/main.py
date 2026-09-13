@@ -73,6 +73,15 @@ from session_manager import (
 _server_start_time: float = time.time()
 _graph = None
 
+
+async def db_exec(query: Any) -> Any:
+    """
+    Execute synchronous Supabase query builder `.execute()` in threadpool
+    to prevent blocking FastAPI's single-threaded asyncio event loop under load.
+    """
+    return await asyncio.to_thread(query.execute)
+
+
 # SSE Response headers to prevent proxy/CDN buffering (Render, Cloudflare, Nginx)
 SSE_HEADERS = {
     "Cache-Control": "no-cache",
@@ -213,7 +222,7 @@ async def health_full():
     if (now - _last_db_check_time) > 30.0:
         try:
             supabase = get_supabase()
-            res = supabase.table("skills").select("id").limit(1).execute()
+            res = await db_exec(supabase.table("skills").select("id").limit(1))
             _cached_db_status = res.data is not None
             _last_db_check_time = now
         except Exception as e:
@@ -230,8 +239,7 @@ async def health_full():
             else:
                 import google.generativeai as genai
                 genai.configure(api_key=gemini_key)
-                models = genai.list_models()
-                next(iter(models), None)
+                models = await asyncio.to_thread(lambda: next(iter(genai.list_models()), None))
                 _cached_gemini_status = True
                 _last_gemini_check_time = now
         except Exception as e:
@@ -276,14 +284,14 @@ async def start_session(req: StartSessionRequest):
             upsert_payload = {"id": req.student_id, "name": req.student_name}
             if req.student_email:
                 upsert_payload["email"] = req.student_email.strip().lower()
-            supabase.table("students").upsert(upsert_payload).execute()
+            await db_exec(supabase.table("students").upsert(upsert_payload))
         except Exception:
             try:
-                supabase.table("students").upsert({"id": req.student_id, "name": req.student_name}).execute()
+                await db_exec(supabase.table("students").upsert({"id": req.student_id, "name": req.student_name}))
             except Exception:
                 try:
                     unique_name = f"{req.student_name} #{req.student_id[:4]}"
-                    supabase.table("students").insert({"id": req.student_id, "name": unique_name}).execute()
+                    await db_exec(supabase.table("students").insert({"id": req.student_id, "name": unique_name}))
                 except Exception as e:
                     print(f"[WARN] Student upsert fallback: {e}")
 
@@ -291,13 +299,13 @@ async def start_session(req: StartSessionRequest):
     if not student_id:
         try:
             # Try inserting as a distinct student
-            new_student = supabase.table("students").insert({"name": req.student_name}).execute()
+            new_student = await db_exec(supabase.table("students").insert({"name": req.student_name}))
             if new_student.data:
                 student_id = new_student.data[0]["id"]
         except Exception:
             # Fallback if the database still retains a legacy UNIQUE(name) constraint
             try:
-                found = supabase.table("students").select("*").eq("name", req.student_name).execute()
+                found = await db_exec(supabase.table("students").select("*").eq("name", req.student_name))
                 if found.data:
                     student_id = found.data[0]["id"]
             except Exception as e:
@@ -308,11 +316,10 @@ async def start_session(req: StartSessionRequest):
         student_id = str(uuid.uuid4())
 
     # Load existing mastery or initialize fresh
-    mastery_rows = (
+    mastery_rows = await db_exec(
         supabase.table("student_skill_mastery")
         .select("*")
         .eq("student_id", student_id)
-        .execute()
     )
     mastery_state = initialize_mastery()
     for row in (mastery_rows.data or []):
@@ -321,18 +328,19 @@ async def start_session(req: StartSessionRequest):
     # Create session record
     session_id = str(uuid.uuid4())
     try:
-        supabase.table("sessions").insert({
+        await db_exec(supabase.table("sessions").insert({
             "id": session_id,
             "student_id": student_id,
             "student_name": req.student_name,
-        }).execute()
+        }))
     except Exception as e:
         print(f"[WARN] Supabase session insert error: {e}")
 
     # Pick first problem
     from bkt.tracker import get_next_skill
     current_skill = get_next_skill(mastery_state)
-    problem = get_next_problem(
+    problem = await asyncio.to_thread(
+        get_next_problem,
         skill_id=current_skill,
         mastery_prob=mastery_state.get(current_skill, 0.3),
         student_id=student_id,
@@ -365,7 +373,7 @@ async def start_session(req: StartSessionRequest):
         "thinking_steps": [],
         "next_action": None,
     }
-    save_session(session_id, state)
+    await asyncio.to_thread(save_session, session_id, state)
 
     return {
         "session_id": session_id,
@@ -389,7 +397,7 @@ async def send_message(req: MessageRequest):
         max_per_minute=30,
     )
 
-    state = get_session(req.session_id)
+    state = await asyncio.to_thread(get_session, req.session_id)
     if not state:
         raise HTTPException(status_code=404, detail="Session not found")
 
@@ -437,10 +445,11 @@ async def send_message(req: MessageRequest):
                 response = SOCRATIC_BOUNDARY_RESPONSE
             else:
                 from agents.tutor_agent import run_tutor_agent
-                response = run_tutor_agent(
-                    student_message=clean_message,
-                    conversation_history=session_state["conversation_history"],
-                    current_problem=current_prob,
+                response = await asyncio.to_thread(
+                    run_tutor_agent,
+                    clean_message,
+                    session_state["conversation_history"],
+                    current_prob,
                 )
 
                 # Secondary safety check: Prevent accidental final answer disclosure
@@ -460,8 +469,9 @@ async def send_message(req: MessageRequest):
                 {"role": "tutor", "content": response},
             ]
             session_state["thinking_steps"] = thinking_steps
-            save_session(req.session_id, session_state)
-            record_session_event(
+            await asyncio.to_thread(save_session, req.session_id, session_state)
+            await asyncio.to_thread(
+                record_session_event,
                 session_id=req.session_id,
                 student_id=session_state["student_id"],
                 problem_id=current_prob.get("id"),
@@ -507,7 +517,7 @@ async def upload_work(
         max_per_minute=10,
     )
 
-    state = get_session(session_id)
+    state = await asyncio.to_thread(get_session, session_id)
     if not state:
         raise HTTPException(status_code=404, detail="Session not found")
 
@@ -531,7 +541,8 @@ async def upload_work(
             current_problem = state.get("current_problem") or {}
             yield f"data: {json.dumps({'type': 'thinking', 'content': 'Checking your steps...'})}\n\n"
 
-            diagnosis = run_diagnostic_agent(
+            diagnosis = await asyncio.to_thread(
+                run_diagnostic_agent,
                 image_bytes=image_bytes,
                 expected_steps=current_problem.get("expected_steps", []),
                 problem_text=current_problem.get("text", ""),
@@ -558,12 +569,13 @@ async def upload_work(
             # Persist to Supabase
             try:
                 supabase = get_supabase()
-                supabase.table("student_skill_mastery").upsert({
+                await db_exec(supabase.table("student_skill_mastery").upsert({
                     "student_id": state["student_id"],
                     "skill_id": skill_id,
                     "mastery_prob": new_mastery,
-                }, on_conflict="student_id,skill_id").execute()
-                record_session_event(
+                }, on_conflict="student_id,skill_id"))
+                await asyncio.to_thread(
+                    record_session_event,
                     session_id=state["session_id"],
                     student_id=state["student_id"],
                     problem_id=current_problem.get("id"),
@@ -575,7 +587,7 @@ async def upload_work(
                 print(f"[WARN] Supabase write failed: {e}")
 
             state["diagnosis"] = diagnosis
-            save_session(session_id, state)
+            await asyncio.to_thread(save_session, session_id, state)
 
             # If correct, select next problem targeted with pgvector RAG
             if is_correct:
@@ -583,7 +595,8 @@ async def upload_work(
                 from bkt.tracker import get_next_skill
                 next_skill = get_next_skill(state["mastery_state"])
                 misconception_desc = diagnosis.get("description") or diagnosis.get("misconception_type")
-                next_problem = get_next_problem(
+                next_problem = await asyncio.to_thread(
+                    get_next_problem,
                     skill_id=next_skill,
                     mastery_prob=state["mastery_state"].get(next_skill, 0.3),
                     student_id=state["student_id"],
@@ -594,7 +607,7 @@ async def upload_work(
                     state["current_problem"] = next_problem
                     state["current_skill_id"] = next_skill
                     state["problems_attempted"] = state.get("problems_attempted", []) + [next_problem["id"]]
-                    save_session(session_id, state)
+                    await asyncio.to_thread(save_session, session_id, state)
 
             yield f"data: {json.dumps({'type': 'diagnosis', 'diagnosis': diagnosis, 'mastery_state': state['mastery_state'], 'next_problem': state.get('current_problem')})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
@@ -630,11 +643,10 @@ async def get_mastery(
 ):
     """Get the full mastery state for a student (protected by scoped session token)."""
     supabase = get_supabase()
-    result = (
+    result = await db_exec(
         supabase.table("student_skill_mastery")
         .select("*, skills(name, cc_standard, sequence_order)")
         .eq("student_id", student_id)
-        .execute()
     )
     skills = get_all_skills()
     return {"student_id": student_id, "mastery": result.data, "all_skills": skills}
@@ -649,25 +661,24 @@ async def get_summary(
     """Generate an LLM session summary for teacher/parent dashboard (protected by scoped session token)."""
     supabase = get_supabase()
 
-    student_row = supabase.table("students").select("*").eq("id", student_id).single().execute()
-    events = (
+    student_row = await db_exec(supabase.table("students").select("*").eq("id", student_id).single())
+    events = await db_exec(
         supabase.table("session_events")
         .select("*")
         .eq("session_id", session_id)
         .order("created_at")
-        .execute()
     )
-    mastery_rows = (
+    mastery_rows = await db_exec(
         supabase.table("student_skill_mastery")
         .select("*")
         .eq("student_id", student_id)
-        .execute()
     )
-    mastery_state = {r["skill_id"]: r["mastery_prob"] for r in mastery_rows.data}
+    mastery_state = {r["skill_id"]: r["mastery_prob"] for r in (mastery_rows.data or [])}
 
-    summary = generate_session_summary(
+    summary = await asyncio.to_thread(
+        generate_session_summary,
         student_name=student_row.data["name"],
-        problems_attempted=events.data,
+        problems_attempted=events.data or [],
         mastery_state=mastery_state,
         skill_params=get_all_skills(),
     )
@@ -767,7 +778,7 @@ async def add_child(req: AddChildRequest):
 
     # 1. Search in Supabase Auth users
     try:
-        users = supabase.auth.admin.list_users()
+        users = await asyncio.to_thread(supabase.auth.admin.list_users)
         for u in users:
             if getattr(u, "email", "").lower() == email_clean:
                 student_id = u.id
@@ -781,11 +792,10 @@ async def add_child(req: AddChildRequest):
     # 2. Search in students table
     if not student_id:
         try:
-            found = (
+            found = await db_exec(
                 supabase.table("students")
                 .select("*")
                 .eq("email", email_clean)
-                .execute()
             )
             if found.data:
                 student_id = found.data[0]["id"]
@@ -797,27 +807,27 @@ async def add_child(req: AddChildRequest):
     if not student_id:
         student_id = str(uuid.uuid4())
         try:
-            supabase.table("students").insert({
+            await db_exec(supabase.table("students").insert({
                 "id": student_id,
                 "name": student_name,
                 "email": email_clean,
-            }).execute()
+            }))
         except Exception:
             try:
-                supabase.table("students").insert({
+                await db_exec(supabase.table("students").insert({
                     "id": student_id,
                     "name": student_name,
-                }).execute()
+                }))
             except Exception:
                 try:
-                    found = supabase.table("students").select("id").eq("name", student_name).execute()
+                    found = await db_exec(supabase.table("students").select("id").eq("name", student_name))
                     if found.data:
                         student_id = found.data[0]["id"]
                     else:
-                        supabase.table("students").insert({
+                        await db_exec(supabase.table("students").insert({
                             "id": student_id,
                             "name": f"{student_name} #{student_id[:4]}",
-                        }).execute()
+                        }))
                 except Exception as e:
                     print(f"[WARN] Could not create initial student record: {e}")
 
@@ -831,15 +841,15 @@ async def add_child(req: AddChildRequest):
     }
 
     try:
-        supabase.table("children").upsert({
+        await db_exec(supabase.table("children").upsert({
             "parent_id": req.parent_id,
             "student_id": student_id,
             "student_email": email_clean,
             "student_name": student_name,
-        }).execute()
+        }))
     except Exception as e:
         print(f"[INFO] Children table fallback in local storage: {e}")
-        _save_fallback_child(child_record)
+        await asyncio.to_thread(_save_fallback_child, child_record)
 
     return {
         "status": "ok",
@@ -859,11 +869,10 @@ async def get_parent_children(parent_id: str):
 
     # Read from Supabase children table
     try:
-        res = (
+        res = await db_exec(
             supabase.table("children")
             .select("*")
             .eq("parent_id", parent_id)
-            .execute()
         )
         for c in res.data or []:
             children_map[c["student_id"]] = c
@@ -871,7 +880,8 @@ async def get_parent_children(parent_id: str):
         print(f"[INFO] Fetch children from table fallback: {e}")
 
     # Merge fallback records
-    for c in _get_fallback_children(parent_id):
+    fallback_children = await asyncio.to_thread(_get_fallback_children, parent_id)
+    for c in fallback_children:
         if c["student_id"] not in children_map:
             children_map[c["student_id"]] = c
 
@@ -885,7 +895,7 @@ async def get_parent_children(parent_id: str):
             "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         }
         children_map[demo_child["student_id"]] = demo_child
-        _save_fallback_child(demo_child)
+        await asyncio.to_thread(_save_fallback_child, demo_child)
 
     results = []
     now = time.time()
@@ -894,22 +904,20 @@ async def get_parent_children(parent_id: str):
         latest_session_time = None
         session_count = 0
         try:
-            sess_res = (
+            sess_res = await db_exec(
                 supabase.table("sessions")
                 .select("started_at")
                 .eq("student_id", student_id)
                 .order("started_at", desc=True)
                 .limit(1)
-                .execute()
             )
             if sess_res.data:
                 latest_session_time = sess_res.data[0].get("started_at")
 
-            count_res = (
+            count_res = await db_exec(
                 supabase.table("sessions")
                 .select("id", count=CountMethod.exact)
                 .eq("student_id", student_id)
-                .execute()
             )
             session_count = count_res.count or len(count_res.data or [])
         except Exception:
@@ -918,12 +926,11 @@ async def get_parent_children(parent_id: str):
         # Check fraction mastery & activity
         fraction_mastery = 0.35
         try:
-            m_res = (
+            m_res = await db_exec(
                 supabase.table("student_skill_mastery")
                 .select("mastery_prob")
                 .eq("student_id", student_id)
                 .in_("skill_id", ["4.NF.B.3", "4.NF.A.1"])
-                .execute()
             )
             if m_res.data:
                 fraction_mastery = sum(r["mastery_prob"] for r in m_res.data) / len(
@@ -973,32 +980,29 @@ async def get_child_details(parent_id: str, child_id: str):
     supabase = get_supabase()
 
     # Mastery
-    mastery_rows = (
+    mastery_rows = await db_exec(
         supabase.table("student_skill_mastery")
         .select("*, skills(name, cc_standard, sequence_order)")
         .eq("student_id", child_id)
-        .execute()
     )
     skills = get_all_skills()
 
     # Sessions history
-    sessions_res = (
+    sessions_res = await db_exec(
         supabase.table("sessions")
         .select("*")
         .eq("student_id", child_id)
         .order("started_at", desc=True)
         .limit(10)
-        .execute()
     )
 
     # Recent session events
-    events_res = (
+    events_res = await db_exec(
         supabase.table("session_events")
         .select("*, problems(title, text)")
         .eq("student_id", child_id)
         .order("created_at", desc=True)
         .limit(20)
-        .execute()
     )
 
     return {
@@ -1029,25 +1033,25 @@ async def delete_parent_data(parent_id: str):
 
     try:
         # 1. Fetch children for this parent
-        res = supabase.table("children").select("student_id").eq("parent_id", parent_id).execute()
+        res = await db_exec(supabase.table("children").select("student_id").eq("parent_id", parent_id))
         student_ids = [c["student_id"] for c in (res.data or [])]
 
         if student_ids:
             # Delete session events and sessions for these students
             for sid in student_ids:
                 try:
-                    ev_del = supabase.table("session_events").delete().eq("student_id", sid).execute()
+                    ev_del = await db_exec(supabase.table("session_events").delete().eq("student_id", sid))
                     deleted_events += len(ev_del.data or [])
                 except Exception:
                     pass
                 try:
-                    sess_del = supabase.table("sessions").delete().eq("student_id", sid).execute()
+                    sess_del = await db_exec(supabase.table("sessions").delete().eq("student_id", sid))
                     deleted_sessions += len(sess_del.data or [])
                 except Exception:
                     pass
 
         # 2. Delete child link records from children table
-        supabase.table("children").delete().eq("parent_id", parent_id).execute()
+        await db_exec(supabase.table("children").delete().eq("parent_id", parent_id))
 
         # 3. Clean fallback file if present
         if CHILDREN_FALLBACK_FILE.exists():
@@ -1088,8 +1092,8 @@ async def delete_student_data(
     """Purge a student's practice history and session logs (authenticated)."""
     supabase = get_supabase()
     try:
-        supabase.table("session_events").delete().eq("student_id", student_id).execute()
-        supabase.table("sessions").delete().eq("student_id", student_id).execute()
+        await db_exec(supabase.table("session_events").delete().eq("student_id", student_id))
+        await db_exec(supabase.table("sessions").delete().eq("student_id", student_id))
         return {"status": "ok", "message": "Student practice sessions purged."}
     except Exception as e:
         raise HTTPException(500, detail=f"Failed to purge student data: {e}")
@@ -1169,7 +1173,8 @@ async def neo_chat(
     )
 
     # 3. Execute Neo Agent with grounded guardrails
-    result = run_neo_agent(
+    result = await asyncio.to_thread(
+        run_neo_agent,
         user_message=clean_msg,
         conversation_history=req.history,
         user_context=user_context,

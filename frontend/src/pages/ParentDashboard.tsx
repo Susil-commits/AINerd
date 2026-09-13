@@ -53,76 +53,82 @@ export default function ParentDashboard() {
   const parentId = user?.id || '99999999-8888-7777-6666-555555555555'
   const parentEmail = user?.email || 'parent.sarah@veritas.dev'
 
-  const handleDeleteData = async () => {
+  const handleDeleteData = () => {
     setDeletingData(true)
-    try {
-      const res = await deleteParentData(parentId)
-      setDeleteSuccessMsg(res.message || 'All activity data successfully purged.')
-      setTimeout(() => {
-        setShowDeleteModal(false)
-        setDeleteSuccessMsg('')
-        refreshChildren()
-      }, 1200)
-    } catch (err: any) {
-      alert('Failed to delete data: ' + (err.response?.data?.detail || err.message))
-    } finally {
-      setDeletingData(false)
-    }
+    deleteParentData(parentId)
+      .then((res) => {
+        setDeleteSuccessMsg(res.message || 'All activity data successfully purged.')
+        setTimeout(() => {
+          setShowDeleteModal(false)
+          setDeleteSuccessMsg('')
+          refreshChildren().catch(() => {})
+        }, 1200)
+      })
+      .catch((err: any) => {
+        alert('Failed to delete data: ' + (err.response?.data?.detail || err.message))
+      })
+      .finally(() => {
+        setDeletingData(false)
+      })
   }
 
   // Fetch children list
-  const refreshChildren = useCallback(async () => {
+  const refreshChildren = useCallback(() => {
     setLoadError(null)
     setChildrenLoading(true)
-    try {
-      const res = await getParentChildren(parentId)
-      const list = res.children || []
-      setChildrenList(list)
-      if (list.length > 0 && (!selectedChildId || !list.some(c => c.student_id === selectedChildId))) {
-        setSelectedChildId(list[0].student_id)
-      }
-    } catch (err) {
-      console.error('Could not load parent children:', err)
-      setLoadError('Could not load student profiles right now. The server may be warming up. Please try refreshing.')
-    } finally {
-      setChildrenLoading(false)
-    }
+    return getParentChildren(parentId)
+      .then((res) => {
+        const list = res.children || []
+        setChildrenList(list)
+        if (list.length > 0 && (!selectedChildId || !list.some(c => c.student_id === selectedChildId))) {
+          setSelectedChildId(list[0].student_id)
+        }
+      })
+      .catch((err) => {
+        console.error('Could not load parent children:', err)
+        setLoadError('Could not load student profiles right now. The server may be warming up. Please try refreshing.')
+      })
+      .finally(() => {
+        setChildrenLoading(false)
+      })
   }, [parentId, selectedChildId])
 
   // Initial load
   useEffect(() => {
     document.title = 'Veritas — Parent Dashboard'
-    refreshChildren()
+    refreshChildren().catch(() => {})
   }, [refreshChildren])
 
   // Fetch selected child details & mastery
-  const refreshChildDetails = useCallback(async (childId: string) => {
+  const refreshChildDetails = useCallback((childId: string) => {
     setDetailsError(null)
     setDetailsLoading(true)
-    try {
-      const data = await getChildDetails(parentId, childId)
-      setChildDetails(data)
+    return getChildDetails(parentId, childId)
+      .then((data) => {
+        setChildDetails(data)
 
-      const skillMap: Record<string, string> = {}
-      for (const s of data.all_skills ?? []) skillMap[s.id] = s.name
+        const skillMap: Record<string, string> = {}
+        for (const s of data.all_skills ?? []) skillMap[s.id] = s.name
 
-      const skillsArr: SkillItem[] = (data.mastery || []).map((row: any) => ({
-        skill_id: row.skill_id,
-        name: skillMap[row.skill_id] ?? row.skill_id,
-        mastery_prob: row.mastery_prob,
-      }))
-      setSkills(skillsArr)
-    } catch (err) {
-      console.error('Error loading child details:', err)
-      setDetailsError('Could not load learning details for this student. The server may be warming up.')
-    } finally {
-      setDetailsLoading(false)
-    }
+        const skillsArr: SkillItem[] = (data.mastery || []).map((row: any) => ({
+          skill_id: row.skill_id,
+          name: skillMap[row.skill_id] ?? row.skill_id,
+          mastery_prob: row.mastery_prob,
+        }))
+        setSkills(skillsArr)
+      })
+      .catch((err) => {
+        console.error('Error loading child details:', err)
+        setDetailsError('Could not load learning details for this student. The server may be warming up.')
+      })
+      .finally(() => {
+        setDetailsLoading(false)
+      })
   }, [parentId])
 
   useEffect(() => {
     if (selectedChildId) {
-      refreshChildDetails(selectedChildId)
+      refreshChildDetails(selectedChildId).catch(() => {})
     }
   }, [selectedChildId, refreshChildDetails])
 
@@ -150,7 +156,7 @@ export default function ParentDashboard() {
             console.log('Realtime learning event received:', payload)
             setLiveIndicator(true)
             setTimeout(() => setLiveIndicator(false), 2000)
-            refreshChildDetails(selectedChildId)
+            refreshChildDetails(selectedChildId).catch(() => {})
           }
         )
         .subscribe()
@@ -162,7 +168,7 @@ export default function ParentDashboard() {
 
     // 2. High-frequency polling fallback (every 3 seconds) for live demo responsiveness
     const pollTimer = setInterval(() => {
-      refreshChildDetails(selectedChildId)
+      refreshChildDetails(selectedChildId).catch(() => {})
     }, 3000)
 
     return () => {
@@ -173,25 +179,27 @@ export default function ParentDashboard() {
     }
   }, [selectedChildId, refreshChildDetails])
 
-  const handleAddChild = async (e: React.FormEvent) => {
+  const handleAddChild = (e: React.FormEvent) => {
     e.preventDefault()
     if (!newChildEmail) return
     setAddingChild(true)
     setAddError('')
-    try {
-      const res = await addChild(parentId, newChildEmail, newChildName)
-      setShowAddModal(false)
-      setNewChildEmail('')
-      setNewChildName('')
-      await refreshChildren()
-      if (res.child?.student_id) {
-        setSelectedChildId(res.child.student_id)
-      }
-    } catch (err: any) {
-      setAddError(err?.response?.data?.detail || err?.message || 'Could not link child. Please try again.')
-    } finally {
-      setAddingChild(false)
-    }
+    addChild(parentId, newChildEmail, newChildName)
+      .then((res) => {
+        setShowAddModal(false)
+        setNewChildEmail('')
+        setNewChildName('')
+        refreshChildren().catch(() => {})
+        if (res.child?.student_id) {
+          setSelectedChildId(res.child.student_id)
+        }
+      })
+      .catch((err: any) => {
+        setAddError(err?.response?.data?.detail || err?.message || 'Could not link child. Please try again.')
+      })
+      .finally(() => {
+        setAddingChild(false)
+      })
   }
 
   const selectedChild = childrenList.find((c) => c.student_id === selectedChildId)
@@ -245,9 +253,13 @@ export default function ParentDashboard() {
           </div>
           <button
             className="btn btn-ghost btn-sm"
-            onClick={async () => {
-              await signOut()
-              navigate('/')
+            onClick={() => {
+              signOut()
+                .then(() => navigate('/'))
+                .catch((err) => {
+                  console.error('Sign out error:', err)
+                  navigate('/')
+                })
             }}
           >
             Sign Out
