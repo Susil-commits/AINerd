@@ -129,7 +129,7 @@ def test_health_check_connectivity():
     from main import app
 
     client = TestClient(app)
-    resp = client.get("/health")
+    resp = client.get("/health/full")
     assert resp.status_code == 200
     data = resp.json()
 

@@ -32,9 +32,9 @@ export default function Dashboard() {
     ]).then(([masteryData, summaryData]) => {
       // Build skills array with names from all_skills
       const skillMap: Record<string, string> = {}
-      for (const s of masteryData.all_skills ?? []) skillMap[s.id] = s.name
+      for (const s of masteryData?.all_skills ?? []) skillMap[s.id] = s.name
 
-      const skillsArr: SkillMastery[] = masteryData.mastery.map((row: any) => ({
+      const skillsArr: SkillMastery[] = (masteryData?.mastery || []).map((row: any) => ({
         skill_id: row.skill_id,
         name: skillMap[row.skill_id] ?? row.skill_id,
         mastery_prob: row.mastery_prob,

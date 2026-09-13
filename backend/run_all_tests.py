@@ -25,29 +25,56 @@ TEST_SCRIPTS = [
 ]
 
 def main():
-    print("=" * 70)
+    print("=" * 76)
     print("   VERITAS AI SOCRATIC TUTOR — AUTOMATED VALIDATION SUITE")
-    print("=" * 70)
+    print("=" * 76)
     start_time = time.time()
-    passed = 0
+    results = []
 
     for script, name in TEST_SCRIPTS:
         print(f"\n▶ Running {name} ({script})...")
         t0 = time.time()
         res = subprocess.run([sys.executable, script], cwd=str(BACKEND_DIR))
         elapsed = time.time() - t0
-        if res.returncode == 0:
+        passed = (res.returncode == 0)
+        results.append({
+            "script": script,
+            "name": name,
+            "passed": passed,
+            "duration": elapsed,
+            "returncode": res.returncode,
+        })
+        if passed:
             print(f"  ✓ {name} passed in {elapsed:.2f}s")
-            passed += 1
         else:
-            print(f"  ✗ {name} failed with exit code {res.returncode}")
-            sys.exit(res.returncode)
+            print(f"  ✗ {name} failed with exit code {res.returncode} in {elapsed:.2f}s")
 
     total_time = time.time() - start_time
-    print("\n" + "=" * 70)
-    print(f"  ALL {passed}/{len(TEST_SCRIPTS)} TEST SUITES PASSED IN {total_time:.2f}s!")
-    print("  STATUS: 100% PRODUCTION READY & DEMO-DAY BULLETPROOF")
-    print("=" * 70 + "\n")
+    passed_count = sum(1 for r in results if r["passed"])
+    total_count = len(TEST_SCRIPTS)
+    width = 76
+
+    print("\n" + "=" * width)
+    print("DEMO DAY TEST EXECUTION SUMMARY".center(width))
+    print("=" * width)
+    print(f" {'#':<2} | {'TEST SUITE':<47} | {'STATUS':<10} | {'TIME':>7}")
+    print("-" * width)
+    for i, r in enumerate(results, 1):
+        status_str = "✓ PASS" if r["passed"] else f"✗ FAIL ({r['returncode']})"
+        print(f" {i:<2} | {r['name']:<47} | {status_str:<10} | {r['duration']:>6.2f}s")
+    print("-" * width)
+
+    if passed_count == total_count:
+        print(f"  ALL {passed_count}/{total_count} TEST SUITES PASSED IN {total_time:.2f}s!")
+        print("  STATUS: 100% PRODUCTION READY & DEMO-DAY BULLETPROOF")
+        print("=" * width + "\n")
+        sys.exit(0)
+    else:
+        failed_count = total_count - passed_count
+        print(f"  {passed_count}/{total_count} PASSED, {failed_count}/{total_count} FAILED IN {total_time:.2f}s")
+        print("  STATUS: ATTENTION REQUIRED — SOME TEST SUITES FAILED")
+        print("=" * width + "\n")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
