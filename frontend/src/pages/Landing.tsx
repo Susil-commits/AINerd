@@ -4,6 +4,9 @@ import { checkHealth } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import AnimatedIntro from '../components/AnimatedIntro'
 import SocraticPreview from '../components/SocraticPreview'
+import { validateEmailFormat, suggestCorrection, friendlyAuthError } from '../lib/emailValidation'
+import { useBackendWarmup } from '../hooks/useBackendWarmup'
+import WarmupExperience from '../components/WarmupExperience'
 import './Landing.css'
 
 const STATS = [
@@ -129,6 +132,7 @@ export default function Landing() {
     rememberedProfile,
   } = useAuth()
   const [email, setEmail] = useState('')
+  const [emailCorrection, setEmailCorrection] = useState<string | null>(null)
   const [magicLinkEmail, setMagicLinkEmail] = useState('')
   const [authError, setAuthError] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
@@ -137,8 +141,20 @@ export default function Landing() {
   const [authScreen, setAuthScreen] = useState<'form' | 'otp'>('form')
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', ''])
   const [resendTimer, setResendTimer] = useState(45)
+  const [resendCount, setResendCount] = useState(0)
+  const MAX_RESENDS = 3
   const [rememberedDismissed, setRememberedDismissed] = useState(false)
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  // Cold-start warmup hook
+  const {
+    isReady: isWarmupReady,
+    isTimeout: isWarmupTimeout,
+    startWarmupFlow,
+    resetWarmup,
+  } = useBackendWarmup()
+  const [showWarmupModal, setShowWarmupModal] = useState(false)
+  const [pendingWarmupDestination, setPendingWarmupDestination] = useState<{ path: string; role: 'student' | 'parent' } | null>(null)
 
   // Resend OTP countdown
   useEffect(() => {
@@ -230,6 +246,22 @@ export default function Landing() {
       setEmail(`${trimmed}${domain}`)
     }
     setAuthError('')
+    setEmailCorrection(null)
+  }
+
+  const navigateToRoleWithWarmup = (targetRole: 'student' | 'parent', path: string) => {
+    startWarmupFlow({
+      onWarmReady: () => {
+        navigate(path)
+      },
+      onColdStart: () => {
+        setPendingWarmupDestination({ path, role: targetRole })
+        setShowWarmupModal(true)
+      },
+      onBackendAwake: () => {
+        // Backend responds ready; non-blocking toast displays inside WarmupExperience
+      },
+    })
   }
 
   const handleFastResume = async () => {
@@ -238,18 +270,33 @@ export default function Landing() {
     setAuthError('')
     await demoSignIn(rememberedProfile.role, rememberedProfile.email)
     setAuthLoading(false)
-    if (rememberedProfile.role === 'parent') {
-      navigate('/parent-dashboard')
+    const targetPath = rememberedProfile.role === 'parent' ? '/parent-dashboard' : '/student-session'
+    navigateToRoleWithWarmup(rememberedProfile.role, targetPath)
+  }
+
+  const handleEmailBlur = () => {
+    const trimmed = email.trim()
+    if (!trimmed) return
+    const validation = validateEmailFormat(trimmed)
+    if (!validation.valid) {
+      setAuthError(validation.reason || 'Invalid email address')
     } else {
-      navigate('/student-session')
+      setAuthError('')
+      const correction = suggestCorrection(trimmed)
+      if (correction && correction.toLowerCase() !== trimmed.toLowerCase()) {
+        setEmailCorrection(correction)
+      } else {
+        setEmailCorrection(null)
+      }
     }
   }
 
   const handleSendMagicLinkOrOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     const trimmed = email.trim()
-    if (!trimmed || !trimmed.includes('@')) {
-      setAuthError('Please enter a valid email address.')
+    const validation = validateEmailFormat(trimmed)
+    if (!validation.valid) {
+      setAuthError(validation.reason || 'Please enter a valid email address.')
       return
     }
     setAuthLoading(true)
@@ -257,33 +304,53 @@ export default function Landing() {
     const res = await sendMagicLink(trimmed, role)
     setAuthLoading(false)
     if (res.error) {
-      setAuthError(res.error)
+      setAuthError(friendlyAuthError(res.error))
     } else {
       setMagicLinkEmail(trimmed)
       setAuthScreen('otp')
       setResendTimer(45)
+      setResendCount(0)
+      setEmailCorrection(null)
     }
   }
 
-  const handleVerifyOtpCode = async (codeToVerify: string) => {
+  const handleResendOtp = async () => {
+    if (resendCount >= MAX_RESENDS) {
+      setAuthError('Too many attempts. Please refresh the page and try again in a few minutes.')
+      return
+    }
+    const target = magicLinkEmail || email
+    if (!target) return
+    setAuthLoading(true)
+    setAuthError('')
+    const res = await sendMagicLink(target, role)
+    setAuthLoading(false)
+    if (res.error) {
+      setAuthError(friendlyAuthError(res.error))
+    } else {
+      const nextCount = resendCount + 1
+      setResendCount(nextCount)
+      setResendTimer(45 * (nextCount + 1)) // 45s, then 90s, then 135s progressive backoff
+    }
+  }
+
+  const handleVerifyOtpCode = async (codeToVerify: string, overrideRole?: 'student' | 'parent') => {
     const cleanCode = codeToVerify.trim()
     if (cleanCode.length !== 6) {
       setAuthError('Please enter all 6 digits of the verification code.')
       return
     }
+    const activeRole = overrideRole || role
     setAuthLoading(true)
     setAuthError('')
-    const targetEmail = magicLinkEmail || email || (role === 'parent' ? 'parent.sarah@veritas.dev' : 'student.alex@veritas.dev')
-    const res = await verifyOtp(targetEmail, cleanCode, role)
+    const targetEmail = magicLinkEmail || email || (activeRole === 'parent' ? 'parent.sarah@veritas.dev' : 'student.alex@veritas.dev')
+    const res = await verifyOtp(targetEmail, cleanCode, activeRole)
     setAuthLoading(false)
     if (res.error) {
-      setAuthError(res.error)
+      setAuthError(friendlyAuthError(res.error))
     } else {
-      if (role === 'parent') {
-        navigate('/parent-dashboard')
-      } else {
-        navigate('/student-session')
-      }
+      const targetPath = activeRole === 'parent' ? '/parent-dashboard' : '/student-session'
+      navigateToRoleWithWarmup(activeRole, targetPath)
     }
   }
 
@@ -333,7 +400,7 @@ export default function Landing() {
     setRole(targetRole)
     const digits = code.split('')
     setOtpDigits(digits)
-    handleVerifyOtpCode(code)
+    handleVerifyOtpCode(code, targetRole)
   }
 
   const handleDemoLogin = async (targetRole: 'student' | 'parent') => {
@@ -341,19 +408,13 @@ export default function Landing() {
     setAuthError('')
     await demoSignIn(targetRole)
     setAuthLoading(false)
-    if (targetRole === 'parent') {
-      navigate('/parent-dashboard')
-    } else {
-      navigate('/student-session')
-    }
+    const targetPath = targetRole === 'parent' ? '/parent-dashboard' : '/student-session'
+    navigateToRoleWithWarmup(targetRole, targetPath)
   }
 
   const handleEnterSession = () => {
-    if (role === 'parent') {
-      navigate('/parent-dashboard')
-    } else {
-      navigate('/student-session')
-    }
+    const targetPath = role === 'parent' ? '/parent-dashboard' : '/student-session'
+    navigateToRoleWithWarmup(role, targetPath)
   }
 
   return (
@@ -521,7 +582,7 @@ export default function Landing() {
                       Security Code<br />
                       <span className="auth-greeting-sub">Verification</span>
                     </h2>
-                    <p className="auth-tagline">Enter the 6-digit one-time code sent to your email.</p>
+                    <p className="auth-tagline">If that email is valid, we've sent a 6-digit code — check your inbox (and spam folder).</p>
 
                     <div className="otp-inputs-grid">
                       {otpDigits.map((digit, idx) => (
@@ -581,11 +642,14 @@ export default function Landing() {
                         <button
                           type="button"
                           className="otp-resend-link"
-                          onClick={() => handleSendMagicLinkOrOtp()}
-                          disabled={authLoading}
+                          onClick={handleResendOtp}
+                          disabled={authLoading || resendCount >= MAX_RESENDS}
                         >
-                          Resend verification code
+                          {resendCount >= MAX_RESENDS ? 'Max resends reached' : 'Resend verification code'}
                         </button>
+                      )}
+                      {resendCount > 0 && resendCount < MAX_RESENDS && (
+                        <span className="otp-resend-attempts">Attempt {resendCount} of {MAX_RESENDS}</span>
                       )}
                     </div>
                   </div>
@@ -612,11 +676,35 @@ export default function Landing() {
                             onChange={(e) => {
                               setEmail(e.target.value)
                               setAuthError('')
+                              const correction = suggestCorrection(e.target.value)
+                              if (!correction) setEmailCorrection(null)
                             }}
+                            onBlur={handleEmailBlur}
                             required
                             disabled={authLoading}
                           />
                         </div>
+
+                        {/* Soft Inline Typo Suggestion */}
+                        {emailCorrection && (
+                          <div className="auth-email-suggestion animate-fadein">
+                            <span className="suggestion-icon">💡</span>
+                            <span className="suggestion-text">
+                              Did you mean <strong>{emailCorrection}</strong>?
+                            </span>
+                            <button
+                              type="button"
+                              className="btn-suggestion-apply"
+                              onClick={() => {
+                                setEmail(emailCorrection)
+                                setEmailCorrection(null)
+                                setAuthError('')
+                              }}
+                            >
+                              Use this
+                            </button>
+                          </div>
+                        )}
 
                         {/* Interactive Domain Suggestion Chips */}
                         <div className="auth-domain-chips">
@@ -640,7 +728,10 @@ export default function Landing() {
                           <button
                             type="button"
                             className={`auth-role-tab ${role === 'student' ? 'auth-role-tab--active' : ''}`}
-                            onClick={() => setRole('student')}
+                            onClick={() => {
+                              setRole('student')
+                              checkHealth()
+                            }}
                           >
                             <div className="role-tab-text">
                               <span className="role-tab-title">Student</span>
@@ -651,7 +742,10 @@ export default function Landing() {
                           <button
                             type="button"
                             className={`auth-role-tab ${role === 'parent' ? 'auth-role-tab--active' : ''}`}
-                            onClick={() => setRole('parent')}
+                            onClick={() => {
+                              setRole('parent')
+                              checkHealth()
+                            }}
                           >
                             <div className="role-tab-text">
                               <span className="role-tab-title">Parent</span>
@@ -969,6 +1063,36 @@ export default function Landing() {
         </div>
       </footer>
     </div>
+
+    {/* Role-Based Cold-Start Warmup Modal */}
+    {showWarmupModal && pendingWarmupDestination && (
+      <WarmupExperience
+        role={pendingWarmupDestination.role}
+        isReady={isWarmupReady}
+        isTimeout={isWarmupTimeout}
+        onComplete={(scoreData) => {
+          if (scoreData) {
+            try {
+              sessionStorage.setItem('veritas_warmup_badge', JSON.stringify({
+                score: scoreData.score,
+                total: scoreData.total,
+                role: pendingWarmupDestination.role,
+              }))
+            } catch {}
+          }
+          setShowWarmupModal(false)
+          navigate(pendingWarmupDestination.path)
+        }}
+        onRetry={() => {
+          resetWarmup()
+          navigateToRoleWithWarmup(pendingWarmupDestination.role, pendingWarmupDestination.path)
+        }}
+        onDismiss={() => {
+          setShowWarmupModal(false)
+          resetWarmup()
+        }}
+      />
+    )}
     </>
   )
 }

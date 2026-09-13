@@ -32,6 +32,23 @@ export default function TutorSession() {
     (text) => { setInput(text) }
   )
 
+  const [warmupBadge, setWarmupBadge] = useState<{ score: number; total: number } | null>(null)
+
+  useEffect(() => {
+    try {
+      const rawBadge = sessionStorage.getItem('veritas_warmup_badge')
+      if (rawBadge) {
+        sessionStorage.removeItem('veritas_warmup_badge')
+        const data = JSON.parse(rawBadge)
+        if (data && typeof data.score === 'number') {
+          setWarmupBadge({ score: data.score, total: data.total })
+          const t = setTimeout(() => setWarmupBadge(null), 3500)
+          return () => clearTimeout(t)
+        }
+      }
+    } catch {}
+  }, [])
+
   // Load session from sessionStorage or initialize from logged-in user
   useEffect(() => {
     let mounted = true
@@ -170,6 +187,29 @@ export default function TutorSession() {
 
   return (
     <div className="session-layout">
+      {warmupBadge && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 9999,
+          background: 'linear-gradient(135deg, rgba(22, 101, 52, 0.95), rgba(15, 23, 42, 0.98))',
+          border: '1px solid #34D399',
+          borderRadius: '12px',
+          padding: '10px 18px',
+          color: '#FFFFFF',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.5), 0 0 16px rgba(52, 211, 153, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          fontSize: '0.9rem',
+          fontWeight: 600,
+          animation: 'fadein 0.3s ease-out',
+        }}>
+          <span>🔥</span>
+          <span>Warm-up score: <strong>{warmupBadge.score}/{warmupBadge.total}</strong> — ready to learn!</span>
+        </div>
+      )}
       {/* ── Left sidebar: problem + upload ── */}
       <aside className="session-sidebar">
         <div className="session-header-mini">

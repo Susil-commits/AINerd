@@ -28,7 +28,23 @@ export default function ParentDashboard() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deletingData, setDeletingData] = useState(false)
   const [deleteSuccessMsg, setDeleteSuccessMsg] = useState('')
+  const [warmupBadge, setWarmupBadge] = useState<{ score: number; total: number } | null>(null)
   const realtimeChannelRef = useRef<any>(null)
+
+  useEffect(() => {
+    try {
+      const rawBadge = sessionStorage.getItem('veritas_warmup_badge')
+      if (rawBadge) {
+        sessionStorage.removeItem('veritas_warmup_badge')
+        const data = JSON.parse(rawBadge)
+        if (data && typeof data.score === 'number') {
+          setWarmupBadge({ score: data.score, total: data.total })
+          const t = setTimeout(() => setWarmupBadge(null), 3500)
+          return () => clearTimeout(t)
+        }
+      }
+    } catch {}
+  }, [])
 
   const parentId = user?.id || '99999999-8888-7777-6666-555555555555'
   const parentEmail = user?.email || 'parent.sarah@veritas.dev'
@@ -172,6 +188,29 @@ export default function ParentDashboard() {
 
   return (
     <div className="parent-dashboard">
+      {warmupBadge && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 9999,
+          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(15, 23, 42, 0.98))',
+          border: '1px solid #818CF8',
+          borderRadius: '12px',
+          padding: '10px 18px',
+          color: '#FFFFFF',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.5), 0 0 16px rgba(129, 140, 248, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          fontSize: '0.9rem',
+          fontWeight: 600,
+          animation: 'fadein 0.3s ease-out',
+        }}>
+          <span>💡</span>
+          <span>Parent warm-up: <strong>{warmupBadge.score}/{warmupBadge.total}</strong> insights discovered!</span>
+        </div>
+      )}
       {/* Top Navbar */}
       <header className="parent-navbar">
         <div className="parent-nav-left">

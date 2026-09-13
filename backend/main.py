@@ -190,8 +190,21 @@ class NeoChatRequest(BaseModel):
 @app.api_route("/health", methods=["GET", "HEAD"])
 async def health():
     """
-    Health check verifying both Supabase database and Gemini API reachability.
-    Cached (DB: 30s, Gemini: 60s) to keep client pinging sub-5ms without burning rate limits.
+    Lightweight, instantaneous liveness check — used by frontend cold-start detection
+    and cloud health checks. Responds in <1ms without blocking on external dependencies.
+    """
+    return {
+        "status": "ok",
+        "service": "veritas-backend",
+        "uptime_seconds": round(time.time() - _server_start_time, 1)
+    }
+
+
+@app.api_route("/health/full", methods=["GET", "HEAD"])
+async def health_full():
+    """
+    Full dependency health check verifying both Supabase database and Gemini API reachability.
+    Cached (DB: 30s, Gemini: 60s) to keep latency low without burning rate limits.
     """
     global _last_db_check_time, _cached_db_status, _last_gemini_check_time, _cached_gemini_status
     now = time.time()
