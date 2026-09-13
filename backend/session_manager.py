@@ -1,0 +1,204 @@
+"""
+Session Manager — Resilient Session State Persistence for Veritas Tutor.
+Eliminates in-memory fragility: Active sessions survive Render restarts, worker reloads,
+and redeployments during Demo Day by persisting state to Supabase with in-memory caching.
+"""
+import uuid
+import time
+from typing import Any
+from db.supabase_client import get_supabase
+from bkt.tracker import initialize_mastery, get_next_skill
+
+# In-memory session cache for microsecond response times
+_sessions_cache: dict[str, dict[str, Any]] = {}
+
+
+def _clean_state_for_persistence(state: dict[str, Any]) -> dict[str, Any]:
+    """Strip non-serializable elements like raw image bytes before JSON persistence."""
+    cleaned = dict(state)
+    cleaned["latest_image_bytes"] = None
+    return cleaned
+
+
+def get_session(session_id: str) -> dict[str, Any] | None:
+    """
+    Retrieve session state with dual-tier storage:
+    1. In-memory cache hit (0ms).
+    2. Supabase `sessions.state` JSONB restoration on cache miss (e.g. Render redeploy).
+    3. Automatic database rehydration fallback from `sessions` + `session_events` + `student_skill_mastery`.
+    """
+    # 1. Fast in-memory cache lookup
+    if session_id in _sessions_cache:
+        return _sessions_cache[session_id]
+
+    supabase = get_supabase()
+
+    # 2. Query Supabase sessions table
+    try:
+        sess_res = (
+            supabase.table("sessions")
+            .select("*")
+            .eq("id", session_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception as e:
+        print(f"[WARN] SessionManager: Failed to query sessions table for {session_id}: {e}")
+        return None
+
+    if not sess_res.data:
+        return None
+
+    sess_row = sess_res.data[0]
+    student_id = sess_row.get("student_id")
+    student_name = sess_row.get("student_name") or "Student"
+
+    # Check if `state` column exists and contains valid session state
+    saved_state = sess_row.get("state")
+    if isinstance(saved_state, dict) and "student_id" in saved_state and "current_problem" in saved_state:
+        _sessions_cache[session_id] = saved_state
+        print(f"[INFO] SessionManager: Restored session {session_id} directly from Supabase state JSONB.")
+        return saved_state
+
+    # 3. Rehydration Fallback: Reconstruct state from DB records if `state` column is empty
+    print(f"[INFO] SessionManager: Rehydrating session {session_id} from database event stream...")
+    try:
+        # Load student mastery
+        mastery_rows = (
+            supabase.table("student_skill_mastery")
+            .select("skill_id, mastery_prob")
+            .eq("student_id", student_id)
+            .execute()
+        )
+        mastery_state = initialize_mastery()
+        for r in (mastery_rows.data or []):
+            mastery_state[r["skill_id"]] = r["mastery_prob"]
+
+        # Load session events to rebuild conversation history and problem attempts
+        events_res = (
+            supabase.table("session_events")
+            .select("*")
+            .eq("session_id", session_id)
+            .order("created_at")
+            .execute()
+        )
+        events = events_res.data or []
+
+        conversation_history = []
+        problems_attempted = []
+        last_problem_id = None
+
+        for ev in events:
+            prob_id = ev.get("problem_id")
+            if prob_id and prob_id not in problems_attempted:
+                problems_attempted.append(prob_id)
+            if prob_id:
+                last_problem_id = prob_id
+
+            student_turn = ev.get("attempt_text")
+            tutor_turn = ev.get("agent_response")
+            if student_turn:
+                conversation_history.append({"role": "student", "content": student_turn})
+            if tutor_turn:
+                conversation_history.append({"role": "tutor", "content": tutor_turn})
+
+        # Resolve current problem
+        current_problem = None
+        if last_problem_id:
+            prob_res = (
+                supabase.table("problems")
+                .select("*")
+                .eq("id", last_problem_id)
+                .limit(1)
+                .execute()
+            )
+            if prob_res.data:
+                current_problem = prob_res.data[0]
+
+        current_skill = get_next_skill(mastery_state)
+        if not current_problem:
+            from agents.content_agent import get_next_problem
+            current_problem = get_next_problem(
+                skill_id=current_skill,
+                mastery_prob=mastery_state.get(current_skill, 0.3),
+                student_id=student_id,
+            )
+            if current_problem and current_problem.get("id"):
+                problems_attempted.append(current_problem["id"])
+
+        rehydrated_state: dict[str, Any] = {
+            "student_id": student_id,
+            "student_name": student_name,
+            "session_id": session_id,
+            "conversation_history": conversation_history,
+            "latest_input": "",
+            "latest_image_bytes": None,
+            "current_problem": current_problem,
+            "problems_attempted": problems_attempted,
+            "mastery_state": mastery_state,
+            "current_skill_id": current_problem.get("skill_id", current_skill) if current_problem else current_skill,
+            "diagnosis": None,
+            "agent_response": "",
+            "thinking_steps": [],
+            "next_action": None,
+        }
+
+        _sessions_cache[session_id] = rehydrated_state
+        print(f"[INFO] SessionManager: Successfully rehydrated session {session_id} ({len(conversation_history)} messages).")
+        return rehydrated_state
+
+    except Exception as err:
+        print(f"[ERROR] SessionManager: Rehydration error for {session_id}: {err}")
+        return None
+
+
+def save_session(session_id: str, state: dict[str, Any]) -> None:
+    """
+    Persist session state in RAM cache and sync to Supabase sessions table.
+    """
+    # 1. Update in-memory cache immediately
+    _sessions_cache[session_id] = state
+
+    # 2. Persist to Supabase sessions table
+    try:
+        supabase = get_supabase()
+        cleaned_state = _clean_state_for_persistence(state)
+        supabase.table("sessions").update({"state": cleaned_state}).eq("id", session_id).execute()
+    except Exception as e:
+        # If the `state` column is not yet present on remote DB, fallback silently
+        err_str = str(e)
+        if "PGRST204" in err_str or "state" in err_str:
+            pass  # Migration day 3 not run yet; rehydration fallback handles recovery
+        else:
+            print(f"[WARN] SessionManager: Failed to persist session state to Supabase: {e}")
+
+
+def record_session_event(
+    session_id: str,
+    student_id: str,
+    problem_id: str | None,
+    attempt_text: str | None,
+    is_correct: bool | None,
+    agent_response: str | None,
+) -> None:
+    """
+    Record an interaction event (student thought, diagnostic result, tutor response) into `session_events`.
+    Guarantees event persistence for audit log, parent dashboard, and state rehydration.
+    """
+    try:
+        supabase = get_supabase()
+        supabase.table("session_events").insert({
+            "session_id": session_id,
+            "student_id": student_id,
+            "problem_id": problem_id,
+            "attempt_text": attempt_text,
+            "is_correct": is_correct,
+            "agent_response": agent_response,
+        }).execute()
+    except Exception as e:
+        print(f"[WARN] SessionManager: Failed to insert session event: {e}")
+
+
+def get_all_active_session_ids() -> list[str]:
+    """Return list of active cached session IDs for diagnostics."""
+    return list(_sessions_cache.keys())

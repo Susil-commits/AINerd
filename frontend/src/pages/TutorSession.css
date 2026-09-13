@@ -287,6 +287,23 @@
 /* ── Responsive ── */
 @media (max-width: 1024px) {
   .session-layout { grid-template-columns: 1fr; height: auto; }
-  .session-sidebar, .session-mastery { border: none; border-bottom: 1px solid var(--border); }
-  .session-main { height: 70vh; }
+  .session-sidebar {
+    border: none;
+    border-bottom: 1px solid var(--border);
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .session-mastery { border: none; border-top: 1px solid var(--border); }
+  .session-main { height: 65vh; min-height: 460px; }
+}
+
+@media (max-width: 640px) {
+  .session-layout { min-height: 100vh; }
+  .session-sidebar { padding: 0.85rem; max-height: 190px; }
+  .problem-text { font-size: 0.85rem; }
+  .chat-messages { padding: 1rem 0.75rem; }
+  .chat-bubble { max-width: 92%; font-size: 0.88rem; }
+  .chat-input-area { padding: 0.5rem 0.75rem 0.75rem; gap: 0.35rem; }
+  .chat-actions-bar { padding: 0.4rem 0.75rem 0.2rem; }
+  .session-main { height: 58vh; min-height: 380px; }
 }

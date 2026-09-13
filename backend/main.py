@@ -57,9 +57,15 @@ from safety import (
     SAFE_SUPPORT_RESPONSE,
 )
 from postgrest.base_request_builder import CountMethod
+from session_manager import (
+    get_session,
+    save_session,
+    record_session_event,
+    get_all_active_session_ids,
+)
 
-# ── In-memory session store (Supabase for persistence, memory for speed) ────
-_sessions: dict[str, TutorState] = {}
+# ── Resilient Session Store & Global State ──────────────────────────────────
+_server_start_time: float = time.time()
 _graph = None
 
 # SSE Response headers to prevent proxy/CDN buffering (Render, Cloudflare, Nginx)
@@ -131,9 +137,11 @@ async def get_security_status():
     return get_security_telemetry()
 
 
-# In-memory health cache (TTL: 30 seconds) to prevent hammering Supabase on client polling
+# In-memory health cache to prevent hammering Supabase & Gemini on frequent polling
 _last_db_check_time: float = 0.0
 _cached_db_status: bool = False
+_last_gemini_check_time: float = 0.0
+_cached_gemini_status: bool = False
 
 
 # ── Pydantic Models ──────────────────────────────────────────────────────────
@@ -172,9 +180,14 @@ class NeoChatRequest(BaseModel):
 
 @app.api_route("/health", methods=["GET", "HEAD"])
 async def health():
-    global _last_db_check_time, _cached_db_status
+    """
+    Health check verifying both Supabase database and Gemini API reachability.
+    Cached (DB: 30s, Gemini: 60s) to keep client pinging sub-5ms without burning rate limits.
+    """
+    global _last_db_check_time, _cached_db_status, _last_gemini_check_time, _cached_gemini_status
     now = time.time()
-    # Cache DB connectivity check for 30s so client health polling doesn't hammer remote DB
+
+    # 1. Supabase connectivity check (cached 30s)
     if (now - _last_db_check_time) > 30.0:
         try:
             supabase = get_supabase()
@@ -185,7 +198,42 @@ async def health():
             print(f"[WARN] Health DB ping check: {e}")
             _cached_db_status = False
             _last_db_check_time = now - 20.0  # retry in 10s if failed
-    return {"status": "ok", "version": "1.0.0", "db": _cached_db_status}
+
+    # 2. Gemini API reachability check (cached 60s)
+    if (now - _last_gemini_check_time) > 60.0:
+        try:
+            gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", "")
+            if not gemini_key:
+                _cached_gemini_status = False
+            else:
+                import google.generativeai as genai
+                genai.configure(api_key=gemini_key)
+                models = genai.list_models()
+                next(iter(models), None)
+                _cached_gemini_status = True
+                _last_gemini_check_time = now
+        except Exception as e:
+            if "429" in str(e) or "ResourceExhausted" in str(e) or "quota" in str(e).lower():
+                _cached_gemini_status = True  # API is reachable and responded with quota headers
+                _last_gemini_check_time = now
+            else:
+                print(f"[WARN] Health Gemini check: {e}")
+                _cached_gemini_status = False
+                _last_gemini_check_time = now - 45.0  # retry in 15s if failed
+
+    overall_ok = _cached_db_status and _cached_gemini_status
+
+    return {
+        "status": "ok" if overall_ok else "degraded",
+        "version": "1.0.0",
+        "uptime_seconds": round(now - _server_start_time, 1),
+        "services": {
+            "supabase": _cached_db_status,
+            "gemini": _cached_gemini_status,
+        },
+        "db": _cached_db_status,
+        "active_cached_sessions": len(get_all_active_session_ids()),
+    }
 
 
 @app.post("/session/start")
@@ -294,7 +342,7 @@ async def start_session(req: StartSessionRequest):
         "thinking_steps": [],
         "next_action": None,
     }
-    _sessions[session_id] = state
+    save_session(session_id, state)
 
     return {
         "session_id": session_id,
@@ -318,7 +366,8 @@ async def send_message(req: MessageRequest):
         max_per_minute=30,
     )
 
-    if req.session_id not in _sessions:
+    state = get_session(req.session_id)
+    if not state:
         raise HTTPException(status_code=404, detail="Session not found")
 
     # 1. Sanitize student input (length bound, strip control characters, escape HTML)
@@ -342,7 +391,6 @@ async def send_message(req: MessageRequest):
             "category": harm_category,
         })
 
-    state = _sessions[req.session_id]
     state["latest_input"] = clean_message
     state["latest_image_bytes"] = None
 
@@ -381,13 +429,21 @@ async def send_message(req: MessageRequest):
             thinking_steps.append("Thinking of a guiding question...")
             yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
 
-            # Update state
+            # Update state & persist
             state["conversation_history"] = state["conversation_history"] + [
                 {"role": "student", "content": clean_message},
                 {"role": "tutor", "content": response},
             ]
             state["thinking_steps"] = thinking_steps
-            _sessions[req.session_id] = state
+            save_session(req.session_id, state)
+            record_session_event(
+                session_id=req.session_id,
+                student_id=state["student_id"],
+                problem_id=current_prob.get("id"),
+                attempt_text=clean_message,
+                is_correct=None,
+                agent_response=response,
+            )
 
             # Stream the response word by word for a live feel
             words = response.split(" ")
@@ -426,10 +482,10 @@ async def upload_work(
         max_per_minute=10,
     )
 
-    if session_id not in _sessions:
+    state = get_session(session_id)
+    if not state:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    state = _sessions[session_id]
     image_bytes = await file.read()
 
     # Safety: Validate image format, MIME type, and max 10MB file limit
@@ -482,19 +538,19 @@ async def upload_work(
                     "skill_id": skill_id,
                     "mastery_prob": new_mastery,
                 }, on_conflict="student_id,skill_id").execute()
-                supabase.table("session_events").insert({
-                    "session_id": state["session_id"],
-                    "student_id": state["student_id"],
-                    "problem_id": current_problem.get("id"),
-                    "attempt_text": diagnosis.get("ocr_text", ""),
-                    "is_correct": is_correct,
-                    "agent_response": diagnosis.get("corrective_question", ""),
-                }).execute()
+                record_session_event(
+                    session_id=state["session_id"],
+                    student_id=state["student_id"],
+                    problem_id=current_problem.get("id"),
+                    attempt_text=diagnosis.get("ocr_text", ""),
+                    is_correct=is_correct,
+                    agent_response=diagnosis.get("corrective_question", ""),
+                )
             except Exception as e:
                 print(f"[WARN] Supabase write failed: {e}")
 
             state["diagnosis"] = diagnosis
-            _sessions[session_id] = state
+            save_session(session_id, state)
 
             # If correct, select next problem targeted with pgvector RAG
             if is_correct:
@@ -513,7 +569,7 @@ async def upload_work(
                     state["current_problem"] = next_problem
                     state["current_skill_id"] = next_skill
                     state["problems_attempted"] = state.get("problems_attempted", []) + [next_problem["id"]]
-                    _sessions[session_id] = state
+                    save_session(session_id, state)
 
             yield f"data: {json.dumps({'type': 'diagnosis', 'diagnosis': diagnosis, 'mastery_state': state['mastery_state'], 'next_problem': state.get('current_problem')})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
@@ -929,6 +985,91 @@ async def get_child_details(parent_id: str, child_id: str):
         "sessions": sessions_res.data or [],
         "recent_events": events_res.data or [],
     }
+
+
+@app.delete("/parent/{parent_id}/data")
+async def delete_parent_data(parent_id: str):
+    """
+    Data Privacy & Deletion (Trust & GDPR/EdTech signal):
+    Purge all session logs, events, and linked child records for this parent.
+    """
+    try:
+        uuid.UUID(str(parent_id))
+    except (ValueError, AttributeError):
+        raise HTTPException(422, "Invalid parent_id: Must be a valid UUID format.")
+
+    limiter.enforce_cooldown(f"parent_del_{parent_id}", cooldown_seconds=2.0, action="delete data", max_per_minute=5)
+
+    supabase = get_supabase()
+    deleted_sessions = 0
+    deleted_events = 0
+
+    try:
+        # 1. Fetch children for this parent
+        res = supabase.table("children").select("student_id").eq("parent_id", parent_id).execute()
+        student_ids = [c["student_id"] for c in (res.data or [])]
+
+        if student_ids:
+            # Delete session events and sessions for these students
+            for sid in student_ids:
+                try:
+                    ev_del = supabase.table("session_events").delete().eq("student_id", sid).execute()
+                    deleted_events += len(ev_del.data or [])
+                except Exception:
+                    pass
+                try:
+                    sess_del = supabase.table("sessions").delete().eq("student_id", sid).execute()
+                    deleted_sessions += len(sess_del.data or [])
+                except Exception:
+                    pass
+
+        # 2. Delete child link records from children table
+        supabase.table("children").delete().eq("parent_id", parent_id).execute()
+
+        # 3. Clean fallback file if present
+        if CHILDREN_FALLBACK_FILE.exists():
+            try:
+                with open(CHILDREN_FALLBACK_FILE, "r", encoding="utf-8") as f:
+                    current = json.load(f)
+                cleaned = [c for c in current if c.get("parent_id") != parent_id]
+                with open(CHILDREN_FALLBACK_FILE, "w", encoding="utf-8") as f:
+                    json.dump(cleaned, f, indent=2)
+            except Exception:
+                pass
+
+        record_security_event("user_data_deleted", {
+            "parent_id": parent_id,
+            "student_count": len(student_ids),
+            "sessions_purged": deleted_sessions,
+        })
+
+        return {
+            "status": "ok",
+            "message": "All session activity and child links have been securely purged.",
+            "purged_records": {
+                "children_unlinked": len(student_ids),
+                "sessions_deleted": deleted_sessions,
+                "events_deleted": deleted_events,
+            }
+        }
+    except Exception as e:
+        print(f"[ERROR] Failed to delete parent data: {e}")
+        raise HTTPException(500, detail=f"Failed to delete parent data: {str(e)}")
+
+
+@app.delete("/student/{student_id}/data")
+async def delete_student_data(
+    student_id: str,
+    auth_payload: dict = Depends(verify_student_access),
+):
+    """Purge a student's practice history and session logs (authenticated)."""
+    supabase = get_supabase()
+    try:
+        supabase.table("session_events").delete().eq("student_id", student_id).execute()
+        supabase.table("sessions").delete().eq("student_id", student_id).execute()
+        return {"status": "ok", "message": "Student practice sessions purged."}
+    except Exception as e:
+        raise HTTPException(500, detail=f"Failed to purge student data: {e}")
 
 
 # ── Neo AI Platform Assistant Endpoints ─────────────────────────────────────

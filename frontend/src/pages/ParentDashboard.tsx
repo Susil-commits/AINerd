@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getParentChildren, addChild, getChildDetails, type ChildItem } from '../lib/api'
+import { getParentChildren, addChild, getChildDetails, deleteParentData, type ChildItem } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import MasteryRadar from '../components/MasteryRadar'
 import './ParentDashboard.css'
@@ -25,10 +25,30 @@ export default function ParentDashboard() {
   const [addError, setAddError] = useState('')
   const [addingChild, setAddingChild] = useState(false)
   const [liveIndicator, setLiveIndicator] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deletingData, setDeletingData] = useState(false)
+  const [deleteSuccessMsg, setDeleteSuccessMsg] = useState('')
   const realtimeChannelRef = useRef<any>(null)
 
   const parentId = user?.id || '99999999-8888-7777-6666-555555555555'
   const parentEmail = user?.email || 'parent.sarah@veritas.dev'
+
+  const handleDeleteData = async () => {
+    setDeletingData(true)
+    try {
+      const res = await deleteParentData(parentId)
+      setDeleteSuccessMsg(res.message || 'All activity data successfully purged.')
+      setTimeout(() => {
+        setShowDeleteModal(false)
+        setDeleteSuccessMsg('')
+        refreshChildren()
+      }, 1200)
+    } catch (err: any) {
+      alert('Failed to delete data: ' + (err.response?.data?.detail || err.message))
+    } finally {
+      setDeletingData(false)
+    }
+  }
 
   // Fetch children list
   const refreshChildren = useCallback(async () => {
@@ -389,6 +409,29 @@ export default function ParentDashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Student Privacy & Parental Data Rights Card */}
+            <div className="privacy-trust-card">
+              <div className="privacy-trust-content">
+                <div className="privacy-trust-header">
+                  <span className="privacy-shield-icon">🛡️</span>
+                  <div>
+                    <h4>Student Data Privacy & Parental Control</h4>
+                    <p>
+                      In alignment with student privacy best practices, parents have full control over recorded learning history.
+                      You can purge all past practice sessions, OCR diagnosis attempts, and child associations at any time.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-danger-outline"
+                  onClick={() => setShowDeleteModal(true)}
+                >
+                  Delete Activity Data
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="no-child-selected">
@@ -470,6 +513,59 @@ export default function ParentDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Data Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="modal-backdrop" onClick={() => !deletingData && setShowDeleteModal(false)}>
+          <div className="modal-card modal-card--danger" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-box">
+                <h3 className="text-danger">Purge Activity & Learning History</h3>
+              </div>
+              <button
+                className="close-btn"
+                onClick={() => !deletingData && setShowDeleteModal(false)}
+                title="Close modal"
+                disabled={deletingData}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="modal-sub">
+              Are you sure you want to permanently delete all tutoring session logs, problem diagnoses, and student event records? This action cannot be undone.
+            </p>
+
+            {deleteSuccessMsg && (
+              <div className="success-banner">
+                ✓ {deleteSuccessMsg}
+              </div>
+            )}
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deletingData}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={handleDeleteData}
+                disabled={deletingData}
+              >
+                {deletingData ? 'Purging Records…' : 'Yes, Delete All Data'}
+              </button>
+            </div>
           </div>
         </div>
       )}

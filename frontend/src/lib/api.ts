@@ -63,7 +63,19 @@ export interface Diagnosis {
   bounding_box?: BoundingBox | null
 }
 
-export async function checkHealth(): Promise<{ status: string; db?: boolean }> {
+export interface HealthStatus {
+  status: string
+  version?: string
+  uptime_seconds?: number
+  services?: {
+    supabase: boolean
+    gemini: boolean
+  }
+  db?: boolean
+  active_cached_sessions?: number
+}
+
+export async function checkHealth(): Promise<HealthStatus> {
   const { data } = await api.get('/health', { timeout: 12000 })
   return data
 }
@@ -126,6 +138,19 @@ export async function addChild(
 
 export async function getChildDetails(parentId: string, childId: string) {
   const { data } = await api.get(`/parent/${parentId}/child/${childId}/details`)
+  return data
+}
+
+export async function deleteParentData(parentId: string): Promise<{
+  status: string
+  message: string
+  purged_records?: {
+    children_unlinked: number
+    sessions_deleted: number
+    events_deleted: number
+  }
+}> {
+  const { data } = await api.delete(`/parent/${parentId}/data`)
   return data
 }
 
