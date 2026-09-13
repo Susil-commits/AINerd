@@ -9,6 +9,8 @@ interface Props {
   onDiagnosis: (d: Diagnosis, mastery: Record<string, number>, next: Problem | null) => void
 }
 
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 // 10MB cap matching backend safety boundary
+
 export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props) {
   const [preview, setPreview] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -21,6 +23,31 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
   const [cameraOpen, setCameraOpen] = useState(false)
 
   const handleFile = (f: File) => {
+    // 1. Client-side file-size check matching backend's 10MB cap
+    if (f.size > MAX_FILE_SIZE_BYTES) {
+      const sizeMb = (f.size / (1024 * 1024)).toFixed(1)
+      setUploadError(`Image is ${sizeMb}MB — please use one under 10MB.`)
+      setFile(null)
+      setPreview(null)
+      setDiagnosis(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      return
+    }
+
+    // 2. Validate MIME type
+    if (f.type && !f.type.startsWith('image/')) {
+      setUploadError('Please select a valid photo file (PNG, JPEG, or WebP).')
+      setFile(null)
+      setPreview(null)
+      setDiagnosis(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      return
+    }
+
     setFile(f)
     setDiagnosis(null)
     setUploadError(null)
@@ -67,7 +94,12 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
       (err) => {
         console.error('Handwriting diagnosis error:', err)
         setUploading(false)
-        setUploadError('Could not analyze handwritten work. The server may be busy or warming up. Please try again.')
+        const errMsg = err?.message || ''
+        if (errMsg.includes('10MB') || errMsg.includes('413')) {
+          setUploadError('Image exceeds 10MB limit. Please upload a smaller photo.')
+        } else {
+          setUploadError('Could not analyze handwritten work. The server may be busy or warming up. Please try again.')
+        }
       },
     )
   }, [file, sessionId, onThinking, onDiagnosis])
@@ -152,7 +184,15 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
           )}
           <button
             className="clear-btn"
-            onClick={() => { setPreview(null); setFile(null); setDiagnosis(null) }}
+            onClick={() => {
+              setPreview(null)
+              setFile(null)
+              setDiagnosis(null)
+              setUploadError(null)
+              if (fileInputRef.current) {
+                fileInputRef.current.value = ''
+              }
+            }}
             aria-label="Remove uploaded image"
             title="Remove image"
           >
