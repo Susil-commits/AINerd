@@ -1030,6 +1030,7 @@ async def delete_parent_data(parent_id: str):
     supabase = get_supabase()
     deleted_sessions = 0
     deleted_events = 0
+    deleted_mastery = 0
 
     try:
         # 1. Fetch children for this parent
@@ -1037,7 +1038,7 @@ async def delete_parent_data(parent_id: str):
         student_ids = [c["student_id"] for c in (res.data or [])]
 
         if student_ids:
-            # Delete session events and sessions for these students
+            # Delete session events, sessions, and skill mastery profiles for these students
             for sid in student_ids:
                 try:
                     ev_del = await db_exec(supabase.table("session_events").delete().eq("student_id", sid))
@@ -1047,6 +1048,11 @@ async def delete_parent_data(parent_id: str):
                 try:
                     sess_del = await db_exec(supabase.table("sessions").delete().eq("student_id", sid))
                     deleted_sessions += len(sess_del.data or [])
+                except Exception:
+                    pass
+                try:
+                    m_del = await db_exec(supabase.table("student_skill_mastery").delete().eq("student_id", sid))
+                    deleted_mastery += len(m_del.data or [])
                 except Exception:
                     pass
 
@@ -1068,15 +1074,17 @@ async def delete_parent_data(parent_id: str):
             "parent_id": parent_id,
             "student_count": len(student_ids),
             "sessions_purged": deleted_sessions,
+            "mastery_purged": deleted_mastery,
         })
 
         return {
             "status": "ok",
-            "message": "All session activity and child links have been securely purged.",
+            "message": "All session activity, skill mastery profiles, and child links have been securely purged.",
             "purged_records": {
                 "children_unlinked": len(student_ids),
                 "sessions_deleted": deleted_sessions,
                 "events_deleted": deleted_events,
+                "mastery_records_deleted": deleted_mastery,
             }
         }
     except Exception as e:
@@ -1089,12 +1097,13 @@ async def delete_student_data(
     student_id: str,
     auth_payload: dict = Depends(verify_student_access),
 ):
-    """Purge a student's practice history and session logs (authenticated)."""
+    """Purge a student's practice history, skill mastery profile, and session logs (authenticated)."""
     supabase = get_supabase()
     try:
         await db_exec(supabase.table("session_events").delete().eq("student_id", student_id))
         await db_exec(supabase.table("sessions").delete().eq("student_id", student_id))
-        return {"status": "ok", "message": "Student practice sessions purged."}
+        await db_exec(supabase.table("student_skill_mastery").delete().eq("student_id", student_id))
+        return {"status": "ok", "message": "Student practice sessions, events, and skill mastery profile purged."}
     except Exception as e:
         raise HTTPException(500, detail=f"Failed to purge student data: {e}")
 

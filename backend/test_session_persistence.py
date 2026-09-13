@@ -155,25 +155,37 @@ def test_parent_data_deletion_endpoint():
     test_parent_id = str(uuid.uuid4())
     test_child_id = str(uuid.uuid4())
 
-    # Seed temporary child record
+    # Seed temporary child record and mastery record
     supabase.table("children").insert({
         "parent_id": test_parent_id,
         "student_id": test_child_id,
         "student_email": "del_test@veritas.dev",
         "student_name": "Delete Test Child",
     }).execute()
+    try:
+        supabase.table("student_skill_mastery").insert({
+            "student_id": test_child_id,
+            "skill_id": "4.NF.B.3",
+            "mastery_prob": 0.85,
+        }).execute()
+    except Exception:
+        pass
 
     del_resp = client.delete(f"/parent/{test_parent_id}/data")
     assert del_resp.status_code == 200
     del_data = del_resp.json()
     assert del_data["status"] == "ok"
     assert "purged_records" in del_data
-    print(f"   ✓ Parent data deletion purged {del_data['purged_records']['children_unlinked']} child records")
+    assert "mastery_records_deleted" in del_data["purged_records"]
+    assert "mastery" in del_data["message"].lower()
+    print(f"   ✓ Parent data deletion purged {del_data['purged_records']['children_unlinked']} child records and mastery profiles")
 
     # Verify no records remain
-    check = supabase.table("children").select("*").eq("parent_id", test_parent_id).execute()
-    assert len(check.data or []) == 0
-    print("   ✓ Confirmed zero child records remain in Supabase for parent")
+    check_children = supabase.table("children").select("*").eq("parent_id", test_parent_id).execute()
+    assert len(check_children.data or []) == 0
+    check_mastery = supabase.table("student_skill_mastery").select("*").eq("student_id", test_child_id).execute()
+    assert len(check_mastery.data or []) == 0
+    print("   ✓ Confirmed zero child records and zero mastery profiles remain in Supabase for parent")
     print("✅ [PRIVACY TEST 3 PASSED]\n")
 
 
