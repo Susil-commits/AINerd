@@ -383,17 +383,13 @@ export default function Landing() {
             <a href="#topics" className="nav-link">Math Topics</a>
           </nav>
 
-          <div className="navbar-actions">
-            {user ? (
+          {user && (
+            <div className="navbar-actions">
               <button className="btn btn-sm btn-violet" onClick={handleEnterSession}>
                 {role === 'parent' ? 'Parent Portal' : 'Math Session'}
               </button>
-            ) : (
-              <a href="#auth-card" className="btn btn-sm btn-ghost">
-                Get Started
-              </a>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </header>
 
