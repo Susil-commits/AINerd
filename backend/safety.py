@@ -65,12 +65,12 @@ SAFE_SUPPORT_RESPONSE = (
 )
 
 NEO_OUT_OF_SCOPE_RESPONSE = (
-    "I am **Neo**, your dedicated AINerd AI assistant.\n\n"
-    "I am strictly guardrailed to answer questions related to the **AINerd** platform — including our "
-    "Socratic math tutoring, Grade 3–7 curriculum, Paper Work Reader OCR, BKT progress metrics, "
+    "I am **Neo**, your dedicated Veritas AI assistant.\n\n"
+    "I am strictly guardrailed to answer questions related to the **Veritas** platform — including our "
+    "Socratic math tutoring, Grade 3–7 curriculum, Paper Work Reader, real-time skill progress, "
     "student & parent dashboards, and account features.\n\n"
     "I cannot answer questions about general topics, unrelated coding, or non-platform subjects. "
-    "How can I help you explore or use AINerd today?"
+    "How can I help you explore or use Veritas today?"
 )
 
 NEO_OFF_TOPIC_PATTERNS = [
@@ -143,7 +143,7 @@ def check_harmful_content(text: str) -> Tuple[bool, Optional[str]]:
 def check_neo_domain_scope(text: str) -> Tuple[bool, Optional[str]]:
     """
     Guardrail filter for Neo AI assistant:
-    Ensures that queries are strictly related to the AINerd platform,
+    Ensures that queries are strictly related to the Veritas platform,
     its math curriculum, features (Socratic tutor, OCR Work Reader, BKT, dashboards),
     or navigation.
     Returns (is_in_scope: bool, reason: Optional[str]).

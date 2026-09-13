@@ -27,9 +27,9 @@ from auth import create_session_token, verify_session_token
 
 
 def test_on_topic_domain_queries():
-    print("🤖 [NEO TEST 1] Testing On-Topic Queries for AINerd Domain...")
+    print("🤖 [NEO TEST 1] Testing On-Topic Queries for Veritas Domain...")
     valid_queries = [
-        "What is AINerd and how does it help students?",
+        "What is Veritas and how does it help students?",
         "How does the Socratic math tutor work?",
         "What math topics are covered in Grade 4?",
         "How do I upload a photo of my handwritten work?",
@@ -63,7 +63,7 @@ def test_off_topic_guardrail_defense():
         res = run_neo_agent(q)
         assert res["guardrailed"] is True, f"Expected guardrailed=True for '{q}'"
         assert "Neo" in res["reply"]
-        assert "AINerd" in res["reply"]
+        assert "Veritas" in res["reply"]
         print(f"   ✓ Successfully blocked {category} query: '{q[:35]}...' -> Guardrail active")
     print("✅ [NEO TEST 2 PASSED]\n")
 

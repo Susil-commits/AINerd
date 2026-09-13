@@ -22,12 +22,12 @@ const FEATURES = [
   {
     title: 'Paper Work Reader',
     desc: 'Snap a picture of your handwritten work. It checks each step and pinpoints tricky spots — like flipped signs or mixed-up fractions.',
-    tag: 'Vision OCR',
+    tag: 'Paper Scanner',
   },
   {
     title: 'Real Progress Tracker',
     desc: 'Watches how you grow across every math topic so you always practice problems that are just the right challenge.',
-    tag: 'BKT Analytics',
+    tag: 'Adaptive Mastery',
   },
 ]
 
@@ -158,23 +158,23 @@ export default function Landing() {
 
   // Simple server & database connection status
   const [connStatus, setConnStatus] = useState<ConnStatus>('checking')
-  const [connMessage, setConnMessage] = useState<string>('Checking server connection...')
+  const [connMessage, setConnMessage] = useState<string>('Connecting to learning space...')
 
   const checkConnection = async (): Promise<boolean> => {
     try {
       const data = await checkHealth()
       if (data && data.status === 'ok') {
         setConnStatus('connected')
-        setConnMessage(data.db ? 'Server & database ready' : 'Server ready')
+        setConnMessage('Learning platform ready')
         return true
       } else {
         setConnStatus('waking_up')
-        setConnMessage('Waking up server... please wait a moment')
+        setConnMessage('Connecting to learning space... please wait a moment')
         return false
       }
     } catch {
       setConnStatus('waking_up')
-      setConnMessage('Waking up server from inactivity (15-30s)... please wait')
+      setConnMessage('Connecting to learning space... please wait a moment')
       return false
     }
   }
@@ -194,7 +194,7 @@ export default function Landing() {
           timer = setTimeout(poll, 2500)
         } else {
           setConnStatus('error')
-          setConnMessage('Server offline or taking too long.')
+          setConnMessage('Connection taking longer than expected. Please refresh.')
         }
       }
     }
@@ -372,7 +372,7 @@ export default function Landing() {
       <header className="landing-navbar">
         <div className="navbar-container">
           <div className="navbar-brand">
-            <span className="brand-badge">AINERD</span>
+            <span className="brand-icon">✨</span>
             <span className="brand-name">Veritas<span className="brand-dot">.</span></span>
             <span className="brand-tag">Socratic Math</span>
           </div>
@@ -419,7 +419,7 @@ export default function Landing() {
                 className="conn-retry-btn"
                 onClick={() => {
                   setConnStatus('checking')
-                  setConnMessage('Reconnecting to server...')
+                  setConnMessage('Connecting to learning space...')
                   checkConnection()
                 }}
               >
@@ -557,23 +557,23 @@ export default function Landing() {
                       {authLoading ? 'Verifying Code…' : 'Verify & Launch Session'}
                     </button>
 
-                    {/* Evaluator Fast Test Code Chips */}
+                    {/* Quick Demo Access Codes */}
                     <div className="otp-evaluator-box">
-                      <span className="evaluator-label">Evaluator Quick Autofill Codes:</span>
+                      <span className="evaluator-label">Quick Demo Access Codes:</span>
                       <div className="evaluator-chips-grid">
                         <button
                           type="button"
                           className="evaluator-code-btn evaluator-code-student"
                           onClick={() => handleAutofillOtp('777888', 'student')}
                         >
-                          Student Code: <code>777888</code>
+                          Student Demo: <code>777888</code>
                         </button>
                         <button
                           type="button"
                           className="evaluator-code-btn evaluator-code-parent"
                           onClick={() => handleAutofillOtp('123456', 'parent')}
                         >
-                          Parent Code: <code>123456</code>
+                          Parent Demo: <code>123456</code>
                         </button>
                       </div>
                     </div>
@@ -690,9 +690,9 @@ export default function Landing() {
                         </button>
                       </div>
 
-                      {/* Quick Evaluator Access */}
+                      {/* Quick Demo Access */}
                       <div className="auth-demo-section">
-                        <span className="demo-label">Instant Evaluator Demo Access:</span>
+                        <span className="demo-label">Instant Demo Preview:</span>
                         <div className="demo-buttons-grid">
                           <button
                             type="button"
@@ -733,8 +733,8 @@ export default function Landing() {
                     Veritas never just gives away solutions. It guides your thinking step-by-step with encouraging questions so you discover patterns and build genuine understanding.
                   </p>
                   <div className="photo-side-chips">
-                    <span className="photo-chip">Voice & Vision OCR</span>
-                    <span className="photo-chip">Adaptive BKT</span>
+                    <span className="photo-chip">Voice & Vision Scanner</span>
+                    <span className="photo-chip">Adaptive Skill Mastery</span>
                     <span className="photo-chip">Student Privacy Protected</span>
                   </div>
                 </div>
@@ -752,20 +752,20 @@ export default function Landing() {
             </div>
             <div className="trust-item">
               <div className="trust-text">
-                <strong>HMAC-SHA256 Encrypted</strong>
-                <span>Cryptographically scoped session tokens</span>
+                <strong>End-to-End Encryption</strong>
+                <span>Safe passwordless student & parent access</span>
               </div>
             </div>
             <div className="trust-item">
               <div className="trust-text">
-                <strong>Brute-Force Shield Active</strong>
-                <span>Intelligent rate-limiting & cooldowns</span>
+                <strong>Account Protection Active</strong>
+                <span>Intelligent account & spam protection</span>
               </div>
             </div>
             <div className="trust-item">
               <div className="trust-text">
                 <strong>Socratic AI Guardrails</strong>
-                <span>Anti-prompt injection & leak defense</span>
+                <span>Encourages independent thinking & never spoils answers</span>
               </div>
             </div>
           </div>
@@ -969,7 +969,7 @@ export default function Landing() {
             <strong>Veritas</strong> · Friendly, Step-by-Step Math Tutoring for Kids
           </p>
           <p className="footer-meta">
-            Powered by Google Gemini · Voice & Vision · Aligned with Classroom Math Standards
+            Voice & Vision · Aligned with Classroom Math Standards
           </p>
         </div>
       </footer>

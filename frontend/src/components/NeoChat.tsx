@@ -181,15 +181,20 @@ export default function NeoChat() {
         <div className="neo-launcher-wrapper">
           {showTooltip && (
             <div className="neo-tooltip" onClick={() => setIsOpen(true)}>
-              <span>Have questions about AINerd? <strong>Ask Neo</strong></span>
+              <span>Have questions about Veritas? <strong>Ask Neo</strong></span>
               <button
                 className="neo-tooltip-close"
                 onClick={(e) => {
                   e.stopPropagation()
                   setShowTooltip(false)
                 }}
+                title="Dismiss"
+                aria-label="Dismiss tooltip"
               >
-                Dismiss
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
           )}
@@ -221,7 +226,7 @@ export default function NeoChat() {
                   <span className="neo-tag">AI Guide</span>
                 </div>
                 <div className="neo-subtitle-row">
-                  <span className="neo-subtitle">AINerd Platform Scope Only</span>
+                  <span className="neo-subtitle">Veritas Platform Scope Only</span>
                 </div>
               </div>
             </div>
@@ -241,8 +246,12 @@ export default function NeoChat() {
                 className="neo-text-btn neo-close-btn"
                 onClick={() => setIsOpen(false)}
                 title="Close chat"
+                aria-label="Close chat"
               >
-                Close
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
           </div>
@@ -255,12 +264,12 @@ export default function NeoChat() {
                 <div className="neo-welcome-glow" />
                 <div className="neo-welcome-header">
                   <span className="neo-welcome-badge">Guide</span>
-                  <h4>Welcome to AINerd</h4>
+                  <h4>Welcome to Veritas</h4>
                 </div>
                 <p className="neo-welcome-desc">
                   I am your dedicated platform guide. I can answer questions about our{' '}
                   <strong>Socratic math tutor</strong>, <strong>Grade 3–7 curriculum</strong>,{' '}
-                  <strong>Paper Work Reader OCR</strong>, and <strong>Parent Dashboard</strong>.
+                  <strong>Paper Work Reader</strong>, and <strong>Parent Dashboard</strong>.
                 </p>
 
                 <div className="neo-guardrail-notice">
@@ -299,7 +308,7 @@ export default function NeoChat() {
                 <div className={`neo-msg-bubble ${msg.role === 'user' ? 'user-bubble' : 'neo-bubble'} ${msg.guardrailed ? 'guardrailed-bubble' : ''}`}>
                   {msg.guardrailed && (
                     <div className="neo-guardrail-alert">
-                      <span>AINerd Domain Guardrail Active</span>
+                      <span>Veritas Domain Guardrail Active</span>
                     </div>
                   )}
 
@@ -358,7 +367,7 @@ export default function NeoChat() {
                 ref={inputRef}
                 type="text"
                 className="neo-input"
-                placeholder="Ask Neo about AINerd, math topics, or features..."
+                placeholder="Ask Neo about Veritas, math topics, or features..."
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 maxLength={600}
@@ -374,7 +383,7 @@ export default function NeoChat() {
             </form>
 
             <div className="neo-footer-disclaimer">
-              <span>Domain-Restricted • Powered by Gemini 3.6 Flash</span>
+              <span>Domain-Restricted • Socratic AI Learning Assistant</span>
             </div>
           </div>
         </div>

@@ -271,7 +271,7 @@ export default function ParentDashboard() {
                   <div>
                     <h3>Real-Time Mastery Radar</h3>
                     <p className="panel-sub">
-                      Visualizing BKT (Bayesian Knowledge Tracing) skill probabilities. Watch this update live as your
+                      Visualizing real-time skill progress and mastery. Watch this update live as your
                       child solves problems!
                     </p>
                   </div>
@@ -293,7 +293,7 @@ export default function ParentDashboard() {
               <div className="skills-panel">
                 <div className="panel-header">
                   <h3>Curriculum Competencies</h3>
-                  <span className="skills-badge">{skills.length} CCSS Skills</span>
+                  <span className="skills-badge">{skills.length} Math Competencies</span>
                 </div>
 
                 <div className="skills-list">
@@ -411,13 +411,21 @@ export default function ParentDashboard() {
               <div className="modal-title-box">
                 <h3>Link Child to Your Dashboard</h3>
               </div>
-              <button className="close-btn" onClick={() => setShowAddModal(false)}>
-                Close
+              <button
+                className="close-btn"
+                onClick={() => setShowAddModal(false)}
+                title="Close modal"
+                aria-label="Close modal"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
 
             <p className="modal-sub">
-              Enter your child's email address. Once linked, their practice sessions and BKT skill mastery will sync to
+              Enter your child's email address. Once linked, their practice sessions and skill mastery will sync to
               your dashboard in real-time.
             </p>
 

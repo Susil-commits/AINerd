@@ -210,7 +210,7 @@ Target Skill: {skill_id}"""
                 "is_correct": False,
                 "step_number": 1,
                 "misconception_type": "rate_limit_pause",
-                "description": "The Gemini Vision API reached its temporary per-minute rate limit.",
+                "description": "The Vision AI service reached its temporary per-minute rate limit.",
                 "skill_gap": skill_id,
                 "skill_gap_name": "",
                 "corrective_question": "Our AI vision tutor is catching its breath! Please try submitting again in about 10 seconds, or type out what you wrote.",

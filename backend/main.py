@@ -949,7 +949,7 @@ async def neo_chat(
     x_visitor_id: str | None = Header(None),
 ):
     """
-    Neo AI Assistant Endpoint — Guardrailed strictly to AINerd platform content.
+    Neo AI Assistant Endpoint — Guardrailed strictly to Veritas platform content.
     Supports authenticated users (Student/Parent) and visitors with sliding rate limits.
     """
     clean_msg = sanitize_input(req.message, max_length=1000)
