@@ -54,6 +54,30 @@
   color: var(--text-muted);
 }
 
+.dash-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 12px;
+  padding: 12px 20px;
+  margin: 1.5rem 2rem 0;
+  color: #FCA5A5;
+  font-size: 0.9rem;
+}
+
+.dash-error-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dash-error-icon {
+  font-size: 1.1rem;
+}
+
 .dash-content {
   display: grid;
   grid-template-columns: 1fr 380px;

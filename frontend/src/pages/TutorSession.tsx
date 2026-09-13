@@ -25,6 +25,8 @@ export default function TutorSession() {
   const [thinkingSteps, setThinkingSteps] = useState<string[]>([])
   const [masteryState, setMasteryState] = useState<Record<string, number>>({})
   const [currentProblem, setCurrentProblem] = useState<Problem | null>(null)
+  const [sessionError, setSessionError] = useState<string | null>(null)
+  const [sessionRetryCount, setSessionRetryCount] = useState(0)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   const { isSpeaking, speak } = useTTS()
@@ -54,6 +56,7 @@ export default function TutorSession() {
     let mounted = true
 
     async function initSession() {
+      setSessionError(null)
       const raw = sessionStorage.getItem('session')
       if (raw) {
         try {
@@ -91,16 +94,22 @@ export default function TutorSession() {
           speak(s.welcome_message)
           return
         } catch (e) {
-          console.warn('Could not auto-start session:', e)
+          console.error('Could not auto-start session:', e)
+          if (mounted) {
+            setSessionError('Could not initialize your tutoring session. The server may be warming up. Please try again.')
+          }
+          return
         }
       }
 
-      navigate('/')
+      if (mounted) {
+        navigate('/')
+      }
     }
 
     initSession()
     return () => { mounted = false }
-  }, [navigate, user, speak])
+  }, [navigate, user, speak, sessionRetryCount])
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
@@ -134,6 +143,15 @@ export default function TutorSession() {
         setIsStreaming(false)
         if (responseAcc) speak(responseAcc)
       },
+      (_err) => {
+        setIsStreaming(false)
+        const errorContent = "I had trouble connecting just now. Please try sending your message again!"
+        setMessages(prev => {
+          const updated = [...prev]
+          updated[updated.length - 1] = { ...botMsg, content: errorContent }
+          return updated
+        })
+      },
     )
   }, [input, session, isStreaming, speak])
 
@@ -166,6 +184,15 @@ export default function TutorSession() {
         setIsStreaming(false)
         if (responseAcc) speak(responseAcc)
       },
+      (_err) => {
+        setIsStreaming(false)
+        const errorContent = "I had trouble connecting just now. Please try requesting a hint again!"
+        setMessages(prev => {
+          const updated = [...prev]
+          updated[updated.length - 1] = { ...botMsg, content: errorContent }
+          return updated
+        })
+      },
     )
   }, [session, isStreaming, speak])
 
@@ -183,7 +210,34 @@ export default function TutorSession() {
     mastery_prob: prob,
   }))
 
-  if (!session) return <div className="session-loading">Loading session…</div>
+  if (!session) {
+    if (sessionError) {
+      return (
+        <div className="session-error-container">
+          <div className="session-error-card">
+            <span className="session-error-icon">⚠️</span>
+            <h3>Session Connection Error</h3>
+            <p>{sessionError}</p>
+            <div className="session-error-actions">
+              <button
+                className="btn btn-violet"
+                onClick={() => setSessionRetryCount(c => c + 1)}
+              >
+                Retry Starting Session
+              </button>
+              <button
+                className="btn btn-ghost"
+                onClick={() => navigate('/')}
+              >
+                Back to Home
+              </button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+    return <div className="session-loading">Loading session…</div>
+  }
 
   return (
     <div className="session-layout">

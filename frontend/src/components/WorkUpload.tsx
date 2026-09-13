@@ -14,6 +14,7 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -22,6 +23,7 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
   const handleFile = (f: File) => {
     setFile(f)
     setDiagnosis(null)
+    setUploadError(null)
     const reader = new FileReader()
     reader.onload = (e) => setPreview(e.target?.result as string)
     reader.readAsDataURL(f)
@@ -52,6 +54,7 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
   const analyze = useCallback(() => {
     if (!file || !sessionId) return
     setUploading(true)
+    setUploadError(null)
     streamDiagnosis(
       sessionId,
       file,
@@ -60,6 +63,11 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
         setDiagnosis(d)
         setUploading(false)
         onDiagnosis(d, mastery, next)
+      },
+      (err) => {
+        console.error('Handwriting diagnosis error:', err)
+        setUploading(false)
+        setUploadError('Could not analyze handwritten work. The server may be busy or warming up. Please try again.')
       },
     )
   }, [file, sessionId, onThinking, onDiagnosis])
@@ -177,6 +185,12 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
         style={{ display: 'none' }}
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
       />
+
+      {uploadError && (
+        <div style={{ color: '#FCA5A5', fontSize: '0.8rem', padding: '8px 12px', background: 'rgba(239, 68, 68, 0.12)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)', margin: '8px 0' }}>
+          ⚠️ {uploadError}
+        </div>
+      )}
 
       <div className="upload-actions">
         {!cameraOpen && (

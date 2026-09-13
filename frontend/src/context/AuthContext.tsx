@@ -93,6 +93,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       setLoading(false)
+    }).catch((err) => {
+      console.warn('Supabase getSession error:', err)
+      setLoading(false)
     })
 
     // 2. Listen to Supabase auth state changes

@@ -19,6 +19,10 @@ export default function ParentDashboard() {
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [childDetails, setChildDetails] = useState<any>(null)
   const [skills, setSkills] = useState<SkillItem[]>([])
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [childrenLoading, setChildrenLoading] = useState(true)
+  const [detailsError, setDetailsError] = useState<string | null>(null)
+  const [detailsLoading, setDetailsLoading] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [newChildEmail, setNewChildEmail] = useState('')
   const [newChildName, setNewChildName] = useState('')
@@ -68,6 +72,8 @@ export default function ParentDashboard() {
 
   // Fetch children list
   const refreshChildren = useCallback(async () => {
+    setLoadError(null)
+    setChildrenLoading(true)
     try {
       const res = await getParentChildren(parentId)
       const list = res.children || []
@@ -76,7 +82,10 @@ export default function ParentDashboard() {
         setSelectedChildId(list[0].student_id)
       }
     } catch (err) {
-      console.warn('Could not load parent children:', err)
+      console.error('Could not load parent children:', err)
+      setLoadError('Could not load student profiles right now. The server may be warming up. Please try refreshing.')
+    } finally {
+      setChildrenLoading(false)
     }
   }, [parentId, selectedChildId])
 
@@ -88,6 +97,8 @@ export default function ParentDashboard() {
 
   // Fetch selected child details & mastery
   const refreshChildDetails = useCallback(async (childId: string) => {
+    setDetailsError(null)
+    setDetailsLoading(true)
     try {
       const data = await getChildDetails(parentId, childId)
       setChildDetails(data)
@@ -102,7 +113,10 @@ export default function ParentDashboard() {
       }))
       setSkills(skillsArr)
     } catch (err) {
-      console.warn('Error loading child details:', err)
+      console.error('Error loading child details:', err)
+      setDetailsError('Could not load learning details for this student. The server may be warming up.')
+    } finally {
+      setDetailsLoading(false)
     }
   }, [parentId])
 
@@ -259,35 +273,58 @@ export default function ParentDashboard() {
           </div>
 
           <div className="children-cards-list">
-            {childrenList.map((child) => {
-              const isSelected = child.student_id === selectedChildId
-              return (
-                <div
-                  key={child.student_id}
-                  className={`child-card ${isSelected ? 'child-card--active' : ''}`}
-                  onClick={() => setSelectedChildId(child.student_id)}
-                >
-                  <div className="child-card-header">
-                    <div className="child-avatar">S</div>
-                    <div className="child-meta">
-                      <h4>{child.student_name}</h4>
-                      <p>{child.student_email}</p>
-                    </div>
-                  </div>
-                  {child.has_fraction_gap && (
-                    <div className="gap-pill">
-                      <span>{child.fraction_alert_message}</span>
-                    </div>
-                  )}
-                  <div className="child-card-footer">
-                    <span>{child.session_count} sessions</span>
-                    <span className="footer-link">
-                      View Radar
-                    </span>
-                  </div>
+            {childrenLoading && childrenList.length === 0 ? (
+              <div className="children-loading-state">
+                <span>Loading student profiles…</span>
+              </div>
+            ) : loadError ? (
+              <div className="parent-error-banner" role="alert">
+                <div className="parent-error-content">
+                  <span className="parent-error-icon">⚠️</span>
+                  <span>{loadError}</span>
                 </div>
-              )
-            })}
+                <button
+                  className="btn btn-sm btn-outline-violet"
+                  onClick={refreshChildren}
+                >
+                  Retry
+                </button>
+              </div>
+            ) : childrenList.length === 0 ? (
+              <div className="children-empty-state">
+                <span>No student profiles linked yet. Click <strong>Add Child</strong> to link your student.</span>
+              </div>
+            ) : (
+              childrenList.map((child) => {
+                const isSelected = child.student_id === selectedChildId
+                return (
+                  <div
+                    key={child.student_id}
+                    className={`child-card ${isSelected ? 'child-card--active' : ''}`}
+                    onClick={() => setSelectedChildId(child.student_id)}
+                  >
+                    <div className="child-card-header">
+                      <div className="child-avatar">S</div>
+                      <div className="child-meta">
+                        <h4>{child.student_name}</h4>
+                        <p>{child.student_email}</p>
+                      </div>
+                    </div>
+                    {child.has_fraction_gap && (
+                      <div className="gap-pill">
+                        <span>{child.fraction_alert_message}</span>
+                      </div>
+                    )}
+                    <div className="child-card-footer">
+                      <span>{child.session_count} sessions</span>
+                      <span className="footer-link">
+                        View Radar
+                      </span>
+                    </div>
+                  </div>
+                )
+              })
+            )}
           </div>
         </section>
 
@@ -340,10 +377,25 @@ export default function ParentDashboard() {
                 </div>
 
                 <div className="radar-container">
-                  {skills.length > 0 ? (
+                  {detailsLoading && skills.length === 0 ? (
+                    <div className="radar-empty">Loading skill radar…</div>
+                  ) : detailsError ? (
+                    <div className="radar-error-box">
+                      <p>⚠️ {detailsError}</p>
+                      {selectedChildId && (
+                        <button
+                          className="btn btn-sm btn-outline-violet"
+                          onClick={() => refreshChildDetails(selectedChildId)}
+                          style={{ marginTop: '8px' }}
+                        >
+                          Retry Loading Details
+                        </button>
+                      )}
+                    </div>
+                  ) : skills.length > 0 ? (
                     <MasteryRadar skills={skills} />
                   ) : (
-                    <div className="radar-empty">Initializing skill radar…</div>
+                    <div className="radar-empty">No skill records available for this student yet.</div>
                   )}
                 </div>
               </div>

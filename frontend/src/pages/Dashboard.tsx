@@ -16,6 +16,8 @@ export default function Dashboard() {
   const [skills, setSkills] = useState<SkillMastery[]>([])
   const [summary, setSummary] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [retryTrigger, setRetryTrigger] = useState(0)
   const sessionId = sessionStorage.getItem('session')
     ? JSON.parse(sessionStorage.getItem('session')!).session_id
     : null
@@ -26,6 +28,8 @@ export default function Dashboard() {
   useEffect(() => {
     document.title = `Veritas — ${studentName}'s Progress Dashboard`
     if (!studentId) return
+    setLoading(true)
+    setLoadError(null)
     Promise.all([
       getMastery(studentId),
       sessionId ? getSummary(studentId, sessionId) : Promise.resolve(null),
@@ -41,8 +45,11 @@ export default function Dashboard() {
       }))
       setSkills(skillsArr)
       if (summaryData?.summary) setSummary(summaryData.summary)
+    }).catch((err) => {
+      console.error('Dashboard load failed:', err)
+      setLoadError('Could not load your progress right now. The server may be warming up. Please try refreshing.')
     }).finally(() => setLoading(false))
-  }, [studentId, sessionId])
+  }, [studentId, sessionId, retryTrigger])
 
   const avgMastery = skills.length
     ? skills.reduce((a, s) => a + s.mastery_prob, 0) / skills.length
@@ -76,6 +83,22 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
+
+      {loadError && (
+        <div className="dash-error-banner" role="alert">
+          <div className="dash-error-content">
+            <span className="dash-error-icon">⚠️</span>
+            <span>{loadError}</span>
+          </div>
+          <button
+            className="btn btn-sm btn-ghost"
+            style={{ border: '1px solid rgba(252, 165, 165, 0.4)', color: '#FCA5A5' }}
+            onClick={() => setRetryTrigger(c => c + 1)}
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="dash-loading">Loading your progress…</div>

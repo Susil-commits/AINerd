@@ -244,7 +244,6 @@ def main():
     # Define targets
     public_dir = os.path.join("frontend", "public")
     dist_dir = os.path.join("frontend", "dist")
-    root_dir = "."
 
     os.makedirs(public_dir, exist_ok=True)
     if os.path.exists(dist_dir):
@@ -267,10 +266,6 @@ def main():
         if os.path.exists(dist_dir):
             out_dist = os.path.join(dist_dir, filename)
             resized.save(out_dist, "PNG")
-
-        if filename in ["favicon.png", "favicon-32x32.png", "favicon-16x16.png"]:
-            out_root = os.path.join(root_dir, filename)
-            resized.save(out_root, "PNG")
 
     # 2. Generate Multi-Resolution favicon.ico (16, 32, 48)
     ico_img_16 = master.resize((16, 16), Image.Resampling.LANCZOS)
@@ -295,14 +290,6 @@ def main():
             append_images=[ico_img_16, ico_img_32]
         )
 
-    ico_root = os.path.join(root_dir, "favicon.ico")
-    ico_img_48.save(
-        ico_root,
-        format="ICO",
-        sizes=[(16, 16), (32, 32), (48, 48)],
-        append_images=[ico_img_16, ico_img_32]
-    )
-
     # 3. Generate favicon.svg
     svg_content = generate_favicon_svg()
     svg_public = os.path.join(public_dir, "favicon.svg")
@@ -314,10 +301,6 @@ def main():
         svg_dist = os.path.join(dist_dir, "favicon.svg")
         with open(svg_dist, "w", encoding="utf-8") as f:
             f.write(svg_content)
-
-    svg_root = os.path.join(root_dir, "favicon.svg")
-    with open(svg_root, "w", encoding="utf-8") as f:
-        f.write(svg_content)
 
     # 4. Generate site.webmanifest
     manifest_content = """{

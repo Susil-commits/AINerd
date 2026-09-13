@@ -161,6 +161,7 @@ export function streamMessage(
   onThinking: (step: string) => void,
   onResponse: (text: string, done: boolean) => void,
   onDone: (masteryState: Record<string, number>) => void,
+  onError?: (err: any) => void,
 ) {
   const url = `${BASE_URL}/session/message`
   fetch(url, {
@@ -171,11 +172,14 @@ export function streamMessage(
     },
     body: JSON.stringify({ session_id: sessionId, message }),
   }).then(async (res) => {
-    if (res.status === 429) {
-      onThinking('Tutor catching breath...')
-      onResponse("You're thinking super fast! Please wait a couple of seconds before sending your next message.", true)
-      onDone({})
-      return
+    if (!res.ok) {
+      if (res.status === 429) {
+        onThinking('Tutor catching breath...')
+        onResponse("You're thinking super fast! Please wait a couple of seconds before sending your next message.", true)
+        onDone({})
+        return
+      }
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`)
     }
 
     if (!res.body) return
@@ -201,6 +205,7 @@ export function streamMessage(
     }
   }).catch((err) => {
     console.warn('streamMessage error:', err)
+    onError?.(err)
   })
 }
 
@@ -209,6 +214,7 @@ export function streamDiagnosis(
   file: File,
   onThinking: (step: string) => void,
   onDiagnosis: (diagnosis: Diagnosis, masteryState: Record<string, number>, nextProblem: Problem | null) => void,
+  onError?: (err: any) => void,
 ) {
   const formData = new FormData()
   formData.append('file', file)
@@ -218,9 +224,12 @@ export function streamDiagnosis(
     headers: getAuthHeaders(),
     body: formData,
   }).then(async (res) => {
-    if (res.status === 429) {
-      onThinking('Vision analyzer cooldown — please wait a few seconds before re-uploading.')
-      return
+    if (!res.ok) {
+      if (res.status === 429) {
+        onThinking('Vision analyzer cooldown — please wait a few seconds before re-uploading.')
+        return
+      }
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`)
     }
 
     if (!res.body) return
@@ -247,6 +256,7 @@ export function streamDiagnosis(
     }
   }).catch((err) => {
     console.warn('streamDiagnosis error:', err)
+    onError?.(err)
   })
 }
 

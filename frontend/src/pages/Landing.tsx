@@ -268,10 +268,16 @@ export default function Landing() {
     if (!rememberedProfile) return
     setAuthLoading(true)
     setAuthError('')
-    await demoSignIn(rememberedProfile.role, rememberedProfile.email)
-    setAuthLoading(false)
-    const targetPath = rememberedProfile.role === 'parent' ? '/parent-dashboard' : '/student-session'
-    navigateToRoleWithWarmup(rememberedProfile.role, targetPath)
+    try {
+      await demoSignIn(rememberedProfile.role, rememberedProfile.email)
+      const targetPath = rememberedProfile.role === 'parent' ? '/parent-dashboard' : '/student-session'
+      navigateToRoleWithWarmup(rememberedProfile.role, targetPath)
+    } catch (err: any) {
+      console.error('Fast resume failed:', err)
+      setAuthError(friendlyAuthError(err?.message || 'Could not resume session. Please try signing in again.'))
+    } finally {
+      setAuthLoading(false)
+    }
   }
 
   const handleEmailBlur = () => {
@@ -301,16 +307,22 @@ export default function Landing() {
     }
     setAuthLoading(true)
     setAuthError('')
-    const res = await sendMagicLink(trimmed, role)
-    setAuthLoading(false)
-    if (res.error) {
-      setAuthError(friendlyAuthError(res.error))
-    } else {
-      setMagicLinkEmail(trimmed)
-      setAuthScreen('otp')
-      setResendTimer(45)
-      setResendCount(0)
-      setEmailCorrection(null)
+    try {
+      const res = await sendMagicLink(trimmed, role)
+      if (res.error) {
+        setAuthError(friendlyAuthError(res.error))
+      } else {
+        setMagicLinkEmail(trimmed)
+        setAuthScreen('otp')
+        setResendTimer(45)
+        setResendCount(0)
+        setEmailCorrection(null)
+      }
+    } catch (err: any) {
+      console.error('Send magic link failed:', err)
+      setAuthError(friendlyAuthError(err?.message || 'Could not send verification code. Please check your connection and try again.'))
+    } finally {
+      setAuthLoading(false)
     }
   }
 
@@ -323,14 +335,20 @@ export default function Landing() {
     if (!target) return
     setAuthLoading(true)
     setAuthError('')
-    const res = await sendMagicLink(target, role)
-    setAuthLoading(false)
-    if (res.error) {
-      setAuthError(friendlyAuthError(res.error))
-    } else {
-      const nextCount = resendCount + 1
-      setResendCount(nextCount)
-      setResendTimer(45 * (nextCount + 1)) // 45s, then 90s, then 135s progressive backoff
+    try {
+      const res = await sendMagicLink(target, role)
+      if (res.error) {
+        setAuthError(friendlyAuthError(res.error))
+      } else {
+        const nextCount = resendCount + 1
+        setResendCount(nextCount)
+        setResendTimer(45 * (nextCount + 1)) // 45s, then 90s, then 135s progressive backoff
+      }
+    } catch (err: any) {
+      console.error('Resend OTP failed:', err)
+      setAuthError(friendlyAuthError(err?.message || 'Could not resend code. Please try again.'))
+    } finally {
+      setAuthLoading(false)
     }
   }
 
@@ -343,14 +361,20 @@ export default function Landing() {
     const activeRole = overrideRole || role
     setAuthLoading(true)
     setAuthError('')
-    const targetEmail = magicLinkEmail || email || (activeRole === 'parent' ? 'parent.sarah@veritas.dev' : 'student.alex@veritas.dev')
-    const res = await verifyOtp(targetEmail, cleanCode, activeRole)
-    setAuthLoading(false)
-    if (res.error) {
-      setAuthError(friendlyAuthError(res.error))
-    } else {
-      const targetPath = activeRole === 'parent' ? '/parent-dashboard' : '/student-session'
-      navigateToRoleWithWarmup(activeRole, targetPath)
+    try {
+      const targetEmail = magicLinkEmail || email || (activeRole === 'parent' ? 'parent.sarah@veritas.dev' : 'student.alex@veritas.dev')
+      const res = await verifyOtp(targetEmail, cleanCode, activeRole)
+      if (res.error) {
+        setAuthError(friendlyAuthError(res.error))
+      } else {
+        const targetPath = activeRole === 'parent' ? '/parent-dashboard' : '/student-session'
+        navigateToRoleWithWarmup(activeRole, targetPath)
+      }
+    } catch (err: any) {
+      console.error('Verify OTP failed:', err)
+      setAuthError(friendlyAuthError(err?.message || 'Verification failed. Please check the code and try again.'))
+    } finally {
+      setAuthLoading(false)
     }
   }
 
@@ -406,10 +430,16 @@ export default function Landing() {
   const handleDemoLogin = async (targetRole: 'student' | 'parent') => {
     setAuthLoading(true)
     setAuthError('')
-    await demoSignIn(targetRole)
-    setAuthLoading(false)
-    const targetPath = targetRole === 'parent' ? '/parent-dashboard' : '/student-session'
-    navigateToRoleWithWarmup(targetRole, targetPath)
+    try {
+      await demoSignIn(targetRole)
+      const targetPath = targetRole === 'parent' ? '/parent-dashboard' : '/student-session'
+      navigateToRoleWithWarmup(targetRole, targetPath)
+    } catch (err: any) {
+      console.error('Demo sign-in failed:', err)
+      setAuthError(friendlyAuthError(err?.message || 'Could not log into demo. Please try again.'))
+    } finally {
+      setAuthLoading(false)
+    }
   }
 
   const handleEnterSession = () => {
@@ -507,7 +537,11 @@ export default function Landing() {
                 <button
                   className="btn btn-ghost"
                   onClick={async () => {
-                    await signOut()
+                    try {
+                      await signOut()
+                    } catch (err) {
+                      console.error('Sign out error:', err)
+                    }
                     setEmail('')
                     setAuthScreen('form')
                   }}
@@ -730,7 +764,7 @@ export default function Landing() {
                             className={`auth-role-tab ${role === 'student' ? 'auth-role-tab--active' : ''}`}
                             onClick={() => {
                               setRole('student')
-                              checkHealth()
+                              checkHealth().catch(() => {})
                             }}
                           >
                             <div className="role-tab-text">
@@ -744,7 +778,7 @@ export default function Landing() {
                             className={`auth-role-tab ${role === 'parent' ? 'auth-role-tab--active' : ''}`}
                             onClick={() => {
                               setRole('parent')
-                              checkHealth()
+                              checkHealth().catch(() => {})
                             }}
                           >
                             <div className="role-tab-text">
