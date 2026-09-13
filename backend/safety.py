@@ -87,12 +87,29 @@ NEO_OFF_TOPIC_PATTERNS = [
 ]
 
 
+# Regex matching HTML/XML tags, comments, doctypes, and CDATA blocks.
+# Intentionally does NOT match mathematical inequalities (e.g. "3 < 5", "x > 2", "0 < x < 10", "x <= y").
+HTML_TAG_PATTERN = re.compile(
+    r"(<!--.*?-->|<!\[CDATA\[.*?\]\]>|<!DOCTYPE[^>]*>|"
+    r"</?[a-zA-Z][a-zA-Z0-9:-]*(?:\s+[a-zA-Z0-9:_-]+(?:\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s\"'>`]+))?)*\s*/?>)",
+    re.DOTALL,
+)
+
+
+def escape_html_tags(text: str) -> str:
+    """
+    Escapes raw HTML/XML tags to prevent injection/XSS while preserving
+    mathematical inequality operators ('<', '>', '<=', '>=') for STEM LLM prompts.
+    """
+    return HTML_TAG_PATTERN.sub(lambda m: html.escape(m.group(0)), text)
+
+
 def sanitize_input(text: str, max_length: int = 1500) -> str:
     """
     Sanitizes student text input:
     - Truncates to maximum permissible length to prevent memory overload.
     - Strips invisible or dangerous unicode control characters.
-    - Escapes raw HTML/XML tags.
+    - Escapes raw HTML/XML tags while preserving math inequalities (<, >, <=, >=).
     - Normalizes excessive whitespace.
     """
     if not text:
@@ -104,8 +121,8 @@ def sanitize_input(text: str, max_length: int = 1500) -> str:
     # Strip dangerous/invisible unicode control characters (except newline & tab)
     cleaned = "".join(ch for ch in trimmed if ch == "\n" or ch == "\t" or not (0 <= ord(ch) <= 31 or 127 <= ord(ch) <= 159))
 
-    # Escape HTML to prevent injection
-    escaped = html.escape(cleaned)
+    # Escape HTML tags to prevent injection while preserving math inequalities
+    escaped = escape_html_tags(cleaned)
 
     # Collapse multiple consecutive newlines or spaces
     normalized = re.sub(r"[ \t]+", " ", escaped)

@@ -9,13 +9,61 @@ import hashlib
 import json
 import base64
 import time
+import secrets
 from typing import Optional
 from fastapi import Header, HTTPException, status
+from pathlib import Path
+from dotenv import load_dotenv
 
-# Derive secret key from environment or generate a secure fallback
+load_dotenv()
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
+_EPHEMERAL_KEY: Optional[str] = None
+
+
+def is_session_secret_configured() -> bool:
+    """Check whether a dedicated SESSION_SECRET_KEY is configured in the environment."""
+    return bool(os.getenv("SESSION_SECRET_KEY"))
+
+
 def _get_secret_key() -> bytes:
-    key = os.getenv("SESSION_SECRET_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "veritas-socratic-tutor-secret-key-salt"
-    return key.encode("utf-8")
+    """
+    Derives secret key for signing HMAC-SHA256 session tokens.
+    Priority:
+    1. SESSION_SECRET_KEY (from Render dashboard / .env)
+    2. SUPABASE_SERVICE_ROLE_KEY (fallback)
+    3. Production safeguard: Generate an ephemeral 256-bit random key per container instance
+       to prevent forged tokens signed with public repository defaults.
+    4. Development fallback: 'veritas-socratic-tutor-secret-key-salt' (local dev only).
+    """
+    global _EPHEMERAL_KEY
+    key = os.getenv("SESSION_SECRET_KEY")
+    if key:
+        return key.encode("utf-8")
+
+    # Fallback to Supabase service role key if available
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if service_key:
+        print("[WARN] auth: SESSION_SECRET_KEY is not set. Falling back to SUPABASE_SERVICE_ROLE_KEY.")
+        return service_key.encode("utf-8")
+
+    # Check if running in production or on Render
+    is_prod = (
+        os.getenv("ENVIRONMENT", "").lower() == "production"
+        or os.getenv("RENDER") is not None
+    )
+    if is_prod:
+        if not _EPHEMERAL_KEY:
+            _EPHEMERAL_KEY = secrets.token_urlsafe(32)
+            print(
+                "[CRITICAL SECURITY WARNING] Neither SESSION_SECRET_KEY nor SUPABASE_SERVICE_ROLE_KEY "
+                "is set in PRODUCTION! Generated ephemeral 256-bit random key for this container. "
+                "Configure SESSION_SECRET_KEY in Render dashboard -> Environment to persist keys across restarts."
+            )
+        return _EPHEMERAL_KEY.encode("utf-8")
+
+    # Local development fallback
+    return b"veritas-socratic-tutor-secret-key-salt"
 
 
 def _b64url_encode(data: bytes) -> str:

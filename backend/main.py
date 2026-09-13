@@ -13,7 +13,7 @@ import warnings
 import httpx
 from pathlib import Path
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 
 # Suppress harmless LangGraph/LangChain internal serializer deprecation notice on startup
 warnings.filterwarnings("ignore", message=".*allowed_objects.*")
@@ -42,7 +42,12 @@ from graph.orchestrator import build_graph, TutorState
 from agents.content_agent import get_next_problem, generate_session_summary
 from bkt.tracker import initialize_mastery, get_all_skills, get_skill_params
 from db.supabase_client import get_supabase
-from auth import create_session_token, verify_student_access, verify_session_token
+from auth import (
+    create_session_token,
+    verify_student_access,
+    verify_session_token,
+    is_session_secret_configured,
+)
 from agents.neo_agent import run_neo_agent, DEFAULT_SUGGESTIONS
 from rate_limiter import limiter
 from safety import (
@@ -80,6 +85,10 @@ SSE_HEADERS = {
 async def lifespan(app: FastAPI):
     global _graph
     _graph = build_graph()
+    if is_session_secret_configured():
+        print("[INFO] Auth: Dedicated SESSION_SECRET_KEY detected and active.")
+    else:
+        print("[WARN] Auth: SESSION_SECRET_KEY not explicitly configured in environment. Using fallback/ephemeral keying.")
     yield
 
 
@@ -230,6 +239,7 @@ async def health():
         "services": {
             "supabase": _cached_db_status,
             "gemini": _cached_gemini_status,
+            "session_secret_configured": is_session_secret_configured(),
         },
         "db": _cached_db_status,
         "active_cached_sessions": len(get_all_active_session_ids()),
@@ -853,9 +863,7 @@ async def get_parent_children(parent_id: str):
             children_map[c["student_id"]] = c
 
     # If demo parent has no children yet, supply demo child 'Alex'
-    if not children_map and (
-        parent_id == "99999999-8888-7777-6666-555555555555" or not children_map
-    ):
+    if not children_map and parent_id == "99999999-8888-7777-6666-555555555555":
         demo_child = {
             "parent_id": parent_id,
             "student_id": "24e836e3-3b42-41a0-8a27-222f883eaa10",

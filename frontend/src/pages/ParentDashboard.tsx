@@ -113,7 +113,7 @@ export default function ParentDashboard() {
           {
             event: 'INSERT',
             schema: 'public',
-            table: 'learning_events',
+            table: 'session_events',
             filter: `student_id=eq.${selectedChildId}`,
           },
           (payload) => {

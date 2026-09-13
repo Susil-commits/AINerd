@@ -25,6 +25,7 @@ from session_manager import (
     save_session,
     record_session_event,
     _sessions_cache,
+    BoundedSessionCache,
 )
 from db.supabase_client import get_supabase
 
@@ -176,9 +177,39 @@ def test_parent_data_deletion_endpoint():
     print("✅ [PRIVACY TEST 3 PASSED]\n")
 
 
+def test_bounded_cache_lru_cap():
+    print("🧠 [CACHE TEST 4] Testing In-Memory BoundedSessionCache LRU Size Cap...")
+    test_cache = BoundedSessionCache(max_size=5)
+
+    # Insert 5 items
+    for i in range(5):
+        test_cache[f"sess_{i}"] = {"session_id": f"sess_{i}", "val": i}
+    assert len(test_cache) == 5
+    print("   ✓ Initial 5 sessions populated in cache")
+
+    # Access sess_0 to make it most recently used
+    _ = test_cache["sess_0"]
+
+    # Insert 6th session — should evict sess_1 (oldest unaccessed), NOT sess_0!
+    test_cache["sess_5"] = {"session_id": "sess_5", "val": 5}
+    assert len(test_cache) == 5, f"Cache size exceeded cap: {len(test_cache)}"
+    assert "sess_1" not in test_cache, "Oldest session sess_1 was not evicted"
+    assert "sess_0" in test_cache, "Recently accessed sess_0 was erroneously evicted"
+    assert "sess_5" in test_cache, "Newly added sess_5 missing from cache"
+    print("   ✓ Cache strictly maintained max_size=5 (evicted oldest LRU key)")
+
+    # Insert 100 sessions to simulate traffic burst
+    for i in range(10, 110):
+        test_cache[f"burst_{i}"] = {"session_id": f"burst_{i}"}
+    assert len(test_cache) == 5
+    print("   ✓ Heavy burst of 100 sessions tested: memory bound strictly held at 5 items")
+    print("✅ [CACHE TEST 4 PASSED]\n")
+
+
 if __name__ == "__main__":
     print("🚀 Running Veritas Day-3 Resiliency & Health Tests...\n")
     test_session_persistence_and_recovery()
     test_health_check_connectivity()
     test_parent_data_deletion_endpoint()
+    test_bounded_cache_lru_cap()
     print("🎉 ALL SESSION RESILIENCE & HEALTH CHECKS PASSED WITH 100% SUCCESS!")

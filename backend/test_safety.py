@@ -57,6 +57,14 @@ def test_input_sanitization():
     clean_huge = sanitize_input(huge_input, max_length=1500)
     assert len(clean_huge) <= 1500
     print("   ✓ Excessive buffer overflow payloads truncated to bounds")
+
+    # 4. Math inequality preservation (< and > should NOT be mangled to &lt; and &gt;)
+    math_input = "Is 3 < 5 and x > 2? What about 0 < x < 10 and 2x <= 8?"
+    clean_math = sanitize_input(math_input)
+    assert "<" in clean_math and ">" in clean_math
+    assert "&lt;" not in clean_math and "&gt;" not in clean_math
+    assert "3 < 5" in clean_math and "x > 2" in clean_math and "0 < x < 10" in clean_math and "2x <= 8" in clean_math
+    print("   ✓ Mathematical inequalities (<, >, <=) safely preserved for LLM without HTML mangling")
     print("✅ [SAFETY TEST 1 PASSED]\n")
 
 

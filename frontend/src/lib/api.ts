@@ -255,6 +255,7 @@ export async function synthesizeSpeech(text: string): Promise<ArrayBuffer> {
     method: 'POST',
     headers: getAuthHeaders(),
   })
+  if (!res.ok) throw new Error(`TTS error: ${res.status}`)
   return res.arrayBuffer()
 }
 
