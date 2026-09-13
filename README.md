@@ -226,26 +226,3 @@ uvicorn main:app --reload --port 8000
 cd frontend
 npm run dev
 ```
-
-Visit `http://localhost:5173` to start learning.
-
----
-
-## 🎤 Demo Day Stand-Out Narrative
-
-1. **The Senior-Engineer Security Story**:
-   > *"Most AI prototypes suffer from IDOR vulnerabilities where student data is exposed by incrementing an ID parameter. Veritas enforces HMAC-signed session scoping, locks parent-child relationships behind strict PostgreSQL Row Level Security, isolates service keys entirely from client bundles, and gives parents a 1-click self-serve data deletion guarantee."*
-
-2. **The Session Resilience Story**:
-   > *"Render containers reboot. If a free-tier instance restarts during a live demonstration, an in-memory session is normally lost. Veritas features dual-tier persistence: sub-millisecond RAM caching backed by Supabase event rehydration. Even after an abrupt server crash, student sessions rehydrate automatically without losing a single message."*
-
-3. **The Live Neo Flex**:
-   > Ask Neo on camera: *"Neo, why does Veritas use Socratic questioning instead of directly giving me the answer?"*
-   > Neo explains the pedagogical philosophy unscripted in real-time.
-
----
-
-## 📄 License & Standards
-- Built for **Nerdy Hackathon 2026**.
-- Math curriculum grounded in **Common Core State Standards (CCSS)**.
-- Misconceptions aligned with the **Eedi / NeurIPS 2020 Education Challenge**.
