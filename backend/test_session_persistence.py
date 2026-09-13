@@ -88,7 +88,7 @@ def test_session_persistence_and_recovery():
         record_session_event(
             session_id=test_session_id,
             student_id=test_student_id,
-            problem_id=real_problem.get("id"),
+            problem_id=str(real_problem["id"]) if real_problem.get("id") else None,
             attempt_text="I think I need a common denominator",
             is_correct=None,
             agent_response="Spot on! What denominator works for both 2 and 4?",

@@ -245,7 +245,7 @@ async def start_session(req: StartSessionRequest):
     # 1. Reuse or upsert student by authenticated auth.user.id
     if req.student_id:
         try:
-            uuid.UUID(str(req.student_id))
+            uuid.UUID(req.student_id)
         except (ValueError, AttributeError):
             raise HTTPException(422, "Invalid student_id: Must be a valid UUID format.")
         student_id = req.student_id
@@ -370,6 +370,8 @@ async def send_message(req: MessageRequest):
     if not state:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    session_state: dict[str, Any] = state
+
     # 1. Sanitize student input (length bound, strip control characters, escape HTML)
     clean_message = sanitize_input(req.message)
     if not clean_message:
@@ -391,8 +393,9 @@ async def send_message(req: MessageRequest):
             "category": harm_category,
         })
 
-    state["latest_input"] = clean_message
-    state["latest_image_bytes"] = None
+    session_state["latest_input"] = clean_message
+    session_state["latest_image_bytes"] = None
+    current_prob: dict[str, Any] = session_state.get("current_problem") or {}
 
     async def event_stream() -> AsyncGenerator[str, None]:
         try:
@@ -411,10 +414,9 @@ async def send_message(req: MessageRequest):
                 response = SOCRATIC_BOUNDARY_RESPONSE
             else:
                 from agents.tutor_agent import run_tutor_agent
-                current_prob = state.get("current_problem") or {}
                 response = run_tutor_agent(
                     student_message=clean_message,
-                    conversation_history=state["conversation_history"],
+                    conversation_history=session_state["conversation_history"],
                     current_problem=current_prob,
                 )
 
@@ -430,15 +432,15 @@ async def send_message(req: MessageRequest):
             yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
 
             # Update state & persist
-            state["conversation_history"] = state["conversation_history"] + [
+            session_state["conversation_history"] = session_state["conversation_history"] + [
                 {"role": "student", "content": clean_message},
                 {"role": "tutor", "content": response},
             ]
-            state["thinking_steps"] = thinking_steps
-            save_session(req.session_id, state)
+            session_state["thinking_steps"] = thinking_steps
+            save_session(req.session_id, session_state)
             record_session_event(
                 session_id=req.session_id,
-                student_id=state["student_id"],
+                student_id=session_state["student_id"],
                 problem_id=current_prob.get("id"),
                 attempt_text=clean_message,
                 is_correct=None,
@@ -454,12 +456,12 @@ async def send_message(req: MessageRequest):
                     yield f"data: {json.dumps({'type': 'response', 'content': accumulated, 'done': i == len(words) - 1})}\n\n"
                     await asyncio.sleep(0.04)
 
-            yield f"data: {json.dumps({'type': 'done', 'mastery_state': state['mastery_state']})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'mastery_state': session_state['mastery_state']})}\n\n"
         except Exception as e:
             print(f"[ERROR] Chat stream exception: {e}")
             fallback_msg = "I had a quick pause! Could you repeat that thought?"
             yield f"data: {json.dumps({'type': 'response', 'content': fallback_msg, 'done': True})}\n\n"
-            yield f"data: {json.dumps({'type': 'done', 'mastery_state': state.get('mastery_state', {})})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'mastery_state': session_state.get('mastery_state', {})})}\n\n"
 
     return StreamingResponse(
         event_stream(),
@@ -722,7 +724,7 @@ async def add_child(req: AddChildRequest):
     """Link a child by email to a parent in the children table."""
     # 0. Safety Guardrails & Validation
     try:
-        uuid.UUID(str(req.parent_id))
+        uuid.UUID(req.parent_id)
     except (ValueError, AttributeError):
         raise HTTPException(422, "Invalid parent_id: Must be a valid UUID format.")
 
@@ -994,7 +996,7 @@ async def delete_parent_data(parent_id: str):
     Purge all session logs, events, and linked child records for this parent.
     """
     try:
-        uuid.UUID(str(parent_id))
+        uuid.UUID(parent_id)
     except (ValueError, AttributeError):
         raise HTTPException(422, "Invalid parent_id: Must be a valid UUID format.")
 
@@ -1128,10 +1130,11 @@ async def neo_chat(
             client_identifier = f"student_{payload.get('sub')}"
         except Exception:
             # Check for demo user token or decode claims
-            if "parent" in str(token).lower():
+            token_lower = token.lower()
+            if "parent" in token_lower:
                 user_context = {"role": "parent", "name": "Parent", "authenticated": True}
                 client_identifier = "demo_parent"
-            elif "student" in str(token).lower():
+            elif "student" in token_lower:
                 user_context = {"role": "student", "name": "Student", "authenticated": True}
                 client_identifier = "demo_student"
 

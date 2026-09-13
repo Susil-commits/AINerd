@@ -13,7 +13,7 @@ from bkt.tracker import initialize_mastery, get_next_skill
 _sessions_cache: dict[str, dict[str, Any]] = {}
 
 
-def _clean_state_for_persistence(state: dict[str, Any]) -> dict[str, Any]:
+def _clean_state_for_persistence(state: Any) -> dict[str, Any]:
     """Strip non-serializable elements like raw image bytes before JSON persistence."""
     cleaned = dict(state)
     cleaned["latest_image_bytes"] = None
@@ -152,7 +152,7 @@ def get_session(session_id: str) -> dict[str, Any] | None:
         return None
 
 
-def save_session(session_id: str, state: dict[str, Any]) -> None:
+def save_session(session_id: str, state: Any) -> None:
     """
     Persist session state in RAM cache and sync to Supabase sessions table.
     """
@@ -176,7 +176,7 @@ def save_session(session_id: str, state: dict[str, Any]) -> None:
 def record_session_event(
     session_id: str,
     student_id: str,
-    problem_id: str | None,
+    problem_id: Any,
     attempt_text: str | None,
     is_correct: bool | None,
     agent_response: str | None,
