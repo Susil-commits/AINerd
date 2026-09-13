@@ -601,7 +601,6 @@ export default function Landing() {
                       <div className="auth-field-group">
                         <div className="auth-label-row">
                           <label htmlFor="auth-email-input">Email Address</label>
-                          <span className="auth-helper-tag">Passwordless</span>
                         </div>
                         <div className="auth-input-wrapper">
                           <input
@@ -749,7 +748,7 @@ export default function Landing() {
             <div className="trust-item">
               <div className="trust-text">
                 <strong>End-to-End Encryption</strong>
-                <span>Safe passwordless student & parent access</span>
+                <span>Safe student & parent access</span>
               </div>
             </div>
             <div className="trust-item">
