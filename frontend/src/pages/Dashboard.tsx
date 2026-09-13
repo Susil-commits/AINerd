@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [summary, setSummary] = useState('')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [authDenied, setAuthDenied] = useState<string | null>(null)
   const [retryTrigger, setRetryTrigger] = useState(0)
   const sessionId = sessionStorage.getItem('session')
     ? JSON.parse(sessionStorage.getItem('session')!).session_id
@@ -30,6 +31,7 @@ export default function Dashboard() {
     if (!studentId) return
     setLoading(true)
     setLoadError(null)
+    setAuthDenied(null)
     Promise.all([
       getMastery(studentId),
       sessionId ? getSummary(studentId, sessionId) : Promise.resolve(null),
@@ -45,9 +47,16 @@ export default function Dashboard() {
       }))
       setSkills(skillsArr)
       if (summaryData?.summary) setSummary(summaryData.summary)
-    }).catch((err) => {
+    }).catch((err: any) => {
       console.error('Dashboard load failed:', err)
-      setLoadError('Could not load your progress right now. The server may be warming up. Please try refreshing.')
+      const status = err?.response?.status
+      if (status === 401) {
+        setAuthDenied('Your session has expired or is invalid. Please sign in again.')
+      } else if (status === 403) {
+        setAuthDenied('You do not have permission to view this student’s learning progress.')
+      } else {
+        setLoadError('Could not load your progress right now. The server may be warming up. Please try refreshing.')
+      }
     }).finally(() => setLoading(false))
   }, [studentId, sessionId, retryTrigger])
 
@@ -84,7 +93,37 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {loadError && (
+      {authDenied ? (
+        <div
+          className="dash-access-denied"
+          role="alert"
+          style={{
+            textAlign: 'center',
+            padding: '3rem 1.5rem',
+            maxWidth: '540px',
+            margin: '3rem auto',
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            borderRadius: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1rem',
+          }}
+        >
+          <span style={{ fontSize: '2.5rem' }} aria-hidden="true">🔒</span>
+          <h3 style={{ margin: 0, fontSize: '1.3rem', color: '#F87171' }}>Access Restricted</h3>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{authDenied}</p>
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button className="btn btn-primary" onClick={() => navigate('/session')}>
+              Go to My Practice
+            </button>
+            <button className="btn btn-ghost" onClick={() => navigate('/')}>
+              Return Home
+            </button>
+          </div>
+        </div>
+      ) : loadError ? (
         <div className="dash-error-banner" role="alert">
           <div className="dash-error-content">
             <span className="dash-error-icon">⚠️</span>
@@ -98,9 +137,9 @@ export default function Dashboard() {
             Retry
           </button>
         </div>
-      )}
+      ) : null}
 
-      {loading ? (
+      {!authDenied && (loading ? (
         <div className="dash-loading">Loading your progress…</div>
       ) : (
         <div className="dash-content">
@@ -172,7 +211,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-      )}
+      ))}
     </div>
   )
 }

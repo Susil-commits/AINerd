@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Landing from './pages/Landing'
 import ShiningDots from './components/ShiningDots'
 import NeoChat from './components/NeoChat'
+import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
 import './index.css'
 
@@ -43,10 +44,38 @@ export default function App() {
         <Suspense fallback={<PageFallback />}>
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/student-session" element={<TutorSession />} />
-            <Route path="/session" element={<TutorSession />} />
-            <Route path="/parent-dashboard" element={<ParentDashboard />} />
-            <Route path="/dashboard/:studentId" element={<Dashboard />} />
+            <Route
+              path="/student-session"
+              element={
+                <ProtectedRoute>
+                  <TutorSession />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/session"
+              element={
+                <ProtectedRoute>
+                  <TutorSession />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parent-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['parent']}>
+                  <ParentDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/:studentId"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </Suspense>
         <NeoChat />
