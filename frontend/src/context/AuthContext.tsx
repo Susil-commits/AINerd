@@ -213,7 +213,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const isParent = targetRole === 'parent'
     const email = customEmail || (isParent ? 'parent.sarah@veritas.dev' : 'student.alex@veritas.dev')
     const id = isParent ? DEMO_PARENT_ID : DEMO_STUDENT_ID
-    const name = isParent ? 'Sarah Jenkins (Parent)' : 'Alex Jenkins (Student)'
+    const defaultName = isParent ? 'Sarah Jenkins (Parent)' : 'Alex Jenkins (Student)'
+    let name = defaultName
+    if (customEmail && customEmail !== 'parent.sarah@veritas.dev' && customEmail !== 'student.alex@veritas.dev') {
+      const prefix = customEmail.split('@')[0]
+      name = prefix.charAt(0).toUpperCase() + prefix.slice(1)
+    }
 
     const fakeUser = {
       id,

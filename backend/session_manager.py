@@ -11,6 +11,8 @@ from typing import Any
 from db.supabase_client import get_supabase
 from bkt.tracker import initialize_mastery, get_next_skill
 
+import threading
+
 # Maximum number of active sessions kept in RAM cache (LRU eviction).
 # Default 100 easily handles >50 concurrent students while preventing unbounded memory growth.
 MAX_SESSIONS_CACHE_SIZE = int(os.getenv("MAX_SESSIONS_CACHE_SIZE", "100"))
@@ -18,31 +20,51 @@ MAX_SESSIONS_CACHE_SIZE = int(os.getenv("MAX_SESSIONS_CACHE_SIZE", "100"))
 
 class BoundedSessionCache(OrderedDict):
     """
-    LRU-capped dictionary for active session states.
+    LRU-capped thread-safe dictionary for active session states.
     Limits RAM usage under high concurrency (>50 concurrent sessions).
     Evicted sessions are seamlessly rehydrated from Supabase on next access.
     """
     def __init__(self, max_size: int = MAX_SESSIONS_CACHE_SIZE, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.max_size = max_size
+        self._lock = threading.RLock()
 
     def __getitem__(self, key: str) -> dict[str, Any]:
-        val = super().__getitem__(key)
-        self.move_to_end(key)
-        return val
+        with self._lock:
+            val = super().__getitem__(key)
+            self.move_to_end(key)
+            return val
 
     def __setitem__(self, key: str, value: dict[str, Any]) -> None:
-        if key in self:
-            self.move_to_end(key)
-        super().__setitem__(key, value)
-        while len(self) > self.max_size:
-            self.popitem(last=False)
+        with self._lock:
+            if key in self:
+                self.move_to_end(key)
+            super().__setitem__(key, value)
+            while len(self) > self.max_size:
+                self.popitem(last=False)
 
     def get(self, key: str, default: Any = None) -> Any:
-        if key in self:
-            self.move_to_end(key)
-            return super().__getitem__(key)
-        return default
+        with self._lock:
+            if key in self:
+                self.move_to_end(key)
+                return super().__getitem__(key)
+            return default
+
+    def __contains__(self, key: object) -> bool:
+        with self._lock:
+            return super().__contains__(key)
+
+    def pop(self, key: str, default: Any = None) -> Any:
+        with self._lock:
+            return super().pop(key, default)
+
+    def clear(self) -> None:
+        with self._lock:
+            super().clear()
+
+    def keys_list(self) -> list[str]:
+        with self._lock:
+            return list(super().keys())
 
 
 # In-memory session cache with LRU size cap for microsecond response times
@@ -50,9 +72,13 @@ _sessions_cache: BoundedSessionCache = BoundedSessionCache(max_size=MAX_SESSIONS
 
 
 def _clean_state_for_persistence(state: Any) -> dict[str, Any]:
-    """Strip non-serializable elements like raw image bytes before JSON persistence."""
+    """Strip non-serializable elements like raw image bytes before JSON persistence and cap history."""
+    if not isinstance(state, dict):
+        return {}
     cleaned = dict(state)
     cleaned["latest_image_bytes"] = None
+    if "conversation_history" in cleaned and isinstance(cleaned["conversation_history"], list):
+        cleaned["conversation_history"] = cleaned["conversation_history"][-50:]
     return cleaned
 
 
@@ -237,4 +263,4 @@ def record_session_event(
 
 def get_all_active_session_ids() -> list[str]:
     """Return list of active cached session IDs for diagnostics."""
-    return list(_sessions_cache.keys())
+    return _sessions_cache.keys_list()

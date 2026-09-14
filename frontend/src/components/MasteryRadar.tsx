@@ -33,10 +33,11 @@ const getMasteryLevel = (prob: number) => {
   return { label: 'Needs work', color: 'var(--rose)' }
 }
 
-export default function MasteryRadar({ skills }: Props) {
-  const data = skills.map(s => ({
+export default function MasteryRadar({ skills = [] }: Props) {
+  const safeSkills = skills || []
+  const data = safeSkills.map(s => ({
     subject: SKILL_SHORT_NAMES[s.skill_id] ?? s.skill_id,
-    mastery: Math.round(s.mastery_prob * 100),
+    mastery: Math.round((s.mastery_prob ?? 0) * 100),
     fullMark: 100,
     name: s.name,
   }))
@@ -73,14 +74,14 @@ export default function MasteryRadar({ skills }: Props) {
               color: 'var(--text-primary)',
               fontSize: '0.85rem',
             }}
-            formatter={(value: any) => [`${value}%`, 'Progress']}
+            formatter={(value: any) => [`${value ?? 0}%`, 'Progress']}
           />
         </RadarChart>
       </ResponsiveContainer>
 
       <div className="mastery-bars">
-        {skills.map(s => {
-          const level = getMasteryLevel(s.mastery_prob)
+        {safeSkills.map(s => {
+          const level = getMasteryLevel(s.mastery_prob ?? 0)
           return (
             <div key={s.skill_id} className="mastery-bar-row">
               <div className="mastery-bar-label">

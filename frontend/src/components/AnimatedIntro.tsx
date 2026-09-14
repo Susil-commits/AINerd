@@ -21,12 +21,13 @@ export default function AnimatedIntro({ onEnter }: AnimatedIntroProps) {
   const [isExiting, setIsExiting] = useState(false)
   const [activeStep, setActiveStep] = useState(0)
   const hasExitedRef = useRef(false)
+  const exitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleExit = useCallback(() => {
     if (hasExitedRef.current) return
     hasExitedRef.current = true
     setIsExiting(true)
-    setTimeout(() => {
+    exitTimeoutRef.current = setTimeout(() => {
       onEnter()
     }, 750) // Transition duration matches CSS
   }, [onEnter])
@@ -43,6 +44,7 @@ export default function AnimatedIntro({ onEnter }: AnimatedIntroProps) {
     }, 30000)
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault()
         handleExit()
@@ -57,6 +59,9 @@ export default function AnimatedIntro({ onEnter }: AnimatedIntroProps) {
       clearTimeout(t2)
       clearTimeout(t3)
       clearTimeout(autoExitTimer)
+      if (exitTimeoutRef.current) {
+        clearTimeout(exitTimeoutRef.current)
+      }
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [handleExit])

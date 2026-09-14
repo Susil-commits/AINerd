@@ -791,32 +791,33 @@ async def add_child(req: AddChildRequest):
     student_id = None
     student_name = req.child_name or email_clean.split("@")[0].capitalize()
 
-    # 1. Search in Supabase Auth users
+    # 1. First search in students table (fast indexed lookup)
     try:
-        users = await asyncio.to_thread(supabase.auth.admin.list_users)
-        for u in users:
-            if getattr(u, "email", "").lower() == email_clean:
-                student_id = u.id
-                student_name = (
-                    getattr(u, "user_metadata", {}).get("name") or student_name
-                )
-                break
+        found = await db_exec(
+            supabase.table("students")
+            .select("*")
+            .eq("email", email_clean)
+            .limit(1)
+        )
+        if found.data:
+            student_id = found.data[0]["id"]
+            student_name = found.data[0].get("name") or student_name
     except Exception as e:
-        print(f"[WARN] Supabase admin user search: {e}")
+        print(f"[DEBUG] Search students table: {e}")
 
-    # 2. Search in students table
+    # 2. If not found in students table, fallback to search in Supabase Auth users
     if not student_id:
         try:
-            found = await db_exec(
-                supabase.table("students")
-                .select("*")
-                .eq("email", email_clean)
-            )
-            if found.data:
-                student_id = found.data[0]["id"]
-                student_name = found.data[0].get("name") or student_name
-        except Exception:
-            pass
+            users = await asyncio.to_thread(supabase.auth.admin.list_users)
+            for u in users:
+                if getattr(u, "email", "").lower() == email_clean:
+                    student_id = u.id
+                    student_name = (
+                        getattr(u, "user_metadata", {}).get("name") or student_name
+                    )
+                    break
+        except Exception as e:
+            print(f"[WARN] Supabase admin user search: {e}")
 
     # 3. If student doesn't exist yet, create a registered student record
     if not student_id:
@@ -968,11 +969,12 @@ async def get_parent_children(parent_id: str):
                 days_since = 3
 
         has_gap = days_since >= 3 or fraction_mastery < 0.5
-        alert_msg = (
-            "Notice: Has not practiced fractions in 3 days"
-            if has_gap
-            else "Practiced fractions recently"
-        )
+        if days_since >= 3:
+            alert_msg = "Notice: Has not practiced fractions in 3 days"
+        elif fraction_mastery < 0.5:
+            alert_msg = "Notice: Needs practice with fractions (mastery below 50%)"
+        else:
+            alert_msg = "Practiced fractions recently"
 
         results.append({
             "student_id": student_id,

@@ -17,11 +17,19 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, AIMessage
 
 from safety import (
+    sanitize_input,
     check_neo_domain_scope,
     check_prompt_injection,
     check_harmful_content,
     NEO_OUT_OF_SCOPE_RESPONSE,
+    SAFE_SUPPORT_RESPONSE,
     record_security_event,
+)
+
+# Regex matching Unicode emojis and miscellaneous symbols to strictly enforce the "no emojis" guarantee
+EMOJI_PATTERN = re.compile(
+    r"[\U00010000-\U0010ffff\u2600-\u27bf\ufe0f\u200d]+",
+    flags=re.UNICODE,
 )
 
 NEO_SYSTEM_PROMPT = """You are Neo, the intelligent AI guide, navigator, and learning assistant for the Veritas platform (Veritas AI Socratic Math Tutor).
@@ -101,11 +109,21 @@ def run_neo_agent(
     history = conversation_history or []
     user_ctx = user_context or {}
 
+    # Layer 0: Input sanitization & empty check
+    clean_message = sanitize_input(user_message or "", max_length=1500)
+    if not clean_message or len(clean_message.strip()) == 0:
+        return {
+            "reply": "Hello! I am Neo, your Veritas guide. How can I help you navigate our Socratic math platform today?",
+            "guardrailed": False,
+            "guardrail_reason": None,
+            "suggested_actions": DEFAULT_SUGGESTIONS,
+        }
+
     # Layer 1: Guardrail scope & injection checks
-    is_in_scope, scope_reason = check_neo_domain_scope(user_message)
+    is_in_scope, scope_reason = check_neo_domain_scope(clean_message)
     if not is_in_scope:
         record_security_event("neo_guardrail_intercept", {
-            "query": user_message[:100],
+            "query": clean_message[:100],
             "reason": scope_reason,
         })
         return {
@@ -115,34 +133,64 @@ def run_neo_agent(
             "suggested_actions": DEFAULT_SUGGESTIONS,
         }
 
-    # Prepare system prompt enriched with user context (if authenticated)
+    # Prepare system prompt enriched with sanitized user context (prevent prompt injection via profile fields)
     system_prompt = NEO_SYSTEM_PROMPT
     if user_ctx:
-        role = user_ctx.get("role", "visitor")
-        name = user_ctx.get("name") or ("Parent" if role == "parent" else "Student")
-        system_prompt += f"\n\nCURRENT USER CONTEXT:\n- Role: {role}\n- Name: {name}\n- Authenticated: {bool(user_ctx.get('authenticated', False))}"
+        raw_role = str(user_ctx.get("role", "visitor")).strip().lower()
+        clean_role = re.sub(r"[^a-z0-9_-]", "", raw_role)[:20] or "visitor"
+        fallback_default_name = "Parent" if clean_role == "parent" else "Student"
+        raw_name = str(user_ctx.get("name") or fallback_default_name).strip()
+        clean_name = re.sub(r"[^\w\s.-]", "", raw_name)[:50].strip() or fallback_default_name
+        system_prompt += (
+            f"\n\nCURRENT USER CONTEXT:\n"
+            f"- Role: {clean_role}\n"
+            f"- Name: {clean_name}\n"
+            f"- Authenticated: {bool(user_ctx.get('authenticated', False))}"
+        )
 
     messages: List[BaseMessage] = [SystemMessage(content=system_prompt)]
 
-    # Append past conversation history (last 6 turns)
+    # Append past conversation history (last 6 turns, sanitized and length-capped)
     for msg in history[-6:]:
         role = msg.get("role")
-        content = msg.get("content", "")
+        raw_content = str(msg.get("content", "")).strip()[:1000]
+        if not raw_content:
+            continue
+        cleaned_turn = sanitize_input(raw_content, max_length=1000)
         if role == "user":
-            messages.append(HumanMessage(content=content))
+            messages.append(HumanMessage(content=cleaned_turn))
         elif role == "assistant":
-            messages.append(AIMessage(content=content))
+            messages.append(AIMessage(content=cleaned_turn))
 
     # Append current message
-    messages.append(HumanMessage(content=user_message))
+    messages.append(HumanMessage(content=clean_message))
 
-    # Layer 2: LLM generation with fallback
+    # Layer 2: LLM generation with fallback & output guardrails
     try:
         llm = build_neo_llm()
         res = llm.invoke(messages)
         reply_text = str(res.content).strip()
 
-        # Post-check: ensure the reply is non-empty
+        # Output Guardrail A: Strip any emojis to strictly honor the platform prompt directive
+        reply_text = EMOJI_PATTERN.sub("", reply_text)
+        reply_text = re.sub(r"[ \t]+", " ", reply_text)
+        reply_text = re.sub(r"\n{3,}", "\n\n", reply_text).strip()
+
+        # Output Guardrail B: Check for harmful or distressing response bleed
+        is_harmful_reply, h_reason = check_harmful_content(reply_text)
+        if is_harmful_reply:
+            return {
+                "reply": SAFE_SUPPORT_RESPONSE,
+                "guardrailed": True,
+                "guardrail_reason": f"Output guardrail safety catch: {h_reason}",
+                "suggested_actions": DEFAULT_SUGGESTIONS,
+            }
+
+        # Output Guardrail C: Prevent raw prompt leakage in response
+        if "STRICT DOMAIN GUARDRAILS" in reply_text or "ANTI-JAILBREAK" in reply_text:
+            reply_text = "I am Neo, your Veritas AI guide. I'm here to help you practice math and explore our platform tools!"
+
+        # Post-check: ensure the reply is non-empty after stripping
         if not reply_text:
             reply_text = "I'm here to help you navigate Veritas! Ask me anything about our math problems, Socratic coaching, or dashboards."
 
@@ -152,9 +200,10 @@ def run_neo_agent(
             "Explain Paper Work Reader",
             "View Parent Dashboard",
         ]
-        if "fraction" in user_message.lower():
+        msg_lower = clean_message.lower()
+        if "fraction" in msg_lower:
             suggested_actions = ["Practice Equivalent Fractions", "How do fraction alerts work?", "What grades cover fractions?"]
-        elif "parent" in user_message.lower():
+        elif "parent" in msg_lower:
             suggested_actions = ["How do I link my child's account?", "What does the fraction alert mean?", "Show sample progress radar"]
 
         return {

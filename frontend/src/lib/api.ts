@@ -30,7 +30,18 @@ export function getAuthHeaders(): Record<string, string> {
     const raw = sessionStorage.getItem('session')
     if (raw) {
       const session = JSON.parse(raw)
-      if (session.session_token) {
+      if (session.session_token && typeof session.session_token === 'string') {
+        const parts = session.session_token.split('.')
+        if (parts.length === 2) {
+          try {
+            const payloadJson = atob(parts[0].replace(/-/g, '+').replace(/_/g, '/'))
+            const payload = JSON.parse(payloadJson)
+            if (payload.exp && payload.exp * 1000 < Date.now()) {
+              console.warn('[Auth] Session token in sessionStorage has expired.')
+              return {}
+            }
+          } catch {}
+        }
         return {
           'Authorization': `Bearer ${session.session_token}`,
           'X-Session-Token': session.session_token,
