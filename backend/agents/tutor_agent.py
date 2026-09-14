@@ -54,6 +54,7 @@ def build_tutor_llm() -> ChatGoogleGenerativeAI:
         google_api_key=api_key,
         temperature=0.7,
         max_output_tokens=300,
+        max_retries=1,
     )
 
 

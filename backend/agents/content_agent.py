@@ -178,6 +178,7 @@ def generate_session_summary(
         google_api_key=api_key,
         temperature=0.4,
         max_output_tokens=500,
+        max_retries=1,
     )
 
     # Build mastery summary string

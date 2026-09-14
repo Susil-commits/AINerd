@@ -88,6 +88,7 @@ def build_neo_llm() -> ChatGoogleGenerativeAI:
         google_api_key=api_key,
         temperature=0.3,
         max_output_tokens=500,
+        max_retries=1,
     )
 
 
@@ -205,6 +206,14 @@ def run_neo_agent(
             suggested_actions = ["Practice Equivalent Fractions", "How do fraction alerts work?", "What grades cover fractions?"]
         elif "parent" in msg_lower:
             suggested_actions = ["How do I link my child's account?", "What does the fraction alert mean?", "Show sample progress radar"]
+        elif "equation" in msg_lower or "variable" in msg_lower:
+            suggested_actions = ["Solving One-Step Equations", "Multi-Step Equations (Grade 7)", "How the Socratic tutor guides equations"]
+        elif "photo" in msg_lower or "upload" in msg_lower or "camera" in msg_lower or "work" in msg_lower:
+            suggested_actions = ["How does camera upload work?", "How are steps diagnosed?", "What file formats are supported?"]
+        elif "multiplication" in msg_lower or "division" in msg_lower or "word problem" in msg_lower:
+            suggested_actions = ["Understanding Multiplication (3.OA.A.1)", "Two-Step Word Problems", "Division Strategies"]
+        elif "curriculum" in msg_lower or "grade" in msg_lower or "topic" in msg_lower:
+            suggested_actions = ["Grade 3 Common Core Topics", "Grade 4 Fraction Standards", "Grade 6-7 Algebra Standards"]
 
         return {
             "reply": reply_text,

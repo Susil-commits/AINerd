@@ -99,6 +99,7 @@ def build_vision_llm() -> ChatGoogleGenerativeAI:
         google_api_key=api_key,
         temperature=0.2,  # Low temperature for precise diagnosis
         max_output_tokens=2048,
+        max_retries=1,
     )
 
 
