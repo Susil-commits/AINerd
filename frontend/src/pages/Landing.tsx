@@ -278,19 +278,37 @@ export default function Landing() {
     })
   }
 
+  const DEMO_EMAILS = ['parent.sarah@veritas.dev', 'student.alex@veritas.dev']
+
+  const isDemoEmail = (emailStr: string) => {
+    const normalized = emailStr.trim().toLowerCase()
+    return DEMO_EMAILS.includes(normalized) || normalized.endsWith('@veritas.dev')
+  }
+
   const handleFastResume = async () => {
     if (!rememberedProfile) return
-    setAuthLoading(true)
-    setAuthError('')
-    try {
-      await demoSignIn(rememberedProfile.role, rememberedProfile.email)
-      const targetPath = rememberedProfile.role === 'parent' ? '/parent-dashboard' : '/student-session'
-      navigateToRoleWithWarmup(rememberedProfile.role, targetPath)
-    } catch (err: any) {
-      console.error('Fast resume failed:', err)
-      setAuthError(friendlyAuthError(err?.message || 'Could not resume session. Please try signing in again.'))
-    } finally {
-      setAuthLoading(false)
+    const remEmail = rememberedProfile.email.trim()
+    const remRole = rememberedProfile.role
+
+    if (isDemoEmail(remEmail)) {
+      // Evaluator shortcut: genuine demo account gets instant one-click access
+      setAuthLoading(true)
+      setAuthError('')
+      try {
+        await demoSignIn(remRole, remEmail)
+        const targetPath = remRole === 'parent' ? '/parent-dashboard' : '/student-session'
+        navigateToRoleWithWarmup(remRole, targetPath)
+      } catch (err: any) {
+        console.error('Fast resume failed:', err)
+        setAuthError(friendlyAuthError(err?.message || 'Could not resume demo session. Please try signing in again.'))
+      } finally {
+        setAuthLoading(false)
+      }
+    } else {
+      // Real user account: re-authenticate properly via real magic link / OTP rather than fabricating a fake session
+      setEmail(remEmail)
+      setRole(remRole)
+      await handleSendMagicLinkOrOtp(undefined, remEmail, remRole)
     }
   }
 
@@ -311,10 +329,15 @@ export default function Landing() {
     }
   }
 
-  const handleSendMagicLinkOrOtp = async (e?: React.FormEvent) => {
+  const handleSendMagicLinkOrOtp = async (
+    e?: React.FormEvent,
+    emailOverride?: string,
+    roleOverride?: 'student' | 'parent'
+  ) => {
     if (e) e.preventDefault()
-    const trimmed = email.trim()
-    const validation = validateEmailFormat(trimmed)
+    const targetEmail = (emailOverride !== undefined ? emailOverride : email).trim()
+    const targetRole = roleOverride || role
+    const validation = validateEmailFormat(targetEmail)
     if (!validation.valid) {
       setAuthError(validation.reason || 'Please enter a valid email address.')
       return
@@ -322,11 +345,11 @@ export default function Landing() {
     setAuthLoading(true)
     setAuthError('')
     try {
-      const res = await sendMagicLink(trimmed, role)
+      const res = await sendMagicLink(targetEmail, targetRole)
       if (res.error) {
         setAuthError(friendlyAuthError(res.error))
       } else {
-        setMagicLinkEmail(trimmed)
+        setMagicLinkEmail(targetEmail)
         setAuthScreen('otp')
         setOtpScreenSeconds(0)
         setResendTimer(45)
@@ -580,7 +603,7 @@ export default function Landing() {
                 </div>
 
                 {/* 1. Fast Account Switcher / Remembered Profile */}
-                {rememberedProfile && !rememberedDismissed ? (
+                {rememberedProfile && !rememberedDismissed && authScreen === 'form' ? (
                   <div className="auth-remembered-card animate-fadein">
                     <div className="remembered-header">
                       <span className="remembered-avatar">{rememberedProfile.role === 'parent' ? 'P' : 'S'}</span>
@@ -599,7 +622,7 @@ export default function Landing() {
                         onClick={handleFastResume}
                         disabled={authLoading}
                       >
-                        Continue as {rememberedProfile.name.split(' ')[0]}
+                        {authLoading ? 'Signing in…' : `Continue as ${rememberedProfile.name.split(' ')[0]}`}
                       </button>
                       <button
                         type="button"
