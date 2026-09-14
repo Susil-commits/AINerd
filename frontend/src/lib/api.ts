@@ -283,7 +283,7 @@ export function streamDiagnosis(
     if (!res.ok) {
       if (res.status === 429) {
         onThinking('Vision analyzer cooldown — please wait a few seconds before re-uploading.')
-        return
+        throw new Error('Rate limit: please wait a few seconds before uploading another photo.')
       }
       if (res.status === 413) {
         throw new Error('Image exceeds 10MB limit. Please upload a smaller photo.')

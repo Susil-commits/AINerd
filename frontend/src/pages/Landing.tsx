@@ -211,6 +211,7 @@ export default function Landing() {
   // Simple server & database connection status
   const [connStatus, setConnStatus] = useState<ConnStatus>('checking')
   const [connMessage, setConnMessage] = useState<string>('Connecting to learning space...')
+  const [connRetryTrigger, setConnRetryTrigger] = useState(0)
 
   const checkConnection = async (): Promise<boolean> => {
     try {
@@ -257,7 +258,7 @@ export default function Landing() {
       mounted = false
       if (timer) clearTimeout(timer)
     }
-  }, [])
+  }, [connRetryTrigger])
 
   // On verified login (Magic Link callback in URL hash/query), redirect to role destination
   useEffect(() => {
@@ -594,7 +595,7 @@ export default function Landing() {
                 onClick={() => {
                   setConnStatus('checking')
                   setConnMessage('Connecting to learning space...')
-                  checkConnection()
+                  setConnRetryTrigger(c => c + 1)
                 }}
               >
                 Retry

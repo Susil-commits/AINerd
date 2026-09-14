@@ -199,7 +199,7 @@ export default function ParentDashboard() {
     if (!newChildEmail) return
     setAddingChild(true)
     setAddError('')
-    addChild(parentId, newChildEmail, newChildName)
+    addChild(parentId, newChildEmail, newChildName, parentEmail)
       .then((res) => {
         setShowAddModal(false)
         setNewChildEmail('')

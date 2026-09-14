@@ -182,6 +182,13 @@ Target Skill: {skill_id}"""
             fallback_err["bounding_box"] = box
             return fallback_err
 
+        # Detect image format from header magic bytes
+        mime_type = "image/jpeg"
+        if image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+            mime_type = "image/png"
+        elif image_bytes.startswith(b"RIFF") and b"WEBP" in image_bytes[:16]:
+            mime_type = "image/webp"
+
         messages = [
             SystemMessage(content=DIAGNOSTIC_SYSTEM_PROMPT),
             HumanMessage(
@@ -189,7 +196,7 @@ Target Skill: {skill_id}"""
                     {"type": "text", "text": context},
                     {
                         "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"},
+                        "image_url": {"url": f"data:{mime_type};base64,{b64_image}"},
                     },
                 ]
             ),

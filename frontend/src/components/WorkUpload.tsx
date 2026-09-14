@@ -99,7 +99,7 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
   const capturePhoto = () => {
     const video = videoRef.current
     const canvas = canvasRef.current
-    if (!video || !canvas) return
+    if (!video || !canvas || video.videoWidth === 0 || video.videoHeight === 0) return
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
     canvas.getContext('2d')!.drawImage(video, 0, 0)
@@ -130,6 +130,8 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
         const errMsg = err?.message || ''
         if (errMsg.includes('10MB') || errMsg.includes('413')) {
           setUploadError('Image exceeds 10MB limit. Please upload a smaller photo.')
+        } else if (errMsg.includes('Rate limit') || errMsg.includes('429')) {
+          setUploadError('Tutor is catching its breath. Please wait a few seconds before uploading again.')
         } else {
           setUploadError('Could not analyze handwritten work. Please try again.')
         }

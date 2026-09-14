@@ -157,7 +157,7 @@ export default function NeoChat() {
       if (user) {
         navigate('/student-session')
       } else {
-        const authSection = document.getElementById('auth-section') || document.querySelector('.auth-card')
+        const authSection = document.getElementById('auth-card') || document.getElementById('auth-section') || document.querySelector('.auth-card-container') || document.querySelector('.auth-card')
         if (authSection) {
           authSection.scrollIntoView({ behavior: 'smooth' })
         } else {
@@ -169,7 +169,7 @@ export default function NeoChat() {
       if (user && role === 'parent') {
         navigate('/parent-dashboard')
       } else {
-        const authSection = document.getElementById('auth-section') || document.querySelector('.auth-card')
+        const authSection = document.getElementById('auth-card') || document.getElementById('auth-section') || document.querySelector('.auth-card-container') || document.querySelector('.auth-card')
         if (authSection) {
           authSection.scrollIntoView({ behavior: 'smooth' })
         } else {

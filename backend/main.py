@@ -502,6 +502,9 @@ async def send_message(req: MessageRequest):
                     await asyncio.sleep(0.04)
 
             yield f"data: {json.dumps({'type': 'done', 'mastery_state': session_state['mastery_state']})}\n\n"
+        except asyncio.CancelledError:
+            # Client disconnected or navigated away; terminate generator cleanly
+            return
         except Exception as e:
             print(f"[ERROR] Chat stream exception: {e}")
             fallback_msg = "I had a quick pause! Could you repeat that thought?"
@@ -623,6 +626,9 @@ async def upload_work(
 
             yield f"data: {json.dumps({'type': 'diagnosis', 'diagnosis': diagnosis, 'mastery_state': state['mastery_state'], 'next_problem': state.get('current_problem')})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
+        except asyncio.CancelledError:
+            # Client disconnected or cancelled upload stream; terminate cleanly
+            return
         except Exception as e:
             print(f"[ERROR] upload_work stream failed: {e}")
             yield f"data: {json.dumps({'type': 'thinking', 'content': 'Recovering from analysis hiccup...'})}\n\n"
