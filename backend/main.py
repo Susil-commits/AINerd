@@ -94,6 +94,25 @@ async def db_exec(query: Any) -> Any:
     return await asyncio.to_thread(query.execute)
 
 
+async def _update_mastery_for_skill(session_state: dict, skill_id: str) -> None:
+    """Update BKT mastery for a solved skill and persist to Supabase. Safe to call from any async route."""
+    from bkt.tracker import update_mastery
+    old_m = session_state["mastery_state"][skill_id]
+    new_m = update_mastery(old_m, True, skill_id)
+    session_state["mastery_state"][skill_id] = round(new_m, 4)
+    try:
+        supabase = get_supabase()
+        await asyncio.to_thread(
+            lambda: supabase.table("student_skill_mastery").upsert({
+                "student_id": session_state["student_id"],
+                "skill_id": skill_id,
+                "mastery_prob": session_state["mastery_state"][skill_id],
+            }, on_conflict="student_id,skill_id").execute()
+        )
+    except Exception:
+        pass
+
+
 # SSE Response headers to prevent proxy/CDN buffering (Render, Cloudflare, Nginx)
 SSE_HEADERS = {
     "Cache-Control": "no-cache",
@@ -490,19 +509,7 @@ async def send_message(req: MessageRequest):
 
             curr_skill = current_prob.get("skill_id") or session_state.get("current_skill_id")
             if problem_solved and curr_skill and curr_skill in session_state.get("mastery_state", {}):
-                from bkt.tracker import update_mastery
-                old_m = session_state["mastery_state"][curr_skill]
-                new_m = update_mastery(old_m, True, curr_skill)
-                session_state["mastery_state"][curr_skill] = round(new_m, 4)
-                try:
-                    supabase = get_supabase()
-                    supabase.table("student_skill_mastery").upsert({
-                        "student_id": session_state["student_id"],
-                        "skill_id": curr_skill,
-                        "mastery_prob": session_state["mastery_state"][curr_skill],
-                    }, on_conflict="student_id,skill_id").execute()
-                except Exception:
-                    pass
+                await _update_mastery_for_skill(session_state, curr_skill)
 
             thinking_steps.append("Thinking of a guiding question..." if not problem_solved else "Problem solved! Ready for next challenge.")
             yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
@@ -561,24 +568,11 @@ async def next_problem_endpoint(req: NextProblemRequest):
     current_prob = session_state.get("current_problem") or {}
     curr_skill = current_prob.get("skill_id") or session_state.get("current_skill_id")
 
-    from bkt.tracker import update_mastery, get_next_skill
+    from bkt.tracker import get_next_skill
 
     # 1. Update BKT mastery if previous problem was solved / completed
     if req.mark_previous_correct and curr_skill and curr_skill in session_state.get("mastery_state", {}):
-        old_m = session_state["mastery_state"][curr_skill]
-        new_m = update_mastery(old_m, True, curr_skill)
-        session_state["mastery_state"][curr_skill] = round(new_m, 4)
-        try:
-            supabase = get_supabase()
-            await asyncio.to_thread(
-                lambda: supabase.table("student_skill_mastery").upsert({
-                    "student_id": session_state["student_id"],
-                    "skill_id": curr_skill,
-                    "mastery_prob": session_state["mastery_state"][curr_skill],
-                }, on_conflict="student_id,skill_id").execute()
-            )
-        except Exception:
-            pass
+        await _update_mastery_for_skill(session_state, curr_skill)
 
     # 2. Pick next problem targeted by skill and difficulty
     next_skill = get_next_skill(session_state.get("mastery_state", {}))
