@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import WorkUpload from '../components/WorkUpload'
 import ThinkingTrace from '../components/ThinkingTrace'
 import MasteryRadar from '../components/MasteryRadar'
+import ThemeToggle from '../components/ThemeToggle'
 import type { SessionData, Problem, Diagnosis } from '../lib/api'
 import './TutorSession.css'
 
@@ -34,22 +35,25 @@ export default function TutorSession() {
     (text) => { setInput(text) }
   )
 
-  const [warmupBadge, setWarmupBadge] = useState<{ score: number; total: number } | null>(null)
-
-  useEffect(() => {
+  const [warmupBadge, setWarmupBadge] = useState<{ score: number; total: number } | null>(() => {
     try {
       const rawBadge = sessionStorage.getItem('veritas_warmup_badge')
       if (rawBadge) {
         sessionStorage.removeItem('veritas_warmup_badge')
         const data = JSON.parse(rawBadge)
         if (data && typeof data.score === 'number') {
-          setWarmupBadge({ score: data.score, total: data.total })
-          const t = setTimeout(() => setWarmupBadge(null), 3500)
-          return () => clearTimeout(t)
+          return { score: data.score, total: data.total }
         }
       }
     } catch {}
-  }, [])
+    return null
+  })
+
+  useEffect(() => {
+    if (!warmupBadge) return
+    const t = setTimeout(() => setWarmupBadge(null), 3500)
+    return () => clearTimeout(t)
+  }, [warmupBadge])
 
   // Load session from sessionStorage or initialize from logged-in user
   useEffect(() => {
@@ -307,6 +311,7 @@ export default function TutorSession() {
                 Sign Out
               </button>
             )}
+            <ThemeToggle />
           </div>
         </div>
 

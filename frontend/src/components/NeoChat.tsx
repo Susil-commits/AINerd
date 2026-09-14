@@ -26,6 +26,10 @@ function getOrCreateVisitorId(): string {
   return vid
 }
 
+function createMessageId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+}
+
 export default function NeoChat() {
   const navigate = useNavigate()
   const { user, role } = useAuth()
@@ -46,6 +50,12 @@ export default function NeoChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const handleOpenChat = () => {
+    setIsOpen(true)
+    setHasUnread(false)
+    setShowTooltip(false)
+  }
+
   // Load contextual suggestions on mount
   useEffect(() => {
     getNeoSuggestions().then(setSuggestions).catch(() => {})
@@ -62,8 +72,6 @@ export default function NeoChat() {
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-      setHasUnread(false)
-      setShowTooltip(false)
       setTimeout(() => inputRef.current?.focus(), 150)
     }
   }, [isOpen, messages, isLoading])
@@ -82,7 +90,7 @@ export default function NeoChat() {
     const query = (textToSend || inputValue).trim()
     if (!query || isLoading) return
 
-    const userMsgId = 'usr_' + Date.now()
+    const userMsgId = createMessageId('usr')
     const nowIso = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
     const userMessage: ChatMessage = {
@@ -108,7 +116,7 @@ export default function NeoChat() {
       const response: NeoChatResponse = await sendNeoChat(query, historyPayload, visitorId)
 
       const assistantMessage: ChatMessage = {
-        id: 'neo_' + Date.now(),
+        id: createMessageId('neo'),
         role: 'assistant',
         content: response.reply,
         guardrailed: response.guardrailed,
@@ -122,7 +130,7 @@ export default function NeoChat() {
     } catch (err: any) {
       const errMsg = err?.response?.data?.detail || 'Neo is temporarily catching its breath. Please try again in a few moments.'
       const errorMessage: ChatMessage = {
-        id: 'err_' + Date.now(),
+        id: createMessageId('err'),
         role: 'assistant',
         content: errMsg,
         guardrailed: false,
@@ -201,7 +209,7 @@ export default function NeoChat() {
 
           <button
             className={`neo-launcher-btn ${hasUnread ? 'has-unread' : ''}`}
-            onClick={() => setIsOpen(true)}
+            onClick={handleOpenChat}
             aria-label="Open Neo AI Assistant"
           >
             <div className="neo-launcher-glow" />

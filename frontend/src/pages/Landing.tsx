@@ -7,6 +7,7 @@ import SocraticPreview from '../components/SocraticPreview'
 import { validateEmailFormat, suggestCorrection, friendlyAuthError } from '../lib/emailValidation'
 import { useBackendWarmup } from '../hooks/useBackendWarmup'
 import WarmupExperience from '../components/WarmupExperience'
+import ThemeToggle from '../components/ThemeToggle'
 import './Landing.css'
 
 const STATS = [
@@ -474,13 +475,14 @@ export default function Landing() {
             <a href="#topics" className="nav-link">Math Topics</a>
           </nav>
 
-          {user && (
-            <div className="navbar-actions">
+          <div className="navbar-actions">
+            <ThemeToggle />
+            {user && (
               <button className="btn btn-sm btn-violet" onClick={handleEnterSession}>
                 {role === 'parent' ? 'Parent Portal' : 'Math Session'}
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </header>
 
@@ -986,18 +988,44 @@ export default function Landing() {
 
         {/* Pipeline flow */}
         <div className="pipeline-strip card">
-          <span className="pipeline-label">HOW EACH PRACTICE STEP WORKS:</span>
+          <div className="pipeline-header">
+            <span className="pipeline-dot" />
+            <span className="pipeline-label">How Each Practice Step Works</span>
+          </div>
           <div className="pipeline-steps">
             {[
-              { step: '1', label: 'Student Voice / Text', color: 'var(--violet)' },
-              { step: '2', label: 'Tutor Thinks & Guides', color: 'var(--indigo)' },
-              { step: '3', label: 'Checks Paper Work Photo', color: 'var(--amber)' },
-              { step: '4', label: 'Updates Your Skill Map', color: 'var(--emerald)' },
+              { step: '1', label: 'Student Voice / Text', color: 'var(--violet)', bg: 'var(--violet-dim)' },
+              { step: '2', label: 'Tutor Thinks & Guides', color: 'var(--indigo)', bg: 'var(--indigo-dim)' },
+              { step: '3', label: 'Checks Paper Work Photo', color: 'var(--amber)', bg: 'var(--amber-dim)' },
+              { step: '4', label: 'Updates Your Skill Map', color: 'var(--emerald)', bg: 'var(--emerald-dim)' },
             ].map((stepItem, i) => (
-              <div key={i} className="pipeline-step-item">
-                <span className="step-badge" style={{ borderColor: stepItem.color }}>Step {stepItem.step}</span>
-                <span className="step-name">{stepItem.label}</span>
-                {i < 3 && <span className="step-arrow">→</span>}
+              <div key={i} className="pipeline-step-wrapper">
+                <div className="pipeline-step-item">
+                  <span
+                    className="step-badge"
+                    style={{
+                      borderColor: stepItem.color,
+                      color: stepItem.color,
+                      backgroundColor: stepItem.bg,
+                    }}
+                  >
+                    {stepItem.step}
+                  </span>
+                  <div className="step-info">
+                    <span className="step-tag" style={{ color: stepItem.color }}>
+                      Step {stepItem.step}
+                    </span>
+                    <span className="step-name">{stepItem.label}</span>
+                  </div>
+                </div>
+                {i < 3 && (
+                  <span className="step-arrow" aria-hidden="true">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                      <polyline points="12 5 19 12 12 19" />
+                    </svg>
+                  </span>
+                )}
               </div>
             ))}
           </div>

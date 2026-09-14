@@ -23,6 +23,8 @@
   --amber-dim:       rgba(245, 166, 35, 0.15);
 
   --emerald:         #34D399;
+  --emerald-light:   #6EE7B7;
+  --emerald-dim:     rgba(52, 211, 153, 0.15);
   --rose:            #F87171;
 
   --text-primary:    #F0F4FF;
@@ -48,6 +50,48 @@
   --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ══════════════════════════════════════════════════
+   LIGHT MODE — Premium Paper-White Design System
+   ══════════════════════════════════════════════════ */
+[data-theme="light"] {
+  /* Backgrounds — warm off-white paper tones */
+  --bg-base:         #F5F4F0;
+  --bg-surface:      rgba(255, 255, 255, 0.85);
+  --bg-elevated:     rgba(255, 255, 255, 0.95);
+  --bg-card:         rgba(255, 255, 255, 0.90);
+  --bg-input:        rgba(248, 248, 246, 0.95);
+
+  /* Accent colours stay vivid but slightly deeper for contrast on white */
+  --violet:          #6B4EE6;
+  --violet-light:    #8B6FFF;
+  --violet-dim:      rgba(107, 78, 230, 0.10);
+
+  --indigo:          #4460E8;
+  --indigo-dim:      rgba(68, 96, 232, 0.10);
+
+  --amber:           #E8920A;
+  --amber-light:     #F5A623;
+  --amber-dim:       rgba(232, 146, 10, 0.12);
+
+  --emerald:         #10A87A;
+  --emerald-light:   #059669;
+  --emerald-dim:     rgba(16, 168, 122, 0.12);
+  --rose:            #E05454;
+
+  /* Typography — deep ink tones */
+  --text-primary:    #1A1A2E;
+  --text-secondary:  #4A5080;
+  --text-muted:      #8A93B8;
+
+  /* Borders — subtle warm grey */
+  --border:          rgba(0, 0, 0, 0.08);
+  --border-accent:   rgba(107, 78, 230, 0.20);
+
+  /* Glows — softer on white */
+  --glow-violet:     0 4px 24px rgba(107, 78, 230, 0.14);
+  --glow-amber:      0 4px 20px rgba(232, 146, 10, 0.12);
+}
+
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -60,6 +104,7 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  transition: background 0.35s ease, color 0.35s ease;
 }
 
 /* ── Scrollbar ── */
@@ -67,7 +112,7 @@ body {
 ::-webkit-scrollbar-track { background: var(--bg-base); }
 ::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 3px; }
 
-/* ── Nebula background ── */
+/* ── Nebula background — dark mode ── */
 body::before {
   content: '';
   position: fixed;
@@ -78,6 +123,15 @@ body::before {
     radial-gradient(ellipse 40% 40% at 50% 50%, rgba(245,166,35,0.04) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
+  transition: opacity 0.35s ease;
+}
+
+/* ── Aurora background — light mode ── */
+[data-theme="light"] body::before {
+  background:
+    radial-gradient(ellipse 80% 60% at 15% 10%, rgba(107,78,230,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 85%, rgba(68,96,232,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(232,146,10,0.03) 0%, transparent 70%);
 }
 
 #root { position: relative; z-index: 1; }
@@ -212,3 +266,83 @@ h3 { font-size: 1.2rem; }
 
 .animate-fadein { animation: fadeInUp 0.4s ease both; }
 .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* ═══════════════════════════════════════════════════════════
+   LIGHT MODE OVERRIDES — glass, card, btn-ghost, input, scrollbar
+   ═══════════════════════════════════════════════════════════ */
+[data-theme="light"] .glass {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .btn-ghost {
+  color: var(--text-secondary);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+[data-theme="light"] .btn-ghost:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track { background: #EFEEEA; }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); }
+
+/* ═══════════════════════════════
+   THEME TOGGLE BUTTON
+   ═══════════════════════════════ */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 12px 5px 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.theme-toggle:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-accent);
+  color: var(--text-primary);
+}
+.theme-toggle-track {
+  width: 32px;
+  height: 18px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  position: relative;
+  transition: background 0.3s;
+  flex-shrink: 0;
+}
+[data-theme="light"] .theme-toggle-track {
+  background: linear-gradient(135deg, var(--violet), var(--indigo));
+  border-color: transparent;
+}
+.theme-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s;
+}
+[data-theme="light"] .theme-toggle-thumb {
+  transform: translateX(14px);
+  background: #fff;
+}

@@ -226,3 +226,11 @@ uvicorn main:app --reload --port 8000
 cd frontend
 npm run dev
 ```
+
+---
+
+## 📌 Known Limitations & Post-Hackathon Roadmap
+
+- **Dependency Security Patches**: Backend dependencies are pinned to versions current as of initial build; a full security-patch upgrade is planned post-hackathon. (`python-multipart` has been patched to `0.0.32` to protect public multipart upload parsing).
+- **Curriculum Scope**: Current problem bank targets 10 core Common Core State Standards (CCSS) in elementary mathematics, architected to expand to middle and high school standards.
+

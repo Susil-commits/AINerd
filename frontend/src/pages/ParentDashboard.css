@@ -985,3 +985,33 @@
     gap: 0.5rem;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   LIGHT MODE — ParentDashboard overrides
+   ═══════════════════════════════════════════════════════ */
+[data-theme="light"] .parent-dash {
+  background: var(--bg-base);
+}
+[data-theme="light"] .parent-header,
+[data-theme="light"] .pdash-header {
+  background: rgba(245, 244, 240, 0.92);
+  border-bottom: 1px solid rgba(0,0,0,0.07);
+  backdrop-filter: blur(14px);
+}
+[data-theme="light"] .child-card,
+[data-theme="light"] .session-card,
+[data-theme="light"] .pdash-card,
+[data-theme="light"] .alert-card,
+[data-theme="light"] .children-list {
+  background: rgba(255,255,255,0.90);
+  border-color: rgba(0,0,0,0.07);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+[data-theme="light"] .child-card:hover,
+[data-theme="light"] .session-card:hover {
+  border-color: rgba(107,78,230,0.22);
+  box-shadow: 0 4px 20px rgba(107,78,230,0.09);
+}
+[data-theme="light"] .session-date {
+  color: var(--text-muted);
+}

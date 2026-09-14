@@ -5,6 +5,7 @@ import ShiningDots from './components/ShiningDots'
 import NeoChat from './components/NeoChat'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
+import { ThemeProvider } from './context/ThemeContext'
 import './index.css'
 
 const TutorSession = lazy(() => import('./pages/TutorSession'))
@@ -38,48 +39,50 @@ function PageFallback() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <ShiningDots />
-        <Suspense fallback={<PageFallback />}>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route
-              path="/student-session"
-              element={
-                <ProtectedRoute>
-                  <TutorSession />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/session"
-              element={
-                <ProtectedRoute>
-                  <TutorSession />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/parent-dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['parent']}>
-                  <ParentDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/:studentId"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </Suspense>
-        <NeoChat />
-      </AuthProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <ShiningDots />
+          <Suspense fallback={<PageFallback />}>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route
+                path="/student-session"
+                element={
+                  <ProtectedRoute>
+                    <TutorSession />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/session"
+                element={
+                  <ProtectedRoute>
+                    <TutorSession />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/parent-dashboard"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <ParentDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/:studentId"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </Suspense>
+          <NeoChat />
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   )
 }

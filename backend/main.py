@@ -753,6 +753,19 @@ def _save_fallback_child(record: dict):
         json.dump(current, f, indent=2)
 
 
+def _sync_purge_fallback_file(parent_id: str):
+    if not CHILDREN_FALLBACK_FILE.exists():
+        return
+    try:
+        with open(CHILDREN_FALLBACK_FILE, "r", encoding="utf-8") as f:
+            current = json.load(f)
+        cleaned = [c for c in current if c.get("parent_id") != parent_id]
+        with open(CHILDREN_FALLBACK_FILE, "w", encoding="utf-8") as f:
+            json.dump(cleaned, f, indent=2)
+    except Exception:
+        pass
+
+
 @app.post("/parent/add-child")
 async def add_child(req: AddChildRequest):
     """Link a child by email to a parent in the children table."""
@@ -1060,15 +1073,7 @@ async def delete_parent_data(parent_id: str):
         await db_exec(supabase.table("children").delete().eq("parent_id", parent_id))
 
         # 3. Clean fallback file if present
-        if CHILDREN_FALLBACK_FILE.exists():
-            try:
-                with open(CHILDREN_FALLBACK_FILE, "r", encoding="utf-8") as f:
-                    current = json.load(f)
-                cleaned = [c for c in current if c.get("parent_id") != parent_id]
-                with open(CHILDREN_FALLBACK_FILE, "w", encoding="utf-8") as f:
-                    json.dump(cleaned, f, indent=2)
-            except Exception:
-                pass
+        await asyncio.to_thread(_sync_purge_fallback_file, parent_id)
 
         record_security_event("user_data_deleted", {
             "parent_id": parent_id,

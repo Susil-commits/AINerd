@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getParentChildren, addChild, getChildDetails, deleteParentData, type ChildItem } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import MasteryRadar from '../components/MasteryRadar'
+import ThemeToggle from '../components/ThemeToggle'
 import './ParentDashboard.css'
 
 interface SkillItem {
@@ -32,23 +33,25 @@ export default function ParentDashboard() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deletingData, setDeletingData] = useState(false)
   const [deleteSuccessMsg, setDeleteSuccessMsg] = useState('')
-  const [warmupBadge, setWarmupBadge] = useState<{ score: number; total: number } | null>(null)
-  const realtimeChannelRef = useRef<any>(null)
-
-  useEffect(() => {
+  const [warmupBadge, setWarmupBadge] = useState<{ score: number; total: number } | null>(() => {
     try {
       const rawBadge = sessionStorage.getItem('veritas_warmup_badge')
       if (rawBadge) {
         sessionStorage.removeItem('veritas_warmup_badge')
         const data = JSON.parse(rawBadge)
         if (data && typeof data.score === 'number') {
-          setWarmupBadge({ score: data.score, total: data.total })
-          const t = setTimeout(() => setWarmupBadge(null), 3500)
-          return () => clearTimeout(t)
+          return { score: data.score, total: data.total }
         }
       }
     } catch {}
-  }, [])
+    return null
+  })
+
+  useEffect(() => {
+    if (!warmupBadge) return
+    const t = setTimeout(() => setWarmupBadge(null), 3500)
+    return () => clearTimeout(t)
+  }, [warmupBadge])
 
   const parentId = user?.id || '99999999-8888-7777-6666-555555555555'
   const parentEmail = user?.email || 'parent.sarah@veritas.dev'
@@ -80,8 +83,8 @@ export default function ParentDashboard() {
       .then((res) => {
         const list = res.children || []
         setChildrenList(list)
-        if (list.length > 0 && (!selectedChildId || !list.some(c => c.student_id === selectedChildId))) {
-          setSelectedChildId(list[0].student_id)
+        if (list.length > 0) {
+          setSelectedChildId(prev => (!prev || !list.some(c => c.student_id === prev) ? list[0].student_id : prev))
         }
       })
       .catch((err) => {
@@ -91,7 +94,7 @@ export default function ParentDashboard() {
       .finally(() => {
         setChildrenLoading(false)
       })
-  }, [parentId, selectedChildId])
+  }, [parentId])
 
   // Initial load
   useEffect(() => {
@@ -136,13 +139,10 @@ export default function ParentDashboard() {
   useEffect(() => {
     if (!selectedChildId) return
 
+    let channel: any = null
     // 1. Supabase Realtime subscription
     try {
-      if (realtimeChannelRef.current) {
-        supabase.removeChannel(realtimeChannelRef.current)
-      }
-
-      const channel = supabase
+      channel = supabase
         .channel(`parent-radar-${selectedChildId}`)
         .on(
           'postgres_changes',
@@ -160,8 +160,6 @@ export default function ParentDashboard() {
           }
         )
         .subscribe()
-
-      realtimeChannelRef.current = channel
     } catch (err) {
       console.warn('Supabase realtime subscription failed:', err)
     }
@@ -173,8 +171,8 @@ export default function ParentDashboard() {
 
     return () => {
       clearInterval(pollTimer)
-      if (realtimeChannelRef.current) {
-        supabase.removeChannel(realtimeChannelRef.current)
+      if (channel) {
+        supabase.removeChannel(channel)
       }
     }
   }, [selectedChildId, refreshChildDetails])
@@ -264,6 +262,7 @@ export default function ParentDashboard() {
           >
             Sign Out
           </button>
+          <ThemeToggle />
         </div>
       </header>
 
@@ -468,12 +467,14 @@ export default function ParentDashboard() {
                           </div>
                           <div className="session-meta">
                             <span className="session-date">
-                              {new Date(sess.started_at || Date.now()).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
+                              {sess.started_at
+                                ? new Date(sess.started_at).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })
+                                : 'Recent session'}
                             </span>
                             <span className="session-tag">Math Tutoring Session</span>
                           </div>

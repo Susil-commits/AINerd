@@ -193,3 +193,28 @@
   .dash-content { grid-template-columns: 1fr; }
   .dash-stats { margin-left: 0; width: 100%; justify-content: flex-start; }
 }
+
+/* ═══════════════════════════════════════════════════════
+   LIGHT MODE — Dashboard overrides
+   ═══════════════════════════════════════════════════════ */
+[data-theme="light"] .dashboard {
+  background: var(--bg-base);
+}
+[data-theme="light"] .dash-header {
+  background: rgba(245, 244, 240, 0.92);
+  border-bottom: 1px solid rgba(0,0,0,0.07);
+  backdrop-filter: blur(14px);
+}
+[data-theme="light"] .dash-content,
+[data-theme="light"] .dash-card,
+[data-theme="light"] .skill-row {
+  background: rgba(255,255,255,0.90);
+  border-color: rgba(0,0,0,0.07);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+[data-theme="light"] .dash-stat span {
+  color: var(--text-primary);
+}
+[data-theme="light"] .dash-stat label {
+  color: var(--text-muted);
+}

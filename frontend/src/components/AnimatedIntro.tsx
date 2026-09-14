@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import './AnimatedIntro.css'
 
 const MATH_GLYPHS = [
@@ -20,6 +20,16 @@ interface AnimatedIntroProps {
 export default function AnimatedIntro({ onEnter }: AnimatedIntroProps) {
   const [isExiting, setIsExiting] = useState(false)
   const [activeStep, setActiveStep] = useState(0)
+  const hasExitedRef = useRef(false)
+
+  const handleExit = useCallback(() => {
+    if (hasExitedRef.current) return
+    hasExitedRef.current = true
+    setIsExiting(true)
+    setTimeout(() => {
+      onEnter()
+    }, 750) // Transition duration matches CSS
+  }, [onEnter])
 
   useEffect(() => {
     // Staggered text progression
@@ -49,15 +59,7 @@ export default function AnimatedIntro({ onEnter }: AnimatedIntroProps) {
       clearTimeout(autoExitTimer)
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [])
-
-  const handleExit = () => {
-    if (isExiting) return
-    setIsExiting(true)
-    setTimeout(() => {
-      onEnter()
-    }, 750) // Transition duration matches CSS
-  }
+  }, [handleExit])
 
   return (
     <div className={`intro-portal ${isExiting ? 'intro-portal--exiting' : ''}`}>

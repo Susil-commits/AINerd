@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getMastery, getSummary } from '../lib/api'
 import MasteryRadar from '../components/MasteryRadar'
+import ThemeToggle from '../components/ThemeToggle'
 import './Dashboard.css'
 
 interface SkillMastery {
@@ -28,6 +29,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     document.title = `Veritas — ${studentName}'s Progress Dashboard`
+  }, [studentName])
+
+  useEffect(() => {
     if (!studentId) return
     setLoading(true)
     setLoadError(null)
@@ -90,6 +94,7 @@ export default function Dashboard() {
             <span>{weakSkills.length}</span>
             <label>Practicing</label>
           </div>
+          <ThemeToggle />
         </div>
       </header>
 

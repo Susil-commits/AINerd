@@ -366,3 +366,38 @@
   flex-wrap: wrap;
   justify-content: center;
 }
+
+/* ═══════════════════════════════════════════════════════
+   LIGHT MODE — TutorSession overrides
+   ═══════════════════════════════════════════════════════ */
+[data-theme="light"] .tutor-session,
+[data-theme="light"] .session-shell {
+  background: var(--bg-base);
+}
+[data-theme="light"] .session-header,
+[data-theme="light"] .tutor-header {
+  background: rgba(245, 244, 240, 0.92);
+  border-bottom: 1px solid rgba(0,0,0,0.07);
+  backdrop-filter: blur(14px);
+}
+[data-theme="light"] .chat-panel,
+[data-theme="light"] .chat-bubble--assistant,
+[data-theme="light"] .session-panel {
+  background: rgba(255,255,255,0.88);
+  border-color: rgba(0,0,0,0.07);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+}
+[data-theme="light"] .chat-bubble--user {
+  background: linear-gradient(135deg, rgba(107,78,230,0.12), rgba(68,96,232,0.10));
+  border-color: rgba(107,78,230,0.18);
+}
+[data-theme="light"] .chat-input-bar,
+[data-theme="light"] .input-area {
+  background: rgba(248,248,246,0.95);
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+[data-theme="light"] .send-btn,
+[data-theme="light"] .session-btn {
+  background: linear-gradient(135deg, var(--violet), var(--indigo));
+  color: #fff;
+}
