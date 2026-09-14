@@ -146,6 +146,7 @@ export default function Landing() {
   const MAX_RESENDS = 3
   const [rememberedDismissed, setRememberedDismissed] = useState(false)
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
+  const [otpScreenSeconds, setOtpScreenSeconds] = useState(0)
 
   // Cold-start warmup hook
   const {
@@ -156,6 +157,18 @@ export default function Landing() {
   } = useBackendWarmup()
   const [showWarmupModal, setShowWarmupModal] = useState(false)
   const [pendingWarmupDestination, setPendingWarmupDestination] = useState<{ path: string; role: 'student' | 'parent' } | null>(null)
+
+  // OTP screen dwell timer for proactive help escalation
+  useEffect(() => {
+    if (authScreen !== 'otp') {
+      setOtpScreenSeconds(0)
+      return
+    }
+    const interval = setInterval(() => {
+      setOtpScreenSeconds(prev => prev + 1)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [authScreen])
 
   // Resend OTP countdown
   useEffect(() => {
@@ -315,6 +328,7 @@ export default function Landing() {
       } else {
         setMagicLinkEmail(trimmed)
         setAuthScreen('otp')
+        setOtpScreenSeconds(0)
         setResendTimer(45)
         setResendCount(0)
         setEmailCorrection(null)
@@ -341,6 +355,7 @@ export default function Landing() {
       if (res.error) {
         setAuthError(friendlyAuthError(res.error))
       } else {
+        setOtpScreenSeconds(0) // restart the window after a fresh send
         const nextCount = resendCount + 1
         setResendCount(nextCount)
         setResendTimer(45 * (nextCount + 1)) // 45s, then 90s, then 135s progressive backoff
@@ -638,6 +653,26 @@ export default function Landing() {
                         />
                       ))}
                     </div>
+
+                    {otpScreenSeconds >= 45 && otpScreenSeconds < 90 && (
+                      <p className="otp-hint otp-hint--soft animate-fadein">
+                        Taking a bit longer than usual — check your spam or promotions folder.
+                      </p>
+                    )}
+
+                    {otpScreenSeconds >= 90 && (
+                      <p className="otp-hint otp-hint--direct animate-fadein">
+                        Still nothing? Double-check <strong>{magicLinkEmail || email}</strong> is spelled
+                        correctly, or{' '}
+                        <button
+                          type="button"
+                          className="otp-hint-link"
+                          onClick={() => { setAuthScreen('form'); setAuthError('') }}
+                        >
+                          try a different email
+                        </button>.
+                      </p>
+                    )}
 
                     {authError && <p className="auth-error-banner">{authError}</p>}
 

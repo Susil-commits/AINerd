@@ -14,6 +14,7 @@
   --violet:          #7C5DFA;
   --violet-light:    #9D7EFF;
   --violet-dim:      rgba(124, 93, 250, 0.15);
+  --accent-violet:   #7C5DFA;
 
   --indigo:          #4F6EF7;
   --indigo-dim:      rgba(79, 110, 247, 0.15);
@@ -65,6 +66,7 @@
   --violet:          #6B4EE6;
   --violet-light:    #8B6FFF;
   --violet-dim:      rgba(107, 78, 230, 0.10);
+  --accent-violet:   #6B4EE6;
 
   --indigo:          #4460E8;
   --indigo-dim:      rgba(68, 96, 232, 0.10);

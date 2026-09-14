@@ -1574,6 +1574,37 @@
   text-decoration: underline;
 }
 
+/* Proactive OTP Escalation Hints */
+.otp-hint {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  border-left: 2px solid var(--accent-violet);
+  padding-left: 10px;
+  text-align: left;
+}
+
+.otp-hint--direct {
+  color: var(--text-primary);
+}
+
+.otp-hint-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent-violet);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+  font-weight: 600;
+  display: inline;
+}
+
+.otp-hint-link:hover {
+  opacity: 0.85;
+}
+
 
 
 /* ── Platform Safety & Compliance Trust Strip ── */
