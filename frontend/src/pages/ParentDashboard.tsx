@@ -5,6 +5,7 @@ import { getParentChildren, addChild, getChildDetails, deleteParentData, type Ch
 import { supabase } from '../lib/supabase'
 import MasteryRadar from '../components/MasteryRadar'
 import ThemeToggle from '../components/ThemeToggle'
+import { getSkillMeta, getMasteryTierInfo, getBarGradient } from '../lib/skillsData'
 import './ParentDashboard.css'
 
 interface SkillItem {
@@ -415,40 +416,77 @@ export default function ParentDashboard() {
                       )}
                     </div>
                   ) : skills.length > 0 ? (
-                    <MasteryRadar skills={skills} />
+                    <MasteryRadar skills={skills} showBars={false} />
                   ) : (
                     <div className="radar-empty">No skill records available for this student yet.</div>
                   )}
                 </div>
               </div>
 
-              {/* Skills breakdown */}
+              {/* Skills breakdown — enriched with human-readable metadata */}
               <div className="skills-panel">
                 <div className="panel-header">
                   <h3>Math Skills</h3>
-                  <span className="skills-badge">{skills.length} Math Skills</span>
+                  <span className="skills-badge">{skills.length} Skills</span>
                 </div>
 
                 <div className="skills-list">
                   {skills.map((s) => {
+                    const meta = getSkillMeta(s.skill_id)
+                    const tierInfo = getMasteryTierInfo(s.mastery_prob)
                     const pct = Math.round(s.mastery_prob * 100)
-                    const isFraction = s.name.toLowerCase().includes('fraction')
-                    const level = pct >= 70 ? 'strong' : pct >= 40 ? 'developing' : 'needs-practice'
                     return (
                       <div
                         key={s.skill_id}
-                        className={`skill-item skill-item--${level} ${isFraction ? 'skill-item--highlight' : ''}`}
+                        className="skill-item"
+                        style={{ borderColor: tierInfo.borderColor }}
                       >
-                        <div className="skill-info">
-                          <div className="skill-title-row">
-                            <span className="skill-name-text">{s.name}</span>
-                            {isFraction && <span className="fraction-tag">Target Focus</span>}
+                        {/* Top row: domain badge + std code + tier badge */}
+                        <div className="skill-item-top">
+                          <div className="skill-item-badges">
+                            <span
+                              className="skill-domain-badge"
+                              style={{
+                                color: meta.domainColor,
+                                background: `${meta.domainColor}18`,
+                                border: `1px solid ${meta.domainColor}35`,
+                              }}
+                            >
+                              {meta.grade} · {meta.domainAbbr}
+                            </span>
+                            <span className="skill-std-code">{s.skill_id}</span>
                           </div>
-                          <div className="progress-track">
-                            <div className="progress-fill" style={{ width: `${pct}%` }} />
-                          </div>
+                          <span
+                            className="skill-tier-badge"
+                            style={{
+                              color: tierInfo.color,
+                              background: tierInfo.bgColor,
+                              border: `1px solid ${tierInfo.borderColor}`,
+                            }}
+                          >
+                            {tierInfo.icon} {tierInfo.label}
+                          </span>
                         </div>
-                        <div className="skill-percent">{pct}%</div>
+
+                        {/* Title + Percent */}
+                        <div className="skill-item-main">
+                          <span className="skill-name-text">{meta.title}</span>
+                          <span className="skill-percent" style={{ color: tierInfo.color }}>{pct}%</span>
+                        </div>
+
+                        {/* Gradient progress bar */}
+                        <div className="progress-track">
+                          <div
+                            className="progress-fill"
+                            style={{
+                              width: `${pct}%`,
+                              background: getBarGradient(tierInfo.tier),
+                            }}
+                          />
+                        </div>
+
+                        {/* Concept description */}
+                        <p className="skill-desc">{meta.description}</p>
                       </div>
                     )
                   })}

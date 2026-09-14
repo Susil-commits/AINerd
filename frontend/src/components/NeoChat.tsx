@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { sendNeoChat, getNeoSuggestions, type NeoChatResponse } from '../lib/api'
 import './NeoChat.css'
@@ -32,8 +32,10 @@ function createMessageId(prefix: string): string {
 
 export default function NeoChat() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, role } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
+  const [isMinimized, setIsMinimized] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
       const saved = localStorage.getItem(CHAT_HISTORY_KEY)
@@ -46,6 +48,9 @@ export default function NeoChat() {
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [hasUnread, setHasUnread] = useState(false)
   const [showTooltip, setShowTooltip] = useState(false)
+
+  // Detect if user is on a live tutor session page where sidebar takes right edge
+  const isSessionPage = location.pathname === '/session' || location.pathname === '/student-session'
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -202,11 +207,11 @@ export default function NeoChat() {
   const userTag = user ? (role === 'parent' ? 'Parent' : 'Student') : 'Visitor'
 
   return (
-    <div className="neo-chatbot-container">
+    <div className={`neo-chatbot-container${isSessionPage ? ' neo-chatbot-container--session' : ''}`}>
       {/* Floating Launcher Button */}
       {!isOpen && (
         <div className="neo-launcher-wrapper">
-          {showTooltip && (
+          {showTooltip && !isMinimized && (
             <div className="neo-tooltip" onClick={() => setIsOpen(true)}>
               <span>Have questions about Veritas? <strong>Ask Neo</strong></span>
               <button
@@ -226,15 +231,43 @@ export default function NeoChat() {
             </div>
           )}
 
-          <button
-            className={`neo-launcher-btn ${hasUnread ? 'has-unread' : ''}`}
-            onClick={handleOpenChat}
-            aria-label="Open Neo AI Assistant"
-          >
-            <div className="neo-launcher-glow" />
-            <span className="neo-launcher-text">Ask Neo</span>
-            {hasUnread && <span className="neo-unread-badge">New</span>}
-          </button>
+          {isMinimized ? (
+            /* Minimized circular avatar */
+            <button
+              className="neo-launcher-mini"
+              onClick={() => setIsMinimized(false)}
+              aria-label="Expand Neo AI assistant"
+              title="Ask Neo"
+            >
+              <div className="neo-launcher-glow" />
+              <span className="neo-launcher-mini-text">N</span>
+              {hasUnread && <span className="neo-unread-dot" />}
+            </button>
+          ) : (
+            <div className="neo-launcher-row">
+              <button
+                className={`neo-launcher-btn ${hasUnread ? 'has-unread' : ''}`}
+                onClick={handleOpenChat}
+                aria-label="Open Neo AI Assistant"
+              >
+                <div className="neo-launcher-glow" />
+                <span className="neo-launcher-text">Ask Neo</span>
+                {hasUnread && <span className="neo-unread-badge">New</span>}
+              </button>
+              {isSessionPage && (
+                <button
+                  className="neo-minimize-btn"
+                  onClick={() => setIsMinimized(true)}
+                  aria-label="Minimize Neo"
+                  title="Minimize"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 

@@ -79,16 +79,23 @@ DEFAULT_SUGGESTIONS = [
 ]
 
 
-def build_neo_llm() -> ChatGoogleGenerativeAI:
+NEO_MODEL_CASCADE = [
+    os.environ.get("GEMINI_MODEL", "gemini-3.6-flash"),
+    "gemini-flash-latest",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+]
+
+
+def build_neo_llm(model_name: str) -> ChatGoogleGenerativeAI:
     """Instantiate Gemini Flash LLM using the existing GEMINI_API_KEY."""
-    model_name = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY", "")
     return ChatGoogleGenerativeAI(
         model=model_name,
         google_api_key=api_key,
         temperature=0.3,
         max_output_tokens=500,
-        max_retries=1,
+        max_retries=0,
     )
 
 
@@ -168,9 +175,23 @@ def run_neo_agent(
 
     # Layer 2: LLM generation with fallback & output guardrails
     try:
-        llm = build_neo_llm()
-        res = llm.invoke(messages)
-        reply_text = str(res.content).strip()
+        reply_text = ""
+        seen = set()
+        models_to_try = [m for m in NEO_MODEL_CASCADE if m and not (m in seen or seen.add(m))]
+        for model_name in models_to_try:
+            try:
+                llm = build_neo_llm(model_name)
+                res = llm.invoke(messages)
+                content = str(res.content).strip()
+                if content:
+                    reply_text = content
+                    break
+            except Exception as model_err:
+                print(f"[WARN] Neo LLM failed on {model_name}: {model_err}")
+                continue
+
+        if not reply_text:
+            raise RuntimeError("All models in Neo cascade failed")
 
         # Output Guardrail A: Strip any emojis to strictly honor the platform prompt directive
         reply_text = EMOJI_PATTERN.sub("", reply_text)

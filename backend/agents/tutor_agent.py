@@ -46,16 +46,55 @@ FEW_SHOT_EXAMPLES = [
 ]
 
 
-def build_tutor_llm() -> ChatGoogleGenerativeAI:
-    model_name = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+MODEL_CASCADE = [
+    os.environ.get("GEMINI_MODEL", "gemini-3.6-flash"),
+    "gemini-flash-latest",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+]
+
+
+def build_tutor_llm(model_name: str) -> ChatGoogleGenerativeAI:
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY", "")
     return ChatGoogleGenerativeAI(
         model=model_name,
         google_api_key=api_key,
         temperature=0.7,
         max_output_tokens=300,
-        max_retries=1,
+        max_retries=0,
     )
+
+
+def _intelligent_socratic_fallback(
+    student_message: str,
+    current_problem: dict | None = None,
+) -> str:
+    """Provide pedagogical Socratic guidance even when external LLM APIs are momentarily rate-limited."""
+    clean = student_message.strip().lower()
+    
+    # Check for common stuck cues
+    if any(w in clean for w in ["stuck", "don't know", "dont know", "hint", "help", "what next", "lost"]):
+        if current_problem and current_problem.get("expected_steps"):
+            first_step = current_problem["expected_steps"][0]
+            return f"That's completely okay — let's break it down together! First, look at the given numbers. Can you tell me what information the problem gives us?"
+        return "No worries at all, math takes step-by-step thinking! What is the very first number or quantity you see in the problem?"
+
+    # Check if student gave a number / answer
+    has_digit = any(c.isdigit() for c in clean)
+    if has_digit:
+        return (
+            "Nice effort putting a calculation forward! Walk me through your thinking: "
+            "which numbers did you use and what operation did you perform?"
+        )
+
+    if current_problem:
+        title = current_problem.get("title", "this problem")
+        return (
+            f"You're on the right track exploring {title}! "
+            f"What math operation do you think we need to use here — addition, subtraction, multiplication, or division?"
+        )
+
+    return "Good thought! Can you explain why you chose that approach, or what step comes next?"
 
 
 def run_tutor_agent(
@@ -67,8 +106,6 @@ def run_tutor_agent(
     Given a student message and conversation history, return a Socratic guiding response.
     conversation_history: list of {"role": "student"|"tutor", "content": str}
     """
-    llm = build_tutor_llm()
-
     # Build system message with current problem context
     system_content = SOCRATIC_SYSTEM_PROMPT
     if current_problem:
@@ -101,12 +138,23 @@ Expected solution steps (for your reference only — do NOT reveal these):
     # Add current student message
     messages.append(HumanMessage(content=student_message))
 
-    try:
-        response = llm.invoke(messages)
-        return str(response.content).strip()
-    except Exception as e:
-        err_str = str(e).lower()
-        print(f"[WARN] Tutor agent invoke failed: {e}")
-        if "429" in err_str or "quota" in err_str or "resource_exhausted" in err_str:
-            return "I'm pausing for just a moment while our tutor AI catches its breath! Please send your thought again in 10 seconds."
-        return "I had a momentary glitch thinking through that. Could you share your thought with me one more time?"
+    # Try model cascade to handle individual model quota/deprecations seamlessly
+    last_err = None
+    # Deduplicate cascade preserving order
+    seen = set()
+    models_to_try = [m for m in MODEL_CASCADE if m and not (m in seen or seen.add(m))]
+
+    for model_name in models_to_try:
+        try:
+            llm = build_tutor_llm(model_name)
+            response = llm.invoke(messages)
+            text = str(response.content).strip()
+            if text:
+                return text
+        except Exception as e:
+            last_err = e
+            print(f"[WARN] Tutor agent invoke failed on model '{model_name}': {e}")
+            continue
+
+    print(f"[WARN] All models in cascade failed ({last_err}), using intelligent Socratic fallback.")
+    return _intelligent_socratic_fallback(student_message, current_problem)

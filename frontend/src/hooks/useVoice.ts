@@ -129,8 +129,11 @@ export function cleanTextForSpeech(raw: string): string {
   return text
 }
 
-// Cache cloud TTS quota state in memory and sessionStorage to prevent spamming failed 402 requests
-let cloudTtsExhausted = typeof window !== 'undefined' && sessionStorage.getItem('veritas_cloud_tts_disabled') === 'true'
+// Cache cloud TTS quota state in memory and localStorage to prevent spamming failed requests
+let cloudTtsExhausted = typeof window !== 'undefined' && (
+  sessionStorage.getItem('veritas_cloud_tts_disabled') === 'true' ||
+  localStorage.getItem('veritas_cloud_tts_disabled') === 'true'
+)
 
 // Global registry for currently playing AudioContext to ensure immediate cancellation on logout or route changes
 let activeAudioContext: AudioContext | null = null
@@ -208,50 +211,56 @@ export function useTTS() {
     const localGen = globalSpeechGeneration
     setSpeaking(true)
 
-    // 1. Try ElevenLabs cloud TTS only if quota hasn't previously failed with 402/401/503
+    // 1. Try ElevenLabs cloud TTS only if quota hasn't previously failed
     if (!cloudTtsExhausted) {
       try {
         const buffer = await synthesizeSpeech(speechText)
         if (currentTokenRef.current !== token || !isMountedRef.current || localGen !== globalSpeechGeneration) {
           return
         }
-        const ctx = new AudioContext()
-        audioContextRef.current = ctx
-        activeAudioContext = ctx
-        const decoded = await ctx.decodeAudioData(buffer)
-        if (currentTokenRef.current !== token || !isMountedRef.current || localGen !== globalSpeechGeneration) {
-          try { ctx.close() } catch {}
-          return
-        }
-        const source = ctx.createBufferSource()
-        source.buffer = decoded
-        source.connect(ctx.destination)
-        source.onended = () => {
-          if (currentTokenRef.current === token) {
-            setSpeaking(false)
+        if (buffer) {
+          const ctx = new AudioContext()
+          audioContextRef.current = ctx
+          activeAudioContext = ctx
+          const decoded = await ctx.decodeAudioData(buffer)
+          if (currentTokenRef.current !== token || !isMountedRef.current || localGen !== globalSpeechGeneration) {
             try { ctx.close() } catch {}
-            if (audioContextRef.current === ctx) {
-              audioContextRef.current = null
-            }
-            if (activeAudioContext === ctx) {
-              activeAudioContext = null
+            return
+          }
+          const source = ctx.createBufferSource()
+          source.buffer = decoded
+          source.connect(ctx.destination)
+          source.onended = () => {
+            if (currentTokenRef.current === token) {
+              setSpeaking(false)
+              try { ctx.close() } catch {}
+              if (audioContextRef.current === ctx) {
+                audioContextRef.current = null
+              }
+              if (activeAudioContext === ctx) {
+                activeAudioContext = null
+              }
             }
           }
+          source.start()
+          return
+        } else {
+          // synthesizeSpeech returned null (quota exceeded or 204 fallback)
+          cloudTtsExhausted = true
+          try {
+            localStorage.setItem('veritas_cloud_tts_disabled', 'true')
+            sessionStorage.setItem('veritas_cloud_tts_disabled', 'true')
+          } catch {}
         }
-        source.start()
-        return
       } catch (err: any) {
         if (currentTokenRef.current !== token || !isMountedRef.current || localGen !== globalSpeechGeneration) {
           return
         }
-        // If error is 402 Payment Required (ElevenLabs quota exhausted) or similar, remember it
-        const errMsg = String(err?.message || err)
-        if (errMsg.includes('402') || errMsg.includes('401') || errMsg.includes('503')) {
-          cloudTtsExhausted = true
-          try {
-            sessionStorage.setItem('veritas_cloud_tts_disabled', 'true')
-          } catch {}
-        }
+        cloudTtsExhausted = true
+        try {
+          localStorage.setItem('veritas_cloud_tts_disabled', 'true')
+          sessionStorage.setItem('veritas_cloud_tts_disabled', 'true')
+        } catch {}
       }
     }
 
@@ -259,7 +268,7 @@ export function useTTS() {
       return
     }
 
-    // 2. Clean browser TTS fallback
+    // 2. Clean browser TTS fallback with safety timeout
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel()
@@ -273,12 +282,21 @@ export function useTTS() {
           utterance.voice = naturalVoice
         }
 
+        // Safety timeout in case browser policy blocks unprompted autoplay
+        const safetyTimer = setTimeout(() => {
+          if (currentTokenRef.current === token) {
+            setSpeaking(false)
+          }
+        }, 10000)
+
         utterance.onend = () => {
+          clearTimeout(safetyTimer)
           if (currentTokenRef.current === token) {
             setSpeaking(false)
           }
         }
         utterance.onerror = () => {
+          clearTimeout(safetyTimer)
           if (currentTokenRef.current === token) {
             setSpeaking(false)
           }

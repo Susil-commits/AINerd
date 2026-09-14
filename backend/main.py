@@ -206,6 +206,11 @@ class NeoChatRequest(BaseModel):
     visitor_id: str | None = None
 
 
+class NextProblemRequest(BaseModel):
+    session_id: str
+    mark_previous_correct: bool = True
+
+
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.api_route("/health", methods=["GET", "HEAD"])
@@ -472,7 +477,34 @@ async def send_message(req: MessageRequest):
                         "what math property explains why this step works?"
                     )
 
-            thinking_steps.append("Thinking of a guiding question...")
+            # Check if student solved the problem or reached final answer
+            problem_solved = False
+            resp_lower = response.lower()
+            congrats_signals = [
+                "spot on", "correct!", "that's right", "thats right", "great job", "you got it",
+                "wonderful work", "excellent", "nailed it", "well done", "perfect!", "exactly right",
+                "you solved it", "you arrived at the correct"
+            ]
+            if any(s in resp_lower for s in congrats_signals):
+                problem_solved = True
+
+            curr_skill = current_prob.get("skill_id") or session_state.get("current_skill_id")
+            if problem_solved and curr_skill and curr_skill in session_state.get("mastery_state", {}):
+                from bkt.tracker import update_mastery
+                old_m = session_state["mastery_state"][curr_skill]
+                new_m = update_mastery(old_m, True, curr_skill)
+                session_state["mastery_state"][curr_skill] = round(new_m, 4)
+                try:
+                    supabase = get_supabase()
+                    supabase.table("student_skill_mastery").upsert({
+                        "student_id": session_state["student_id"],
+                        "skill_id": curr_skill,
+                        "mastery_prob": session_state["mastery_state"][curr_skill],
+                    }, on_conflict="student_id,skill_id").execute()
+                except Exception:
+                    pass
+
+            thinking_steps.append("Thinking of a guiding question..." if not problem_solved else "Problem solved! Ready for next challenge.")
             yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
 
             # Update state & persist
@@ -488,7 +520,7 @@ async def send_message(req: MessageRequest):
                 student_id=session_state["student_id"],
                 problem_id=current_prob.get("id"),
                 attempt_text=clean_message,
-                is_correct=None,
+                is_correct=True if problem_solved else None,
                 agent_response=response,
             )
 
@@ -501,7 +533,7 @@ async def send_message(req: MessageRequest):
                     yield f"data: {json.dumps({'type': 'response', 'content': accumulated, 'done': i == len(words) - 1})}\n\n"
                     await asyncio.sleep(0.04)
 
-            yield f"data: {json.dumps({'type': 'done', 'mastery_state': session_state['mastery_state']})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'mastery_state': session_state['mastery_state'], 'problem_solved': problem_solved})}\n\n"
         except asyncio.CancelledError:
             # Client disconnected or navigated away; terminate generator cleanly
             return
@@ -509,13 +541,99 @@ async def send_message(req: MessageRequest):
             print(f"[ERROR] Chat stream exception: {e}")
             fallback_msg = "I had a quick pause! Could you repeat that thought?"
             yield f"data: {json.dumps({'type': 'response', 'content': fallback_msg, 'done': True})}\n\n"
-            yield f"data: {json.dumps({'type': 'done', 'mastery_state': session_state.get('mastery_state', {})})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'mastery_state': session_state.get('mastery_state', {}), 'problem_solved': False})}\n\n"
 
     return StreamingResponse(
         event_stream(),
         media_type="text/event-stream",
         headers=SSE_HEADERS,
     )
+
+
+@app.post("/session/next-problem")
+async def next_problem_endpoint(req: NextProblemRequest):
+    """Explicitly advance to the next tailored practice problem with BKT mastery progression."""
+    state = await asyncio.to_thread(get_session, req.session_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    session_state: dict[str, Any] = state
+    current_prob = session_state.get("current_problem") or {}
+    curr_skill = current_prob.get("skill_id") or session_state.get("current_skill_id")
+
+    from bkt.tracker import update_mastery, get_next_skill
+
+    # 1. Update BKT mastery if previous problem was solved / completed
+    if req.mark_previous_correct and curr_skill and curr_skill in session_state.get("mastery_state", {}):
+        old_m = session_state["mastery_state"][curr_skill]
+        new_m = update_mastery(old_m, True, curr_skill)
+        session_state["mastery_state"][curr_skill] = round(new_m, 4)
+        try:
+            supabase = get_supabase()
+            supabase.table("student_skill_mastery").upsert({
+                "student_id": session_state["student_id"],
+                "skill_id": curr_skill,
+                "mastery_prob": session_state["mastery_state"][curr_skill],
+            }, on_conflict="student_id,skill_id").execute()
+        except Exception:
+            pass
+
+    # 2. Pick next problem targeted by skill and difficulty
+    next_skill = get_next_skill(session_state.get("mastery_state", {}))
+    attempted = list(session_state.get("problems_attempted", []))
+    if current_prob.get("id") and current_prob["id"] not in attempted:
+        attempted.append(current_prob["id"])
+
+    next_prob = await asyncio.to_thread(
+        get_next_problem,
+        skill_id=next_skill,
+        mastery_prob=session_state.get("mastery_state", {}).get(next_skill, 0.3),
+        student_id=session_state["student_id"],
+        exclude_problem_ids=attempted,
+    )
+    if not next_prob:
+        # Fallback: allow repeating from problem bank if all completed
+        next_prob = await asyncio.to_thread(
+            get_next_problem,
+            skill_id=next_skill,
+            mastery_prob=session_state.get("mastery_state", {}).get(next_skill, 0.3),
+            student_id=session_state["student_id"],
+            exclude_problem_ids=[],
+        )
+
+    if not next_prob:
+        raise HTTPException(status_code=503, detail="No further practice problems found in problem bank.")
+
+    session_state["current_problem"] = next_prob
+    session_state["current_skill_id"] = next_skill
+    if next_prob.get("id") and next_prob["id"] not in attempted:
+        attempted.append(next_prob["id"])
+    session_state["problems_attempted"] = attempted
+
+    tutor_intro = (
+        f"Awesome work! Here is your next problem: **{next_prob.get('title', 'Next Problem')}**. "
+        f"Read it carefully and let me know what you think the first step is!"
+    )
+    session_state["conversation_history"].append({"role": "tutor", "content": tutor_intro})
+
+    await asyncio.to_thread(save_session, req.session_id, session_state)
+    await asyncio.to_thread(
+        record_session_event,
+        session_id=req.session_id,
+        student_id=session_state["student_id"],
+        problem_id=next_prob.get("id"),
+        attempt_text="Advanced to next problem",
+        is_correct=None,
+        agent_response=tutor_intro,
+    )
+
+    return {
+        "status": "ok",
+        "current_problem": next_prob,
+        "mastery_state": session_state["mastery_state"],
+        "tutor_message": tutor_intro,
+    }
+
 
 
 @app.post("/session/upload-work")
@@ -703,38 +821,77 @@ async def get_summary(
     return {"summary": summary, "events": events.data}
 
 
+# Cache ElevenLabs quota exhaustion state to prevent repeated failing requests
+_elevenlabs_exhausted_until: float = 0.0
+
 @app.post("/tts")
 async def text_to_speech(text: str):
-    """Proxy ElevenLabs TTS to protect the API key."""
+    """Proxy ElevenLabs TTS to protect the API key with seamless fallback to browser synthesis on quota exhaustion."""
+    global _elevenlabs_exhausted_until
     if not text or not text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty for TTS synthesis.")
+    
+    # If quota was recently exhausted (within 1 hour), signal frontend to use browser speech synthesis cleanly
+    now = time.time()
+    if now < _elevenlabs_exhausted_until:
+        return Response(
+            content=b"",
+            status_code=204,
+            headers={"X-TTS-Fallback": "browser", "X-TTS-Reason": "quota_cached"}
+        )
+
     api_key = os.getenv("ELEVENLABS_API_KEY")
     voice_id = os.getenv("ELEVENLABS_VOICE_ID", "cgSgspJ2msm6clMCkdW9")
 
     if not api_key:
-        raise HTTPException(status_code=503, detail="TTS not configured")
-
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
-            headers={
-                "xi-api-key": api_key,
-                "Content-Type": "application/json",
-            },
-            json={
-                "text": text[:500],  # free tier limit
-                "model_id": "eleven_multilingual_v2",
-                "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
-            },
-            timeout=30,
+        return Response(
+            content=b"",
+            status_code=204,
+            headers={"X-TTS-Fallback": "browser", "X-TTS-Reason": "not_configured"}
         )
 
-    if resp.status_code != 200:
-        logger.warning("ElevenLabs TTS status %d: %s", resp.status_code, resp.text[:200])
-        detail = "Cloud TTS character quota exceeded" if resp.status_code == 402 else "TTS API error"
-        raise HTTPException(status_code=resp.status_code, detail=detail)
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+                headers={
+                    "xi-api-key": api_key,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "text": text[:500],  # free tier limit
+                    "model_id": "eleven_multilingual_v2",
+                    "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
+                },
+                timeout=15,
+            )
 
-    return Response(content=resp.content, media_type="audio/mpeg")
+        if resp.status_code == 402 or resp.status_code == 429:
+            # ElevenLabs monthly credits exhausted; remember for 1 hour and return 204 fallback cleanly
+            _elevenlabs_exhausted_until = now + 3600
+            logger.info("ElevenLabs quota exhausted (%d). Switching to browser speech synthesis.", resp.status_code)
+            return Response(
+                content=b"",
+                status_code=204,
+                headers={"X-TTS-Fallback": "browser", "X-TTS-Reason": "quota_exceeded"}
+            )
+
+        if resp.status_code != 200:
+            logger.warning("ElevenLabs TTS status %d: %s", resp.status_code, resp.text[:200])
+            return Response(
+                content=b"",
+                status_code=204,
+                headers={"X-TTS-Fallback": "browser", "X-TTS-Reason": f"status_{resp.status_code}"}
+            )
+
+        return Response(content=resp.content, media_type="audio/mpeg")
+    except Exception as e:
+        logger.warning("TTS request error: %s", e)
+        return Response(
+            content=b"",
+            status_code=204,
+            headers={"X-TTS-Fallback": "browser", "X-TTS-Reason": "network_error"}
+        )
 
 
 # ── Parent Dashboard & Child Management Endpoints ───────────────────────────

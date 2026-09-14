@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { streamMessage, startSession } from '../lib/api'
+import { streamMessage, startSession, fetchNextProblem } from '../lib/api'
 import { useSpeechInput, useTTS } from '../hooks/useVoice'
 import { useAuth } from '../context/AuthContext'
 import WorkUpload from '../components/WorkUpload'
 import ThinkingTrace from '../components/ThinkingTrace'
 import MasteryRadar from '../components/MasteryRadar'
 import ThemeToggle from '../components/ThemeToggle'
+import { getSkillMeta } from '../lib/skillsData'
 import type { SessionData, Problem, Diagnosis } from '../lib/api'
 import './TutorSession.css'
 
@@ -74,6 +75,8 @@ export default function TutorSession() {
   const [thinkingSteps, setThinkingSteps] = useState<string[]>([])
   const [masteryState, setMasteryState] = useState<Record<string, number>>({})
   const [currentProblem, setCurrentProblem] = useState<Problem | null>(null)
+  const [problemSolved, setProblemSolved] = useState(false)
+  const [isLoadingNextProblem, setIsLoadingNextProblem] = useState(false)
   const [sessionError, setSessionError] = useState<string | null>(null)
   const [sessionRetryCount, setSessionRetryCount] = useState(0)
   const [mobileTab, setMobileTab] = useState<'chat' | 'problem' | 'progress'>('chat')
@@ -227,8 +230,9 @@ export default function TutorSession() {
           return updated
         })
       },
-      (newMastery) => {
+      (newMastery, solved) => {
         if (newMastery && Object.keys(newMastery).length) setMasteryState(newMastery)
+        if (solved) setProblemSolved(true)
         setIsStreaming(false)
         if (responseAcc) stableSpeak(responseAcc)
       },
@@ -285,19 +289,49 @@ export default function TutorSession() {
     )
   }, [session, isStreaming, stableSpeak])
 
+  const handleNextProblem = useCallback(async (markCorrect: boolean = true) => {
+    if (!session?.session_id || isLoadingNextProblem) return
+    setIsLoadingNextProblem(true)
+    try {
+      const res = await fetchNextProblem(session.session_id, markCorrect)
+      if (res && res.current_problem) {
+        setCurrentProblem(res.current_problem)
+        setMasteryState(res.mastery_state || {})
+        setProblemSolved(false)
+        const tutorMsg: Message = {
+          role: 'tutor',
+          content: res.tutor_message,
+          timestamp: new Date(),
+        }
+        setMessages(prev => [...prev, tutorMsg])
+        stableSpeak(res.tutor_message)
+      }
+    } catch (err) {
+      console.error('Failed to fetch next problem:', err)
+    } finally {
+      setIsLoadingNextProblem(false)
+    }
+  }, [session?.session_id, isLoadingNextProblem, stableSpeak])
+
   const handleDiagnosis = (d: Diagnosis, mastery: Record<string, number>, next: Problem | null) => {
     setMasteryState(mastery)
-    if (next) setCurrentProblem(next)
+    if (next) {
+      setCurrentProblem(next)
+      setProblemSolved(false)
+    }
     const tutorMsg: Message = { role: 'tutor', content: d.corrective_question, timestamp: new Date() }
     setMessages(prev => [...prev, tutorMsg])
     stableSpeak(d.corrective_question)
   }
 
-  const masterySkills = Object.entries(masteryState).map(([skill_id, prob]) => ({
-    skill_id,
-    name: skill_id,
-    mastery_prob: prob,
-  }))
+  const masterySkills = Object.entries(masteryState).map(([skill_id, prob]) => {
+    const meta = getSkillMeta(skill_id)
+    return {
+      skill_id,
+      name: meta.title,
+      mastery_prob: prob,
+    }
+  })
 
   if (!session) {
     if (sessionError) {
@@ -516,6 +550,27 @@ export default function TutorSession() {
             </div>
             <h3>{currentProblem.title}</h3>
             <p className="problem-text">{currentProblem.text}</p>
+            
+            <div className="problem-card-actions">
+              <button
+                type="button"
+                className="btn btn-primary problem-action-btn"
+                onClick={() => handleNextProblem(true)}
+                disabled={isLoadingNextProblem || isStreaming}
+                title="Advance to the next tailored practice problem"
+              >
+                {isLoadingNextProblem ? <span className="spinner" /> : 'Next Problem →'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost problem-action-btn problem-action-btn--skip"
+                onClick={() => handleNextProblem(false)}
+                disabled={isLoadingNextProblem || isStreaming}
+                title="Try a different practice problem"
+              >
+                Skip Problem
+              </button>
+            </div>
           </div>
         )}
 
@@ -565,6 +620,22 @@ export default function TutorSession() {
               </div>
             )
           ))}
+          {problemSolved && (
+            <div className="problem-solved-banner animate-fadein">
+              <div className="solved-banner-info">
+                <span className="solved-banner-badge">🎉 Problem Solved!</span>
+                <p className="solved-banner-text">Great math thinking! Ready to take on the next challenge?</p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary solved-banner-action"
+                onClick={() => handleNextProblem(true)}
+                disabled={isLoadingNextProblem}
+              >
+                {isLoadingNextProblem ? <span className="spinner" /> : 'Next Problem →'}
+              </button>
+            </div>
+          )}
           <div ref={chatEndRef} />
         </div>
 
@@ -582,15 +653,26 @@ export default function TutorSession() {
 
         {/* Action bar for stuck-student hint affordance & mute speaking */}
         <div className="chat-actions-bar">
-          <button
-            className="btn-hint"
-            onClick={handleRequestHint}
-            disabled={isStreaming || isListening}
-            aria-label="Request a hint from the tutor"
-            title="Ask the tutor for a small guiding hint without giving away the answer"
-          >
-            Need a hint?
-          </button>
+          <div className="chat-actions-left">
+            <button
+              className="btn-hint"
+              onClick={handleRequestHint}
+              disabled={isStreaming || isListening}
+              aria-label="Request a hint from the tutor"
+              title="Ask the tutor for a small guiding hint without giving away the answer"
+            >
+              Need a hint?
+            </button>
+            <button
+              className="btn-advance-problem"
+              onClick={() => handleNextProblem(true)}
+              disabled={isStreaming || isLoadingNextProblem}
+              aria-label="Move to next problem"
+              title="Ready for the next problem"
+            >
+              {isLoadingNextProblem ? 'Loading…' : 'Next Problem →'}
+            </button>
+          </div>
           {isSpeaking && (
             <button
               className="btn-stop-speaking animate-fadein"

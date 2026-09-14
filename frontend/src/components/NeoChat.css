@@ -8,12 +8,90 @@
   font-family: var(--font-body, system-ui, -apple-system, sans-serif);
 }
 
+/* On live session pages, shift left so Neo clears the 340px right mastery sidebar */
+@media (min-width: 1024px) {
+  .neo-chatbot-container--session {
+    right: 368px;
+    bottom: 20px;
+  }
+}
+
 /* ── Floating Launcher Button ────────────────────────────────────────────── */
 .neo-launcher-wrapper {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+}
+
+/* Row that holds the pill + minimize button */
+.neo-launcher-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Minimize button — small square icon button */
+.neo-minimize-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(124, 93, 250, 0.35);
+  background: rgba(24, 30, 56, 0.9);
+  color: rgba(167, 139, 250, 0.75);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.neo-minimize-btn:hover {
+  background: rgba(124, 93, 250, 0.2);
+  color: #A78BFA;
+  border-color: rgba(124, 93, 250, 0.6);
+}
+
+/* Minimized circular launcher */
+.neo-launcher-mini {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #181E38 0%, #111529 100%);
+  border: 1.5px solid rgba(124, 93, 250, 0.55);
+  color: #F0F4FF;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 20px rgba(124, 93, 250, 0.3);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.neo-launcher-mini:hover {
+  transform: translateY(-2px) scale(1.08);
+  border-color: rgba(167, 139, 250, 0.85);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 28px rgba(124, 93, 250, 0.45);
+}
+
+.neo-launcher-mini-text {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #A78BFA;
+  letter-spacing: 0;
+}
+
+.neo-unread-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  background: #F5A623;
+  border-radius: 50%;
+  border: 2px solid #111529;
 }
 
 .neo-tooltip {

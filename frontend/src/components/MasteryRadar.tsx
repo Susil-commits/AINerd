@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import {
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer,
-  Tooltip
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip
 } from 'recharts'
+import { getSkillMeta, getMasteryTierInfo, getBarGradient } from '../lib/skillsData'
 import './MasteryRadar.css'
 
 interface SkillMastery {
@@ -12,58 +13,73 @@ interface SkillMastery {
 
 interface Props {
   skills: SkillMastery[]
+  /** If false, only the radar chart is shown without the card breakdown below */
+  showBars?: boolean
 }
 
-const SKILL_SHORT_NAMES: Record<string, string> = {
-  '3.OA.A.1': 'Multiply',
-  '3.OA.A.2': 'Divide',
-  '3.OA.D.8': '2-Step WP',
-  '4.NF.A.1': 'Equiv. Frac',
-  '4.NF.B.3': 'Add Frac',
-  '4.NF.B.4': 'Frac × Whole',
-  '5.NF.B.7': 'Div. Frac',
-  '6.EE.A.2': 'Expressions',
-  '6.EE.B.7': '1-Step Eq',
-  '7.EE.B.4': 'Multi-Step Eq',
-}
+type FilterTier = 'all' | 'needs-work' | 'developing' | 'proficient' | 'mastered'
 
-const getMasteryLevel = (prob: number) => {
-  if (prob >= 0.7) return { label: 'Strong', color: 'var(--emerald)' }
-  if (prob >= 0.4) return { label: 'Developing', color: 'var(--amber)' }
-  return { label: 'Needs work', color: 'var(--rose)' }
-}
-
-export default function MasteryRadar({ skills = [] }: Props) {
+export default function MasteryRadar({ skills = [], showBars = true }: Props) {
+  const [filter, setFilter] = useState<FilterTier>('all')
   const safeSkills = skills || []
-  const data = safeSkills.map(s => ({
-    subject: SKILL_SHORT_NAMES[s.skill_id] ?? s.skill_id,
-    mastery: Math.round((s.mastery_prob ?? 0) * 100),
-    fullMark: 100,
-    name: s.name,
+
+  // Enrich skills with metadata
+  const enriched = safeSkills.map(s => ({
+    ...s,
+    meta: getSkillMeta(s.skill_id),
+    tierInfo: getMasteryTierInfo(s.mastery_prob ?? 0),
+    pct: Math.round((s.mastery_prob ?? 0) * 100),
   }))
+
+  // Radar data
+  const radarData = enriched.map(s => ({
+    subject: s.meta.shortTitle,
+    mastery: s.pct,
+    fullMark: 100,
+    fullTitle: s.meta.title,
+  }))
+
+  // Tier counts for filter badges
+  const counts = {
+    all: enriched.length,
+    'needs-work': enriched.filter(s => s.tierInfo.tier === 'needs-work').length,
+    developing: enriched.filter(s => s.tierInfo.tier === 'developing').length,
+    proficient: enriched.filter(s => s.tierInfo.tier === 'proficient').length,
+    mastered: enriched.filter(s => s.tierInfo.tier === 'mastered').length,
+  }
+
+  const filtered = filter === 'all' ? enriched : enriched.filter(s => s.tierInfo.tier === filter)
+
+  const FILTER_TABS: { key: FilterTier; label: string; color: string }[] = [
+    { key: 'all', label: 'All', color: 'var(--text-secondary)' },
+    { key: 'needs-work', label: 'Needs Practice', color: '#F87171' },
+    { key: 'developing', label: 'Developing', color: '#F5A623' },
+    { key: 'proficient', label: 'Proficient', color: '#A78BFA' },
+    { key: 'mastered', label: 'Mastered', color: '#34D399' },
+  ]
 
   return (
     <div className="mastery-container">
-      <div className="mastery-header-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 className="mastery-title" style={{ margin: 0 }}>Skill Progress</h3>
-        <span className="badge badge-emerald" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
-          Live Progress Map
-        </span>
+      {/* Header */}
+      <div className="mastery-header-bar">
+        <h3 className="mastery-title">Skill Progress</h3>
+        <span className="badge badge-emerald mastery-live-badge">Live</span>
       </div>
 
-      <ResponsiveContainer width="100%" height={280}>
-        <RadarChart data={data} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
-          <PolarGrid stroke="rgba(255,255,255,0.06)" />
+      {/* Radar Chart */}
+      <ResponsiveContainer width="100%" height={240}>
+        <RadarChart data={radarData} margin={{ top: 8, right: 24, bottom: 8, left: 24 }}>
+          <PolarGrid stroke="rgba(255,255,255,0.07)" />
           <PolarAngleAxis
             dataKey="subject"
-            tick={{ fill: 'var(--text-secondary)', fontSize: 11, fontFamily: 'Inter' }}
+            tick={{ fill: 'var(--text-secondary)', fontSize: 10.5, fontFamily: 'Inter, system-ui' }}
           />
           <Radar
             name="Progress"
             dataKey="mastery"
             stroke="var(--violet)"
             fill="var(--violet)"
-            fillOpacity={0.25}
+            fillOpacity={0.22}
             strokeWidth={2}
           />
           <Tooltip
@@ -72,37 +88,101 @@ export default function MasteryRadar({ skills = [] }: Props) {
               border: '1px solid var(--border)',
               borderRadius: '10px',
               color: 'var(--text-primary)',
-              fontSize: '0.85rem',
+              fontSize: '0.82rem',
+              padding: '8px 12px',
             }}
-            formatter={(value: any) => [`${value ?? 0}%`, 'Progress']}
+            formatter={(value: any, _name: any, payload: any) => [
+              `${value ?? 0}% — ${payload?.payload?.fullTitle ?? ''}`,
+              'Mastery',
+            ] as [string, string]}
           />
         </RadarChart>
       </ResponsiveContainer>
 
-      <div className="mastery-bars">
-        {safeSkills.map(s => {
-          const level = getMasteryLevel(s.mastery_prob ?? 0)
-          return (
-            <div key={s.skill_id} className="mastery-bar-row">
-              <div className="mastery-bar-label">
-                <span>{s.name}</span>
-                <span className="mastery-pct" style={{ color: level.color }}>
-                  {Math.round((s.mastery_prob ?? 0) * 100)}%
-                </span>
+      {/* Skill Breakdown Cards */}
+      {showBars && enriched.length > 0 && (
+        <>
+          {/* Filter Pills */}
+          <div className="mastery-filter-row">
+            {FILTER_TABS.filter(t => t.key === 'all' || counts[t.key] > 0).map(tab => (
+              <button
+                key={tab.key}
+                className={`mastery-filter-pill ${filter === tab.key ? 'mastery-filter-pill--active' : ''}`}
+                style={{ '--pill-color': tab.color } as React.CSSProperties}
+                onClick={() => setFilter(tab.key)}
+              >
+                {tab.label}
+                {counts[tab.key] > 0 && (
+                  <span className="mastery-filter-count">{counts[tab.key]}</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Skill Cards */}
+          <div className="mastery-skill-list">
+            {filtered.map(s => (
+              <div
+                key={s.skill_id}
+                className="mastery-skill-card"
+                style={{ borderColor: s.tierInfo.borderColor }}
+              >
+                {/* Card Top: Domain + Tier Badge */}
+                <div className="mastery-skill-top">
+                  <div className="mastery-skill-badges">
+                    <span
+                      className="mastery-domain-badge"
+                      style={{ color: s.meta.domainColor, background: `${s.meta.domainColor}18`, border: `1px solid ${s.meta.domainColor}35` }}
+                    >
+                      {s.meta.grade} · {s.meta.domainAbbr}
+                    </span>
+                    <span className="mastery-std-code">{s.skill_id}</span>
+                  </div>
+                  <span
+                    className="mastery-tier-badge"
+                    style={{
+                      color: s.tierInfo.color,
+                      background: s.tierInfo.bgColor,
+                      border: `1px solid ${s.tierInfo.borderColor}`,
+                    }}
+                  >
+                    <span className="mastery-tier-icon">{s.tierInfo.icon}</span>
+                    {s.tierInfo.label}
+                  </span>
+                </div>
+
+                {/* Title + Percent */}
+                <div className="mastery-skill-main">
+                  <span className="mastery-skill-title">{s.meta.title}</span>
+                  <span className="mastery-skill-pct" style={{ color: s.tierInfo.color }}>{s.pct}%</span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="mastery-bar-track">
+                  <div
+                    className="mastery-bar-fill"
+                    style={{
+                      width: `${Math.min(Math.max(s.pct, 0), 100)}%`,
+                      background: getBarGradient(s.tierInfo.tier),
+                    }}
+                  />
+                </div>
+
+                {/* Description */}
+                <p className="mastery-skill-desc">{s.meta.description}</p>
               </div>
-              <div className="mastery-bar-track">
-                <div
-                  className="mastery-bar-fill"
-                  style={{
-                    width: `${Math.min(Math.max((s.mastery_prob ?? 0) * 100, 0), 100)}%`,
-                    background: level.color,
-                  }}
-                />
-              </div>
-            </div>
-          )
-        })}
-      </div>
+            ))}
+
+            {filtered.length === 0 && (
+              <p className="mastery-empty-state">No skills in this category yet.</p>
+            )}
+          </div>
+        </>
+      )}
+
+      {showBars && enriched.length === 0 && (
+        <p className="mastery-empty-state">No skill data recorded yet. Start solving problems!</p>
+      )}
     </div>
   )
 }

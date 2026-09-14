@@ -211,12 +211,33 @@ export async function deleteParentData(parentId: string): Promise<{
 }
 
 
+export async function fetchNextProblem(
+  sessionId: string,
+  markPreviousCorrect: boolean = true,
+): Promise<{
+  status: string
+  current_problem: Problem
+  mastery_state: Record<string, number>
+  tutor_message: string
+}> {
+  const { data } = await api.post(
+    '/session/next-problem',
+    {
+      session_id: sessionId,
+      mark_previous_correct: markPreviousCorrect,
+    },
+    { headers: getAuthHeaders() },
+  )
+  return data
+}
+
+
 export function streamMessage(
   sessionId: string,
   message: string,
   onThinking: (step: string) => void,
   onResponse: (text: string, done: boolean) => void,
-  onDone: (masteryState: Record<string, number>) => void,
+  onDone: (masteryState: Record<string, number>, problemSolved?: boolean) => void,
   onError?: (err: any) => void,
 ) {
   const url = `${BASE_URL}/session/message`
@@ -232,7 +253,7 @@ export function streamMessage(
       if (res.status === 429) {
         onThinking('Tutor catching breath...')
         onResponse("You're thinking super fast! Please wait a couple of seconds before sending your next message.", true)
-        onDone({})
+        onDone({}, false)
         return
       }
       throw new Error(`HTTP ${res.status}: ${res.statusText}`)
@@ -255,7 +276,7 @@ export function streamMessage(
           const payload = JSON.parse(line.slice(6))
           if (payload.type === 'thinking') onThinking(payload.content)
           if (payload.type === 'response') onResponse(payload.content, payload.done)
-          if (payload.type === 'done') onDone(payload.mastery_state ?? {})
+          if (payload.type === 'done') onDone(payload.mastery_state ?? {}, Boolean(payload.problem_solved))
         } catch {}
       }
     }
@@ -319,15 +340,44 @@ export function streamDiagnosis(
   })
 }
 
-export async function synthesizeSpeech(text: string): Promise<ArrayBuffer> {
+export async function synthesizeSpeech(text: string): Promise<ArrayBuffer | null> {
   const trimmed = text.trim().slice(0, 500) // match backend's ElevenLabs free tier limit
-  if (!trimmed) throw new Error('TTS: text cannot be empty')
-  const res = await fetch(`${BASE_URL}/tts?text=${encodeURIComponent(trimmed)}`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-  })
-  if (!res.ok) throw new Error(`TTS error: ${res.status}`)
-  return res.arrayBuffer()
+  if (!trimmed) return null
+
+  // If cloud TTS has previously failed or quota exhausted, skip network call entirely
+  try {
+    if (localStorage.getItem('veritas_cloud_tts_disabled') === 'true') {
+      return null
+    }
+  } catch {}
+
+  try {
+    const res = await fetch(`${BASE_URL}/tts?text=${encodeURIComponent(trimmed)}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    })
+
+    // Status 204 or fallback header means backend gracefully signals to use browser speech
+    if (res.status === 204 || res.headers.get('x-tts-fallback') === 'browser') {
+      try {
+        localStorage.setItem('veritas_cloud_tts_disabled', 'true')
+      } catch {}
+      return null
+    }
+
+    if (!res.ok) {
+      if (res.status === 402 || res.status === 429 || res.status === 503) {
+        try {
+          localStorage.setItem('veritas_cloud_tts_disabled', 'true')
+        } catch {}
+      }
+      return null
+    }
+
+    return await res.arrayBuffer()
+  } catch {
+    return null
+  }
 }
 
 export interface NeoChatResponse {
