@@ -77,6 +77,58 @@ export function useSpeechInput(onResult: (text: string) => void) {
   return { isListening, interimText, startListening, stopListening, isSupported }
 }
 
+/**
+ * Strips markdown markup, LaTeX tags, and formatting characters so speech synthesis
+ * sounds human and natural instead of reading out symbols like backslashes, asterisks, or dollar signs.
+ */
+export function cleanTextForSpeech(raw: string): string {
+  if (!raw) return ''
+  let text = raw
+
+  // Fractions: \frac{a}{b} -> a over b
+  text = text.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1 over $2')
+
+  // LaTeX math blocks and inline math delimiters $...$ or $$...$$
+  text = text.replace(/\$\$([\s\S]*?)\$\$/g, '$1')
+  text = text.replace(/\$([^$]+)\$/g, '$1')
+
+  // Common math symbols
+  text = text.replace(/\\cdot|\\times/g, ' times ')
+  text = text.replace(/\\div/g, ' divided by ')
+  text = text.replace(/\\leq/g, ' is less than or equal to ')
+  text = text.replace(/\\geq/g, ' is greater than or equal to ')
+  text = text.replace(/\\neq/g, ' is not equal to ')
+  text = text.replace(/\\pm/g, ' plus or minus ')
+  text = text.replace(/\\sqrt\{([^}]+)\}/g, 'square root of $1')
+
+  // Strip other LaTeX commands: \text{abc} -> abc, \pi -> pi
+  text = text.replace(/\\text\{([^}]+)\}/g, '$1')
+  text = text.replace(/\\[a-zA-Z]+/g, ' ')
+
+  // Strip markdown formatting: bold **text**, italics *text* or _text_
+  text = text.replace(/\*\*([^*]+)\*\*/g, '$1')
+  text = text.replace(/\*([^*]+)\*/g, '$1')
+  text = text.replace(/__([^_]+)__/g, '$1')
+  text = text.replace(/_([^_]+)_/g, '$1')
+
+  // Strip markdown headers # Heading
+  text = text.replace(/^#+\s+/gm, '')
+
+  // Strip markdown bullet points and list markers
+  text = text.replace(/^[\s*•-]+\s+/gm, '')
+
+  // Strip backticks `code`
+  text = text.replace(/`([^`]+)`/g, '$1')
+
+  // Strip markdown links [label](url) -> label
+  text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+
+  // Clean excessive spaces and newlines
+  text = text.replace(/\s+/g, ' ').trim()
+
+  return text
+}
+
 // Cache cloud TTS quota state in memory and sessionStorage to prevent spamming failed 402 requests
 let cloudTtsExhausted = typeof window !== 'undefined' && sessionStorage.getItem('veritas_cloud_tts_disabled') === 'true'
 
@@ -114,6 +166,8 @@ export function useTTS() {
 
   const speak = useCallback(async (text: string) => {
     if (!text) return
+    const speechText = cleanTextForSpeech(text)
+    if (!speechText) return
 
     // Cancel any previous speech before starting a new one (prevents audio queue pile-up)
     stop()
@@ -122,7 +176,7 @@ export function useTTS() {
     // 1. Try ElevenLabs cloud TTS only if quota hasn't previously failed with 402/401/503
     if (!cloudTtsExhausted) {
       try {
-        const buffer = await synthesizeSpeech(text)
+        const buffer = await synthesizeSpeech(speechText)
         const ctx = new AudioContext()
         audioContextRef.current = ctx
         const decoded = await ctx.decodeAudioData(buffer)
@@ -152,7 +206,7 @@ export function useTTS() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel()
-        const utterance = new SpeechSynthesisUtterance(text)
+        const utterance = new SpeechSynthesisUtterance(speechText)
         utterance.rate = 1.0
         utterance.pitch = 1.0
 

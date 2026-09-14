@@ -164,12 +164,12 @@ export default function ParentDashboard() {
       console.warn('Supabase realtime subscription failed:', err)
     }
 
-    // 2. Polling fallback (every 3 seconds) — paused when tab is not visible
+    // 2. Polling fallback (every 20 seconds) — paused when tab is not visible
     const pollTimer = setInterval(() => {
       if (!document.hidden) {
         refreshChildDetails(selectedChildId).catch(() => {})
       }
-    }, 3000)
+    }, 20000)
 
     return () => {
       clearInterval(pollTimer)

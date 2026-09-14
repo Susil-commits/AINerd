@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import { getMastery, getSummary } from '../lib/api'
 import MasteryRadar from '../components/MasteryRadar'
 import ThemeToggle from '../components/ThemeToggle'
@@ -14,6 +15,7 @@ interface SkillMastery {
 export default function Dashboard() {
   const { studentId } = useParams<{ studentId: string }>()
   const navigate = useNavigate()
+  const { role } = useAuth()
   const [skills, setSkills] = useState<SkillMastery[]>([])
   const [summary, setSummary] = useState('')
   const [loading, setLoading] = useState(true)
@@ -82,8 +84,18 @@ export default function Dashboard() {
   return (
     <div className="dashboard">
       <header className="dash-header">
-        <button className="btn btn-ghost" onClick={() => navigate('/student-session')} aria-label="Back to Session">
-          Back to Session
+        <button
+          className="btn btn-ghost"
+          onClick={() => {
+            if (role === 'parent') {
+              navigate('/parent-dashboard')
+            } else {
+              navigate('/student-session')
+            }
+          }}
+          aria-label={role === 'parent' ? 'Back to Parent Portal' : 'Back to Session'}
+        >
+          {role === 'parent' ? '← Parent Portal' : '← Back to Session'}
         </button>
         <div>
           <h2>{studentName}'s Learning Dashboard</h2>

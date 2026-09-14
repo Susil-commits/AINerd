@@ -39,6 +39,31 @@ function formatSkillName(id: string): string {
   return id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
+function renderMessageContent(content: string) {
+  if (!content?.trim()) return <span className="typing">…</span>
+  const lines = content.split('\n')
+  return lines.map((line, lineIdx) => {
+    const parts = line.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g)
+    return (
+      <span key={lineIdx}>
+        {parts.map((part, partIdx) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={partIdx}>{part.slice(2, -2)}</strong>
+          }
+          if (part.startsWith('*') && part.endsWith('*')) {
+            return <em key={partIdx}>{part.slice(1, -1)}</em>
+          }
+          if (part.startsWith('`') && part.endsWith('`')) {
+            return <code key={partIdx} style={{ background: 'rgba(255,255,255,0.1)', padding: '1px 4px', borderRadius: '4px' }}>{part.slice(1, -1)}</code>
+          }
+          return part
+        })}
+        {lineIdx < lines.length - 1 && <br />}
+      </span>
+    )
+  })
+}
+
 export default function TutorSession() {
   const navigate = useNavigate()
   const { user, signOut, role, loading: authLoading } = useAuth()
@@ -101,6 +126,21 @@ export default function TutorSession() {
               document.title = `Veritas — Math Practice (${s.student_name})`
               setMasteryState(s.mastery_state || {})
               setCurrentProblem(s.current_problem || null)
+              // Rehydrate chat history if reloading an active session
+              const savedChatRaw = sessionStorage.getItem(`veritas_chat_${s.session_id}`)
+              if (savedChatRaw) {
+                try {
+                  const savedChat = JSON.parse(savedChatRaw)
+                  if (Array.isArray(savedChat) && savedChat.length > 0) {
+                    setMessages(savedChat.map((m: any) => ({
+                      ...m,
+                      timestamp: new Date(m.timestamp),
+                    })))
+                    return
+                  }
+                } catch {}
+              }
+
               setMessages([
                 { role: 'system', content: `Session started for ${s.student_name}`, timestamp: new Date() },
                 { role: 'tutor', content: s.welcome_message, timestamp: new Date() },
@@ -152,6 +192,15 @@ export default function TutorSession() {
   }, [navigate, user, authLoading, stableSpeak, sessionRetryCount])
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+
+  // Persist conversation messages for session reload resilience
+  useEffect(() => {
+    if (session?.session_id && messages.length > 0) {
+      try {
+        sessionStorage.setItem(`veritas_chat_${session.session_id}`, JSON.stringify(messages))
+      } catch {}
+    }
+  }, [session?.session_id, messages])
 
   const sendMessage = useCallback(() => {
     if (!input.trim() || !session || isStreaming) return
@@ -344,6 +393,10 @@ export default function TutorSession() {
                 style={{ padding: '5px 8px', fontSize: '0.74rem' }}
                 onClick={() => {
                   stop()
+                  if (session?.session_id) {
+                    sessionStorage.removeItem(`veritas_chat_${session.session_id}`)
+                  }
+                  sessionStorage.removeItem('session')
                   signOut()
                     .then(() => navigate('/'))
                     .catch((err) => {
@@ -431,6 +484,10 @@ export default function TutorSession() {
                 style={{ padding: '5px 10px', fontSize: '0.78rem' }}
                 onClick={() => {
                   stop()
+                  if (session?.session_id) {
+                    sessionStorage.removeItem(`veritas_chat_${session.session_id}`)
+                  }
+                  sessionStorage.removeItem('session')
                   signOut()
                     .then(() => navigate('/'))
                     .catch((err) => {
@@ -500,7 +557,7 @@ export default function TutorSession() {
                   <div className="tutor-avatar">AI</div>
                 )}
                 <div className="bubble-body">
-                  <p className="bubble-text">{msg.content?.trim() ? msg.content : <span className="typing">…</span>}</p>
+                  <p className="bubble-text">{renderMessageContent(msg.content)}</p>
                   <span className="bubble-time">
                     {(msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>

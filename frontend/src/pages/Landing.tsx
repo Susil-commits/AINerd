@@ -642,10 +642,10 @@ export default function Landing() {
               {/* Left Panel */}
               <div className="auth-card-left">
                 <div className="auth-brand-row">
-                  <span className="auth-brand-badge">AUTH</span>
+                  <span className="auth-brand-badge">PORTAL</span>
                   <span className="auth-brand-name">Veritas<span className="auth-brand-dot">.</span></span>
                   <span className="auth-security-pill">
-                    <span>Safe Socratic Auth</span>
+                    <span>Child-Safe Socratic Learning</span>
                   </span>
                 </div>
 
