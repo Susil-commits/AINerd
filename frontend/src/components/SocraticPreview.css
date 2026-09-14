@@ -262,3 +262,152 @@
   flex-shrink: 0;
   margin-top: 2px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   LIGHT MODE — SocraticPreview Component Overrides
+   ═══════════════════════════════════════════════════════════════════ */
+
+[data-theme="light"] .socratic-preview-card {
+  background: #FFFFFF;
+  border-color: rgba(107, 78, 230, 0.22);
+  box-shadow: 0 10px 30px rgba(107, 78, 230, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .preview-sub {
+  color: var(--text-secondary);
+}
+
+/* Tabs */
+[data-theme="light"] .scenario-tab {
+  background: #F8F9FC;
+  border-color: rgba(0, 0, 0, 0.08);
+  color: var(--text-secondary);
+}
+
+[data-theme="light"] .scenario-tab:hover {
+  background: rgba(107, 78, 230, 0.06);
+  border-color: rgba(107, 78, 230, 0.28);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .scenario-tab.active {
+  background: rgba(107, 78, 230, 0.08);
+  border-color: var(--violet);
+  box-shadow: 0 2px 14px rgba(107, 78, 230, 0.15);
+}
+
+[data-theme="light"] .tab-topic {
+  color: #B45309;
+}
+
+[data-theme="light"] .tab-title {
+  color: var(--text-primary);
+}
+
+/* Columns */
+[data-theme="light"] .preview-col {
+  background: #F8F9FD;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .col-label {
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+[data-theme="light"] .box-tag {
+  color: var(--text-muted);
+}
+
+/* Problem Box */
+[data-theme="light"] .problem-box {
+  background: #FFFFFF;
+  border: 1px solid rgba(68, 96, 232, 0.2);
+  border-left: 4px solid var(--indigo);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .problem-text {
+  color: var(--text-primary);
+}
+
+/* Student Attempt Box */
+[data-theme="light"] .student-attempt-box {
+  background: #FFFDF5;
+  border: 1.5px dashed rgba(232, 146, 10, 0.45);
+  box-shadow: 0 2px 8px rgba(232, 146, 10, 0.05);
+}
+
+[data-theme="light"] .box-tag--attempt {
+  color: #B45309;
+}
+
+[data-theme="light"] .attempt-text {
+  color: #78350F;
+}
+
+[data-theme="light"] .attempt-diagnosis {
+  background: #FEF2F2;
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #991B1B;
+}
+
+[data-theme="light"] .diagnosis-pill {
+  color: #DC2626;
+}
+
+/* Connector Arrow */
+[data-theme="light"] .preview-connector {
+  color: var(--violet);
+  opacity: 0.85;
+}
+
+/* Tutor Column */
+[data-theme="light"] .tutor-col {
+  background: #FAF8FF;
+  border-color: rgba(107, 78, 230, 0.2);
+  box-shadow: 0 2px 12px rgba(107, 78, 230, 0.05);
+}
+
+[data-theme="light"] .tutor-thought-box {
+  background: #F3F0FF;
+  border: 1px solid rgba(107, 78, 230, 0.18);
+  border-left: 4px solid var(--violet);
+}
+
+[data-theme="light"] .thought-tag {
+  color: var(--violet);
+}
+
+[data-theme="light"] .thought-text {
+  color: #4338CA;
+}
+
+/* Socratic Prompt Box */
+[data-theme="light"] .socratic-prompt-box {
+  background: #FFFFFF;
+  border: 1px solid rgba(16, 168, 122, 0.3);
+  border-left: 4px solid var(--emerald);
+  box-shadow: 0 4px 16px rgba(16, 168, 122, 0.1), 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .prompt-tag {
+  color: #047857;
+}
+
+[data-theme="light"] .prompt-text {
+  color: var(--text-primary);
+}
+
+/* Why / Takeaway Box */
+[data-theme="light"] .why-box {
+  background: #ECFDF5;
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #065F46;
+}
+
+[data-theme="light"] .why-box strong {
+  color: #047857;
+}
+
