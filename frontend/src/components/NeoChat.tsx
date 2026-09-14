@@ -283,8 +283,8 @@ export default function NeoChat() {
 
                 <div className="neo-guardrail-notice">
                   <span>
-                    <strong>Domain Restricted:</strong> I only answer questions related to this
-                    website and math learning.
+                    <strong>Math & Veritas Guide:</strong> I specialize in answering questions about
+                    Veritas and math learning.
                   </span>
                 </div>
 
@@ -392,7 +392,7 @@ export default function NeoChat() {
             </form>
 
             <div className="neo-footer-disclaimer">
-              <span>Domain-Restricted • Socratic AI Learning Assistant</span>
+              <span>Personalized Socratic Math Guide</span>
             </div>
           </div>
         </div>

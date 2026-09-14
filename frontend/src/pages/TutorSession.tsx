@@ -16,6 +16,29 @@ interface Message {
   timestamp: Date
 }
 
+function formatSkillName(id: string): string {
+  const map: Record<string, string> = {
+    fractions_add_unlike: 'Adding Fractions',
+    fractions_multiply: 'Multiplying Fractions',
+    equations_linear_1step: '1-Step Equations',
+    equations_linear_2step: '2-Step Equations',
+    word_problems_ratios: 'Ratios & Proportions',
+    geometry_area_perimeter: 'Area & Perimeter',
+    '3.OA.A.1': 'Multiplication',
+    '3.OA.A.2': 'Division',
+    '3.OA.D.8': 'Two-Step Word Problems',
+    '4.NF.A.1': 'Equivalent Fractions',
+    '4.NF.B.3': 'Adding Fractions',
+    '4.NF.B.4': 'Fractions & Whole Numbers',
+    '5.NF.B.7': 'Dividing Fractions',
+    '6.EE.A.2': 'Algebraic Expressions',
+    '6.EE.B.7': 'One-Step Equations',
+    '7.EE.B.4': 'Multi-Step Equations',
+  }
+  if (map[id]) return map[id]
+  return id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
 export default function TutorSession() {
   const navigate = useNavigate()
   const { user, signOut, role, loading: authLoading } = useAuth()
@@ -28,6 +51,7 @@ export default function TutorSession() {
   const [currentProblem, setCurrentProblem] = useState<Problem | null>(null)
   const [sessionError, setSessionError] = useState<string | null>(null)
   const [sessionRetryCount, setSessionRetryCount] = useState(0)
+  const [mobileTab, setMobileTab] = useState<'chat' | 'problem' | 'progress'>('chat')
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   const { isSpeaking, speak } = useTTS()
@@ -111,7 +135,7 @@ export default function TutorSession() {
           .catch((e) => {
             console.error('Could not auto-start session:', e)
             if (mounted) {
-              setSessionError('Could not initialize your tutoring session. The server may be warming up. Please try again.')
+              setSessionError('Could not start your tutoring session right now. Please try again.')
             }
           })
       }
@@ -280,9 +304,88 @@ export default function TutorSession() {
           <span>Warm-up score: <strong>{warmupBadge.score}/{warmupBadge.total}</strong> — ready to learn!</span>
         </div>
       )}
+
+      {/* ── Mobile Top Header & Segmented Tab Navigation (<= 1024px) ── */}
+      <div className="session-mobile-nav">
+        <div className="session-header-mini session-header-mini--mobile">
+          <span className="badge badge-violet">{session.student_name}</span>
+          <div className="session-header-actions">
+            {role === 'parent' && (
+              <button
+                className="btn btn-ghost"
+                style={{ padding: '5px 8px', fontSize: '0.74rem' }}
+                onClick={() => navigate('/parent-dashboard')}
+                title="Go to Parent Portal"
+              >
+                Parent Portal
+              </button>
+            )}
+            <button
+              className="btn btn-ghost"
+              style={{ padding: '5px 8px', fontSize: '0.74rem' }}
+              onClick={() => navigate(`/dashboard/${session.student_id}`)}
+              aria-label="View learning dashboard"
+              title="View Student Progress Dashboard"
+            >
+              Dashboard
+            </button>
+            {user && (
+              <button
+                className="btn btn-ghost"
+                style={{ padding: '5px 8px', fontSize: '0.74rem' }}
+                onClick={() => {
+                  signOut()
+                    .then(() => navigate('/'))
+                    .catch((err) => {
+                      console.error('Sign out error:', err)
+                      navigate('/')
+                    })
+                }}
+                aria-label="Sign out"
+                title="Sign out"
+              >
+                Sign Out
+              </button>
+            )}
+            <ThemeToggle />
+          </div>
+        </div>
+
+        <div className="mobile-session-tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileTab === 'chat'}
+            className={`mobile-tab-btn ${mobileTab === 'chat' ? 'mobile-tab-btn--active' : ''}`}
+            onClick={() => setMobileTab('chat')}
+          >
+            <span>💬</span> Tutor Chat
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileTab === 'problem'}
+            className={`mobile-tab-btn ${mobileTab === 'problem' ? 'mobile-tab-btn--active' : ''}`}
+            onClick={() => setMobileTab('problem')}
+          >
+            <span>📝</span> Problem & Work
+            {currentProblem && <span className="mobile-tab-indicator" />}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileTab === 'progress'}
+            className={`mobile-tab-btn ${mobileTab === 'progress' ? 'mobile-tab-btn--active' : ''}`}
+            onClick={() => setMobileTab('progress')}
+          >
+            <span>📊</span> Skill Map
+          </button>
+        </div>
+      </div>
+
       {/* ── Left sidebar: problem + upload ── */}
-      <aside className="session-sidebar">
-        <div className="session-header-mini">
+      <aside className={`session-sidebar ${mobileTab !== 'problem' ? 'mobile-hidden' : ''}`}>
+        <div className="session-header-mini session-header-mini--desktop">
           <span className="badge badge-violet">{session.student_name}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {role === 'parent' && (
@@ -329,7 +432,7 @@ export default function TutorSession() {
         {currentProblem && (
           <div className="problem-card card animate-fadein">
             <div className="problem-header">
-              <span className="badge badge-amber">Skill: {currentProblem.skill_id}</span>
+              <span className="badge badge-amber">Skill: {formatSkillName(currentProblem.skill_id)}</span>
               <span className="difficulty-dots">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <span key={i} className={`dot ${i < currentProblem.difficulty ? 'active' : ''}`} />
@@ -346,10 +449,31 @@ export default function TutorSession() {
           onThinking={(step) => setThinkingSteps(prev => [...prev, step])}
           onDiagnosis={handleDiagnosis}
         />
+
+        <div className="mobile-only-return-chat">
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            onClick={() => setMobileTab('chat')}
+          >
+            ← Return to Tutor Chat
+          </button>
+        </div>
       </aside>
 
       {/* ── Main chat ── */}
-      <main className="session-main">
+      <main className={`session-main ${mobileTab !== 'chat' ? 'mobile-hidden' : ''}`}>
+        {/* Mobile sticky mini-problem banner */}
+        {currentProblem && (
+          <div className="mobile-problem-banner" onClick={() => setMobileTab('problem')}>
+            <div className="mobile-problem-banner-left">
+              <span className="badge badge-amber">{formatSkillName(currentProblem.skill_id)}</span>
+              <span className="mobile-problem-banner-title">{currentProblem.title}</span>
+            </div>
+            <span className="mobile-problem-banner-action">View Work & Camera →</span>
+          </div>
+        )}
+
         <div className="chat-messages">
           {messages.map((msg, i) => (
             msg.role === 'system' ? null : (
@@ -402,7 +526,7 @@ export default function TutorSession() {
             disabled={!isSupported || isStreaming}
             title={
               !isSupported
-                ? 'Voice input is supported in Chrome & Edge (Web Speech API). Please type your answer!'
+                ? 'Voice input is supported in Chrome & Edge browsers. Please type your answer!'
                 : isListening
                 ? 'Stop listening'
                 : 'Speak your answer'
@@ -446,7 +570,7 @@ export default function TutorSession() {
       </main>
 
       {/* ── Right sidebar: live intelligence (reasoning trace + mastery radar) ── */}
-      <aside className="session-mastery">
+      <aside className={`session-mastery ${mobileTab !== 'progress' ? 'mobile-hidden' : ''}`}>
         <div className="intel-header">
           <div className="intel-title-row">
             <span className="live-pulse-dot" />
@@ -458,6 +582,16 @@ export default function TutorSession() {
         <ThinkingTrace steps={thinkingSteps} isActive={isStreaming} />
 
         <MasteryRadar skills={masterySkills} />
+
+        <div className="mobile-only-return-chat">
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            onClick={() => setMobileTab('chat')}
+          >
+            ← Return to Tutor Chat
+          </button>
+        </div>
       </aside>
     </div>
   )

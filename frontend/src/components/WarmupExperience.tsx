@@ -106,7 +106,7 @@ const PARENT_QUESTIONS: ParentQuestion[] = [
 ]
 
 const ROTATING_FACTS = [
-  '☕ Render’s cloud server is waking up from sleep — thank you for your patience!',
+  '☕ Preparing your interactive practice space — thank you for your patience!',
   '🐝 Honeybees can understand the concept of zero and perform basic addition and subtraction.',
   '💡 Zero wasn’t widely adopted in European mathematics until Fibonacci published Liber Abaci in 1202.',
   '🧠 Sleep actively consolidates mathematical concepts into long-term neural memory.',
@@ -186,7 +186,7 @@ export default function WarmupExperience({
           <div className="warmup-badge-row">
             <span className="warmup-status-dot" />
             <span className="warmup-status-text">
-              {isReady ? 'Backend Awake & Ready!' : 'Connecting to Veritas backend...'}
+              {isReady ? 'Veritas is Ready!' : 'Preparing your learning session...'}
             </span>
           </div>
 
@@ -204,9 +204,9 @@ export default function WarmupExperience({
         {isTimeout ? (
           <div className="warmup-fallback-box animate-fadein">
             <div className="fallback-icon">⏳</div>
-            <h3>Server Wake-Up Taking Longer Than Usual</h3>
+            <h3>Connection Taking Longer Than Usual</h3>
             <p>
-              Render’s free-tier container is taking extra time to spin up. You can retry the connection or jump straight into the application.
+              Your interactive math workspace is taking a moment to connect. You can retry or jump straight into the application.
             </p>
             <div className="fallback-actions">
               <button
@@ -240,7 +240,7 @@ export default function WarmupExperience({
               <div className="holding-spinner" />
               <div className="holding-status-copy">
                 <strong>Almost there!</strong>
-                <span>Your personalized math workspace is finalizing its spin-up...</span>
+                <span>Your personalized math workspace is getting ready...</span>
               </div>
             </div>
 
@@ -374,7 +374,7 @@ export default function WarmupExperience({
               <span className="ready-banner-icon">✅</span>
               <div>
                 <strong>You're all set!</strong>
-                <span>Backend is awake and ready.</span>
+                <span>Your personalized session is ready!</span>
               </div>
             </div>
             <div className="ready-banner-buttons">

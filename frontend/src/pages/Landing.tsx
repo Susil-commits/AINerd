@@ -140,13 +140,21 @@ export default function Landing() {
 
   // Standout modern auth states
   const [authScreen, setAuthScreen] = useState<'form' | 'otp'>('form')
-  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', ''])
+  const [otpLength, setOtpLength] = useState<6 | 8>(8) // Default to 8 digits matching Supabase project configuration
+  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '', '', ''])
   const [resendTimer, setResendTimer] = useState(45)
   const [resendCount, setResendCount] = useState(0)
   const MAX_RESENDS = 3
   const [rememberedDismissed, setRememberedDismissed] = useState(false)
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
   const [otpScreenSeconds, setOtpScreenSeconds] = useState(0)
+
+  const switchOtpLength = (targetLen: 6 | 8) => {
+    setOtpLength(targetLen)
+    setOtpDigits(Array(targetLen).fill(''))
+    setAuthError('')
+    setTimeout(() => otpRefs.current[0]?.focus(), 50)
+  }
 
   // Smart auth mode: defaults to 'signin' if remembered profile is cached, else 'signup' for new visitors
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>(() => {
@@ -409,8 +417,8 @@ export default function Landing() {
 
   const handleVerifyOtpCode = async (codeToVerify: string, overrideRole?: 'student' | 'parent') => {
     const cleanCode = codeToVerify.trim()
-    if (cleanCode.length !== 6) {
-      setAuthError('Please enter all 6 digits of the verification code.')
+    if (cleanCode.length !== 6 && cleanCode.length !== 8) {
+      setAuthError('Please enter all digits of the verification code (6 or 8 digits).')
       return
     }
     const activeRole = overrideRole || role
@@ -447,12 +455,12 @@ export default function Landing() {
     setOtpDigits(nextDigits)
     setAuthError('')
 
-    if (char && index < 5) {
+    if (char && index < otpLength - 1) {
       otpRefs.current[index + 1]?.focus()
     }
 
     const fullCode = nextDigits.join('')
-    if (fullCode.length === 6 && !nextDigits.includes('')) {
+    if (fullCode.length === otpLength && !nextDigits.includes('')) {
       handleVerifyOtpCode(fullCode)
     }
   }
@@ -465,26 +473,39 @@ export default function Landing() {
 
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault()
-    const pasted = e.clipboardData.getData('text').trim().replace(/\D/g, '').slice(0, 6)
-    if (!pasted) return
-    const next = [...otpDigits]
-    for (let i = 0; i < 6; i++) {
-      next[i] = pasted[i] || ''
+    const rawPasted = e.clipboardData.getData('text').trim().replace(/\D/g, '')
+    if (!rawPasted) return
+
+    let targetLen: 6 | 8 = otpLength
+    if (rawPasted.length === 6) {
+      targetLen = 6
+    } else if (rawPasted.length >= 8) {
+      targetLen = 8
+    }
+    setOtpLength(targetLen)
+
+    const truncated = rawPasted.slice(0, targetLen)
+    const next = Array(targetLen).fill('')
+    for (let i = 0; i < truncated.length; i++) {
+      next[i] = truncated[i] || ''
     }
     setOtpDigits(next)
-    if (pasted.length === 6) {
-      handleVerifyOtpCode(pasted)
+
+    if (truncated.length === targetLen) {
+      handleVerifyOtpCode(truncated)
     } else {
       const firstEmpty = next.findIndex(d => !d)
       if (firstEmpty !== -1) {
-        otpRefs.current[firstEmpty]?.focus()
+        setTimeout(() => otpRefs.current[firstEmpty]?.focus(), 30)
       }
     }
   }
 
   const handleAutofillOtp = (code: string, targetRole: 'student' | 'parent') => {
     setRole(targetRole)
-    const digits = code.split('')
+    const targetLen: 6 | 8 = code.length === 8 ? 8 : 6
+    setOtpLength(targetLen)
+    const digits = code.slice(0, targetLen).split('')
     setOtpDigits(digits)
     handleVerifyOtpCode(code, targetRole)
   }
@@ -690,11 +711,32 @@ export default function Landing() {
                     </h2>
                     <p className="auth-tagline">
                       {authMode === 'signup'
-                        ? "We've sent a 6-digit verification code to activate your new account — check your inbox."
-                        : "If that email is valid, we've sent a 6-digit code — check your inbox (and spam folder)."}
+                        ? "We've sent a verification code to activate your new account — check your inbox."
+                        : "If that email is valid, we've sent a verification code — check your inbox (and spam folder)."}
                     </p>
 
-                    <div className="otp-inputs-grid">
+                    {/* Format switcher for 8-digit vs 6-digit */}
+                    <div className="otp-format-toggle-row">
+                      <span className="otp-format-label">Code length:</span>
+                      <div className="otp-format-pills">
+                        <button
+                          type="button"
+                          className={`otp-format-btn ${otpLength === 8 ? 'otp-format-btn--active' : ''}`}
+                          onClick={() => switchOtpLength(8)}
+                        >
+                          8 Digits (Standard)
+                        </button>
+                        <button
+                          type="button"
+                          className={`otp-format-btn ${otpLength === 6 ? 'otp-format-btn--active' : ''}`}
+                          onClick={() => switchOtpLength(6)}
+                        >
+                          6 Digits
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className={`otp-inputs-grid otp-inputs-grid--${otpLength}`}>
                       {otpDigits.map((digit, idx) => (
                         <input
                           key={idx}
@@ -709,8 +751,20 @@ export default function Landing() {
                           onPaste={handleOtpPaste}
                           disabled={authLoading}
                           autoFocus={idx === 0}
+                          aria-label={`Digit ${idx + 1} of ${otpLength}`}
                         />
                       ))}
+                    </div>
+
+                    {/* Laptop vs Phone helper tip */}
+                    <div className="otp-device-tip animate-fadein">
+                      <span className="otp-device-tip-icon">💻</span>
+                      <div className="otp-device-tip-body">
+                        <span className="otp-device-tip-title">Signing in on this laptop?</span>
+                        <span className="otp-device-tip-desc">
+                          Type your verification code directly into the boxes above. Tapping "Sign in to Veritas" on your phone logs in your phone's browser, not this laptop.
+                        </span>
+                      </div>
                     </div>
 
                     {otpScreenSeconds >= 45 && otpScreenSeconds < 90 && (
@@ -739,7 +793,7 @@ export default function Landing() {
                       type="button"
                       className="btn-signin-gradient"
                       onClick={() => handleVerifyOtpCode(otpDigits.join(''))}
-                      disabled={authLoading || otpDigits.join('').length !== 6}
+                      disabled={authLoading || (otpDigits.join('').length !== 6 && otpDigits.join('').length !== 8)}
                     >
                       {authLoading
                         ? 'Verifying Code…'
@@ -1014,7 +1068,7 @@ export default function Landing() {
                             setAuthError('')
                           }}
                         >
-                          Already have a 6-digit code? Enter code
+                          Already have a verification code? Enter code
                         </button>
                       </div>
 

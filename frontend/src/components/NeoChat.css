@@ -609,14 +609,31 @@
 }
 
 /* ── Mobile Viewports ────────────────────────────────────────────────────── */
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .neo-chatbot-container {
-    bottom: 16px;
-    right: 16px;
+    bottom: 74px;
+    right: 12px;
+  }
+
+  .neo-tooltip {
+    display: none !important;
+  }
+
+  .neo-launcher-btn {
+    padding: 8px 14px;
+    gap: 6px;
+    border-radius: 20px;
+  }
+
+  .neo-launcher-text {
+    font-size: 0.82rem;
   }
 
   .neo-window {
-    width: calc(100vw - 24px);
-    height: 520px;
+    width: calc(100vw - 20px);
+    height: 75vh;
+    max-height: 520px;
+    bottom: 0;
+    right: -2px;
   }
 }

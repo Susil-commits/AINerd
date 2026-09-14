@@ -67,7 +67,7 @@ export default function Dashboard() {
       } else if (status === 403) {
         setAuthDenied('You do not have permission to view this student’s learning progress.')
       } else {
-        setLoadError('Could not load your progress right now. The server may be warming up. Please try refreshing.')
+        setLoadError('Could not load your progress right now. Please try refreshing.')
       }
     }).finally(() => setLoading(false))
   }, [studentId, sessionId, retryTrigger])

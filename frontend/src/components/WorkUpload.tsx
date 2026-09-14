@@ -82,7 +82,7 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
     setUploadError(null)
     try {
       if (!navigator?.mediaDevices?.getUserMedia) {
-        throw new Error('Camera API is not supported in this browser environment')
+        throw new Error('Camera is not supported in this browser environment')
       }
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       streamRef.current = stream
@@ -131,7 +131,7 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
         if (errMsg.includes('10MB') || errMsg.includes('413')) {
           setUploadError('Image exceeds 10MB limit. Please upload a smaller photo.')
         } else {
-          setUploadError('Could not analyze handwritten work. The server may be busy or warming up. Please try again.')
+          setUploadError('Could not analyze handwritten work. Please try again.')
         }
       },
     )

@@ -112,7 +112,7 @@ export default function SocraticPreview() {
         {/* Right Column: AI Tutor Reasoning & Guiding Question */}
         <div className="preview-col tutor-col">
           <div className="col-label">
-            <span>Tutor Diagnostic & Guiding Question</span>
+            <span>Tutor Guidance & Question</span>
           </div>
 
           <div className="tutor-thought-box">

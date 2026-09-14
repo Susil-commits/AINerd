@@ -953,7 +953,32 @@
 
 /* ── Mobile Viewport Responsiveness ── */
 @media (max-width: 768px) {
+  .parent-navbar {
+    padding: 0 0.85rem;
+    height: 56px;
+  }
+  .parent-nav-left {
+    gap: 0.5rem;
+  }
+  .parent-nav-right {
+    gap: 0.4rem;
+  }
+  .parent-badge {
+    display: none;
+  }
+  .parent-email {
+    display: none;
+  }
+  .live-pulse-badge span:last-child {
+    display: none;
+  }
+  .live-pulse-badge {
+    padding: 3px 6px;
+  }
   .parent-dashboard {
+    padding: 0;
+  }
+  .parent-content {
     padding: 1rem 0.75rem;
   }
   .dash-header-row {

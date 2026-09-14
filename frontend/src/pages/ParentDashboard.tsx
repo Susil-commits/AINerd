@@ -89,7 +89,7 @@ export default function ParentDashboard() {
       })
       .catch((err) => {
         console.error('Could not load parent children:', err)
-        setLoadError('Could not load student profiles right now. The server may be warming up. Please try refreshing.')
+        setLoadError('Could not load student profiles right now. Please try refreshing.')
       })
       .finally(() => {
         setChildrenLoading(false)
@@ -122,7 +122,7 @@ export default function ParentDashboard() {
       })
       .catch((err) => {
         console.error('Error loading child details:', err)
-        setDetailsError('Could not load learning details for this student. The server may be warming up.')
+        setDetailsError('Could not load learning details for this student. Please try again.')
       })
       .finally(() => {
         setDetailsLoading(false)
@@ -242,7 +242,7 @@ export default function ParentDashboard() {
           </div>
           <div className={`live-pulse-badge ${liveIndicator ? 'live-pulse-badge--active' : ''}`}>
             <span className="pulse-dot" />
-            <span>Live Radar Sync</span>
+            <span>Live Progress</span>
           </div>
         </div>
 
@@ -331,7 +331,7 @@ export default function ParentDashboard() {
                     <div className="child-card-footer">
                       <span>{child.session_count} sessions</span>
                       <span className="footer-link">
-                        View Radar
+                        View Skills
                       </span>
                     </div>
                   </div>
@@ -373,10 +373,9 @@ export default function ParentDashboard() {
               <div className="radar-panel">
                 <div className="panel-header">
                   <div>
-                    <h3>Real-Time Mastery Radar</h3>
+                    <h3>Live Skill Map</h3>
                     <p className="panel-sub">
-                      Visualizing real-time skill progress and mastery. Watch this update live as your
-                      child solves problems!
+                      Visualizing live skill progress. Watch this update as your child solves problems!
                     </p>
                   </div>
                   <div className="overall-badge">
@@ -386,7 +385,7 @@ export default function ParentDashboard() {
 
                 <div className="radar-container">
                   {detailsLoading && skills.length === 0 ? (
-                    <div className="radar-empty">Loading skill radar…</div>
+                    <div className="radar-empty">Loading skill map…</div>
                   ) : detailsError ? (
                     <div className="radar-error-box">
                       <p>⚠️ {detailsError}</p>
@@ -411,8 +410,8 @@ export default function ParentDashboard() {
               {/* Skills breakdown */}
               <div className="skills-panel">
                 <div className="panel-header">
-                  <h3>Curriculum Competencies</h3>
-                  <span className="skills-badge">{skills.length} Math Competencies</span>
+                  <h3>Math Skills</h3>
+                  <span className="skills-badge">{skills.length} Math Skills</span>
                 </div>
 
                 <div className="skills-list">
@@ -427,7 +426,6 @@ export default function ParentDashboard() {
                       >
                         <div className="skill-info">
                           <div className="skill-title-row">
-                            <span className="skill-id-tag">{s.skill_id}</span>
                             <span className="skill-name-text">{s.name}</span>
                             {isFraction && <span className="fraction-tag">Target Focus</span>}
                           </div>
@@ -448,7 +446,7 @@ export default function ParentDashboard() {
               <div className="panel-header">
                 <div>
                   <h3>Session History & Problem Log</h3>
-                  <p className="panel-sub">Recent Socratic dialogues and diagnostic work checks</p>
+                  <p className="panel-sub">Recent Socratic conversations and step-by-step work checks</p>
                 </div>
               </div>
 
