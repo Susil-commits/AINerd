@@ -5,14 +5,25 @@ and redeployments during Demo Day by persisting state to Supabase with in-memory
 """
 import os
 import uuid
-import time
+import asyncio
+import threading
 from collections import OrderedDict
 from typing import Any
 from db.supabase_client import get_supabase
 from bkt.tracker import initialize_mastery, get_next_skill
 from agents.content_agent import get_next_problem
 
-import threading
+# Per-session asyncio.Lock registry to serialize concurrent read-modify-write operations
+_session_locks: dict[str, asyncio.Lock] = {}
+_locks_guard = threading.Lock()
+
+
+def get_session_lock(session_id: str) -> asyncio.Lock:
+    """Return an asyncio.Lock tied to session_id to serialize read-modify-write state operations."""
+    with _locks_guard:
+        if session_id not in _session_locks:
+            _session_locks[session_id] = asyncio.Lock()
+        return _session_locks[session_id]
 
 # Maximum number of active sessions kept in RAM cache (LRU eviction).
 # Default 100 easily handles >50 concurrent students while preventing unbounded memory growth.

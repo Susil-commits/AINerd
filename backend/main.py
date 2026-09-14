@@ -78,6 +78,7 @@ from session_manager import (
     save_session,
     record_session_event,
     get_all_active_session_ids,
+    get_session_lock,
 )
 
 # ── Resilient Session Store & Global State ──────────────────────────────────
@@ -471,68 +472,76 @@ async def send_message(req: MessageRequest):
 
     session_state["latest_input"] = clean_message
     session_state["latest_image_bytes"] = None
-    current_prob: dict[str, Any] = session_state.get("current_problem") or {}
 
     async def event_stream() -> AsyncGenerator[str, None]:
         try:
-            # Emit thinking steps as they happen
-            yield f"data: {json.dumps({'type': 'thinking', 'content': 'Tutor thinking...'})}\n\n"
+            async with get_session_lock(req.session_id):
+                # Emit thinking steps as they happen
+                yield f"data: {json.dumps({'type': 'thinking', 'content': 'Tutor thinking...'})}\n\n"
 
-            thinking_steps = []
-            thinking_steps.append("Reading your thought...")
-            yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
-            await asyncio.sleep(0.1)
+                thinking_steps = []
+                thinking_steps.append("Reading your thought...")
+                yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
+                await asyncio.sleep(0.1)
 
-            # Route through safety boundary if flagged, otherwise invoke Socratic tutor
-            problem_solved = False
-            if is_harmful:
-                response = SAFE_SUPPORT_RESPONSE
-            elif is_injection:
-                response = SOCRATIC_BOUNDARY_RESPONSE
-            else:
-                tutor_result = await asyncio.to_thread(
-                    run_tutor_agent,
-                    clean_message,
-                    session_state["conversation_history"],
-                    current_prob,
-                )
-                response = tutor_result["reply"]
-                problem_solved = tutor_result["problem_solved"]
+                # Re-fetch latest session state inside lock
+                latest_state = await asyncio.to_thread(get_session, req.session_id)
+                current_state = latest_state or session_state
+                current_prob = current_state.get("current_problem") or {}
 
-                # Secondary safety check: Prevent accidental final answer disclosure
-                prob_ans = current_prob.get("answer") or ""
-                if prob_ans and is_answer_leaked(response, str(prob_ans)):
-                    response = (
-                        "That's a great direction! Let's pause right before the final calculation: "
-                        "what math property explains why this step works?"
+                # Route through safety boundary if flagged, otherwise invoke Socratic tutor
+                problem_solved = False
+                if is_harmful:
+                    response = SAFE_SUPPORT_RESPONSE
+                elif is_injection:
+                    response = SOCRATIC_BOUNDARY_RESPONSE
+                else:
+                    tutor_result = await asyncio.to_thread(
+                        run_tutor_agent,
+                        clean_message,
+                        current_state["conversation_history"],
+                        current_prob,
                     )
-                    problem_solved = False
+                    response = tutor_result["reply"]
+                    problem_solved = tutor_result["problem_solved"]
 
-            curr_skill = current_prob.get("skill_id") or session_state.get("current_skill_id")
-            if problem_solved and curr_skill and curr_skill in session_state.get("mastery_state", {}):
-                await _update_mastery_for_skill(session_state, curr_skill)
+                    # Secondary safety check: Prevent accidental final answer disclosure
+                    prob_ans = current_prob.get("answer") or ""
+                    if prob_ans and is_answer_leaked(response, str(prob_ans)):
+                        response = (
+                            "That's a great direction! Let's pause right before the final calculation: "
+                            "what math property explains why this step works?"
+                        )
+                        problem_solved = False
 
-            thinking_steps.append("Thinking of a guiding question..." if not problem_solved else "Problem solved! Ready for next challenge.")
-            yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
+                curr_skill = current_prob.get("skill_id") or current_state.get("current_skill_id")
+                if problem_solved and curr_skill and curr_skill in current_state.get("mastery_state", {}):
+                    await _update_mastery_for_skill(current_state, curr_skill)
 
-            # Update state & persist
-            session_state["conversation_history"] = session_state["conversation_history"] + [
-                {"role": "student", "content": clean_message},
-                {"role": "tutor", "content": response},
-            ]
-            session_state["thinking_steps"] = thinking_steps
-            await asyncio.to_thread(save_session, req.session_id, session_state)
-            await asyncio.to_thread(
-                record_session_event,
-                session_id=req.session_id,
-                student_id=session_state["student_id"],
-                problem_id=current_prob.get("id"),
-                attempt_text=clean_message,
-                is_correct=True if problem_solved else None,
-                agent_response=response,
-            )
+                thinking_steps.append("Thinking of a guiding question..." if not problem_solved else "Problem solved! Ready for next challenge.")
+                yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_steps[-1]})}\n\n"
 
-            # Stream the response word by word for a live feel
+                # Update state & persist
+                current_state["latest_input"] = clean_message
+                current_state["latest_image_bytes"] = None
+                current_state["conversation_history"] = current_state["conversation_history"] + [
+                    {"role": "student", "content": clean_message},
+                    {"role": "tutor", "content": response},
+                ]
+                current_state["thinking_steps"] = thinking_steps
+                await asyncio.to_thread(save_session, req.session_id, current_state)
+                await asyncio.to_thread(
+                    record_session_event,
+                    session_id=req.session_id,
+                    student_id=current_state["student_id"],
+                    problem_id=current_prob.get("id"),
+                    attempt_text=clean_message,
+                    is_correct=True if problem_solved else None,
+                    agent_response=response,
+                )
+                final_mastery = current_state.get("mastery_state", {})
+
+            # Stream the response word by word for a live feel (outside lock)
             words = response.split(" ")
             accumulated = ""
             for i, word in enumerate(words):
@@ -541,7 +550,7 @@ async def send_message(req: MessageRequest):
                     yield f"data: {json.dumps({'type': 'response', 'content': accumulated, 'done': i == len(words) - 1})}\n\n"
                     await asyncio.sleep(0.04)
 
-            yield f"data: {json.dumps({'type': 'done', 'mastery_state': session_state['mastery_state'], 'problem_solved': problem_solved})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'mastery_state': final_mastery, 'problem_solved': problem_solved})}\n\n"
         except asyncio.CancelledError:
             # Client disconnected or navigated away; terminate generator cleanly
             return
@@ -561,74 +570,75 @@ async def send_message(req: MessageRequest):
 @app.post("/session/next-problem")
 async def next_problem_endpoint(req: NextProblemRequest):
     """Explicitly advance to the next tailored practice problem with BKT mastery progression."""
-    state = await asyncio.to_thread(get_session, req.session_id)
-    if not state:
-        raise HTTPException(status_code=404, detail="Session not found")
+    async with get_session_lock(req.session_id):
+        state = await asyncio.to_thread(get_session, req.session_id)
+        if not state:
+            raise HTTPException(status_code=404, detail="Session not found")
 
-    session_state: dict[str, Any] = state
-    current_prob = session_state.get("current_problem") or {}
-    curr_skill = current_prob.get("skill_id") or session_state.get("current_skill_id")
+        session_state: dict[str, Any] = state
+        current_prob = session_state.get("current_problem") or {}
+        curr_skill = current_prob.get("skill_id") or session_state.get("current_skill_id")
 
-    # 1. Update BKT mastery if previous problem was solved / completed
-    if req.mark_previous_correct and curr_skill and curr_skill in session_state.get("mastery_state", {}):
-        await _update_mastery_for_skill(session_state, curr_skill)
+        # 1. Update BKT mastery if previous problem was solved / completed
+        if req.mark_previous_correct and curr_skill and curr_skill in session_state.get("mastery_state", {}):
+            await _update_mastery_for_skill(session_state, curr_skill)
 
-    # 2. Pick next problem targeted by skill and difficulty
-    next_skill = get_next_skill(session_state.get("mastery_state", {}))
-    attempted = list(session_state.get("problems_attempted", []))
-    if current_prob.get("id") and current_prob["id"] not in attempted:
-        attempted.append(current_prob["id"])
+        # 2. Pick next problem targeted by skill and difficulty
+        next_skill = get_next_skill(session_state.get("mastery_state", {}))
+        attempted = list(session_state.get("problems_attempted", []))
+        if current_prob.get("id") and current_prob["id"] not in attempted:
+            attempted.append(current_prob["id"])
 
-    next_prob = await asyncio.to_thread(
-        get_next_problem,
-        skill_id=next_skill,
-        mastery_prob=session_state.get("mastery_state", {}).get(next_skill, 0.3),
-        student_id=session_state["student_id"],
-        exclude_problem_ids=attempted,
-    )
-    if not next_prob:
-        # Fallback: allow repeating from problem bank if all completed
         next_prob = await asyncio.to_thread(
             get_next_problem,
             skill_id=next_skill,
             mastery_prob=session_state.get("mastery_state", {}).get(next_skill, 0.3),
             student_id=session_state["student_id"],
-            exclude_problem_ids=[],
+            exclude_problem_ids=attempted,
+        )
+        if not next_prob:
+            # Fallback: allow repeating from problem bank if all completed
+            next_prob = await asyncio.to_thread(
+                get_next_problem,
+                skill_id=next_skill,
+                mastery_prob=session_state.get("mastery_state", {}).get(next_skill, 0.3),
+                student_id=session_state["student_id"],
+                exclude_problem_ids=[],
+            )
+
+        if not next_prob:
+            raise HTTPException(status_code=503, detail="No further practice problems found in problem bank.")
+
+        session_state["current_problem"] = next_prob
+        session_state["current_problem_credited"] = False
+        session_state["current_skill_id"] = next_skill
+        if next_prob.get("id") and next_prob["id"] not in attempted:
+            attempted.append(next_prob["id"])
+        session_state["problems_attempted"] = attempted
+
+        tutor_intro = (
+            f"Awesome work! Here is your next problem: **{next_prob.get('title', 'Next Problem')}**. "
+            f"Read it carefully and let me know what you think the first step is!"
+        )
+        session_state["conversation_history"].append({"role": "tutor", "content": tutor_intro})
+
+        await asyncio.to_thread(save_session, req.session_id, session_state)
+        await asyncio.to_thread(
+            record_session_event,
+            session_id=req.session_id,
+            student_id=session_state["student_id"],
+            problem_id=next_prob.get("id"),
+            attempt_text="Advanced to next problem",
+            is_correct=None,
+            agent_response=tutor_intro,
         )
 
-    if not next_prob:
-        raise HTTPException(status_code=503, detail="No further practice problems found in problem bank.")
-
-    session_state["current_problem"] = next_prob
-    session_state["current_problem_credited"] = False
-    session_state["current_skill_id"] = next_skill
-    if next_prob.get("id") and next_prob["id"] not in attempted:
-        attempted.append(next_prob["id"])
-    session_state["problems_attempted"] = attempted
-
-    tutor_intro = (
-        f"Awesome work! Here is your next problem: **{next_prob.get('title', 'Next Problem')}**. "
-        f"Read it carefully and let me know what you think the first step is!"
-    )
-    session_state["conversation_history"].append({"role": "tutor", "content": tutor_intro})
-
-    await asyncio.to_thread(save_session, req.session_id, session_state)
-    await asyncio.to_thread(
-        record_session_event,
-        session_id=req.session_id,
-        student_id=session_state["student_id"],
-        problem_id=next_prob.get("id"),
-        attempt_text="Advanced to next problem",
-        is_correct=None,
-        agent_response=tutor_intro,
-    )
-
-    return {
-        "status": "ok",
-        "current_problem": next_prob,
-        "mastery_state": session_state["mastery_state"],
-        "tutor_message": tutor_intro,
-    }
+        return {
+            "status": "ok",
+            "current_problem": next_prob,
+            "mastery_state": session_state["mastery_state"],
+            "tutor_message": tutor_intro,
+        }
 
 
 
@@ -661,92 +671,95 @@ async def upload_work(
 
     async def event_stream() -> AsyncGenerator[str, None]:
         try:
-            yield f"data: {json.dumps({'type': 'thinking', 'content': 'Reading your handwritten work...'})}\n\n"
-            await asyncio.sleep(0.1)
+            async with get_session_lock(session_id):
+                yield f"data: {json.dumps({'type': 'thinking', 'content': 'Reading your handwritten work...'})}\n\n"
+                await asyncio.sleep(0.1)
 
-            current_problem = state.get("current_problem") or {}
-            yield f"data: {json.dumps({'type': 'thinking', 'content': 'Checking your steps...'})}\n\n"
+                fresh_state = await asyncio.to_thread(get_session, session_id)
+                current_state = fresh_state or state
+                current_problem = current_state.get("current_problem") or {}
+                yield f"data: {json.dumps({'type': 'thinking', 'content': 'Checking your steps...'})}\n\n"
 
-            diagnosis = await asyncio.to_thread(
-                run_diagnostic_agent,
-                image_bytes=image_bytes,
-                expected_steps=current_problem.get("expected_steps", []),
-                problem_text=current_problem.get("text", ""),
-                skill_id=state.get("current_skill_id", ""),
-            )
-
-            misconception = diagnosis.get('misconception_type', 'unknown')
-            friendly_misc = misconception.replace('_', ' ')
-            yield f"data: {json.dumps({'type': 'thinking', 'content': 'Checking step: ' + friendly_misc})}\n\n"
-
-            # Update mastery
-            curr_skill = current_problem.get("skill_id") or state.get("current_skill_id")
-            is_correct = diagnosis.get("is_correct", False)
-
-            if not is_correct and curr_skill:
-                new_mastery = update_mastery(
-                    current_mastery=state["mastery_state"].get(curr_skill, 0.3),
-                    is_correct=False,
-                    skill_id=curr_skill,
+                diagnosis = await asyncio.to_thread(
+                    run_diagnostic_agent,
+                    image_bytes=image_bytes,
+                    expected_steps=current_problem.get("expected_steps", []),
+                    problem_text=current_problem.get("text", ""),
+                    skill_id=current_state.get("current_skill_id", ""),
                 )
-                state["mastery_state"][curr_skill] = round(new_mastery, 4)
-                mastery_pct = f"{new_mastery*100:.0f}%"
-                yield f"data: {json.dumps({'type': 'thinking', 'content': 'Updating skill progress: ' + mastery_pct})}\n\n"
+
+                misconception = diagnosis.get('misconception_type', 'unknown')
+                friendly_misc = misconception.replace('_', ' ')
+                yield f"data: {json.dumps({'type': 'thinking', 'content': 'Checking step: ' + friendly_misc})}\n\n"
+
+                # Update mastery
+                curr_skill = current_problem.get("skill_id") or current_state.get("current_skill_id")
+                is_correct = diagnosis.get("is_correct", False)
+
+                if not is_correct and curr_skill:
+                    new_mastery = update_mastery(
+                        current_mastery=current_state["mastery_state"].get(curr_skill, 0.3),
+                        is_correct=False,
+                        skill_id=curr_skill,
+                    )
+                    current_state["mastery_state"][curr_skill] = round(new_mastery, 4)
+                    mastery_pct = f"{new_mastery*100:.0f}%"
+                    yield f"data: {json.dumps({'type': 'thinking', 'content': 'Updating skill progress: ' + mastery_pct})}\n\n"
+                    try:
+                        supabase = get_supabase()
+                        await db_exec(supabase.table("student_skill_mastery").upsert({
+                            "student_id": current_state["student_id"],
+                            "skill_id": curr_skill,
+                            "mastery_prob": new_mastery,
+                        }, on_conflict="student_id,skill_id"))
+                    except Exception as e:
+                        print(f"[WARN] Supabase write failed: {e}")
+
+                # Record event turn in session_events
                 try:
-                    supabase = get_supabase()
-                    await db_exec(supabase.table("student_skill_mastery").upsert({
-                        "student_id": state["student_id"],
-                        "skill_id": curr_skill,
-                        "mastery_prob": new_mastery,
-                    }, on_conflict="student_id,skill_id"))
+                    await asyncio.to_thread(
+                        record_session_event,
+                        session_id=current_state["session_id"],
+                        student_id=current_state["student_id"],
+                        problem_id=current_problem.get("id"),
+                        attempt_text=diagnosis.get("ocr_text", ""),
+                        is_correct=is_correct,
+                        agent_response=diagnosis.get("corrective_question", ""),
+                    )
                 except Exception as e:
                     print(f"[WARN] Supabase write failed: {e}")
 
-            # Record event turn in session_events
-            try:
-                await asyncio.to_thread(
-                    record_session_event,
-                    session_id=state["session_id"],
-                    student_id=state["student_id"],
-                    problem_id=current_problem.get("id"),
-                    attempt_text=diagnosis.get("ocr_text", ""),
-                    is_correct=is_correct,
-                    agent_response=diagnosis.get("corrective_question", ""),
-                )
-            except Exception as e:
-                print(f"[WARN] Supabase write failed: {e}")
+                current_state["diagnosis"] = diagnosis
+                await asyncio.to_thread(save_session, session_id, current_state)
 
-            state["diagnosis"] = diagnosis
-            await asyncio.to_thread(save_session, session_id, state)
+                # If correct, update mastery for solved problem and select next problem targeted with pgvector RAG
+                if is_correct:
+                    if curr_skill:
+                        await _update_mastery_for_skill(current_state, curr_skill)
+                    cur_m = current_state["mastery_state"].get(curr_skill, 0.3)
+                    mastery_pct = f"{cur_m*100:.0f}%"
+                    yield f"data: {json.dumps({'type': 'thinking', 'content': 'Updating skill progress: ' + mastery_pct})}\n\n"
 
-            # If correct, update mastery for solved problem and select next problem targeted with pgvector RAG
-            if is_correct:
-                if curr_skill:
-                    await _update_mastery_for_skill(state, curr_skill)
-                cur_m = state["mastery_state"].get(curr_skill, 0.3)
-                mastery_pct = f"{cur_m*100:.0f}%"
-                yield f"data: {json.dumps({'type': 'thinking', 'content': 'Updating skill progress: ' + mastery_pct})}\n\n"
+                    yield f"data: {json.dumps({'type': 'thinking', 'content': 'Picking your next practice problem...'})}\n\n"
+                    next_skill = get_next_skill(current_state["mastery_state"])
+                    misconception_desc = diagnosis.get("description") or diagnosis.get("misconception_type")
+                    next_problem = await asyncio.to_thread(
+                        get_next_problem,
+                        skill_id=next_skill,
+                        mastery_prob=current_state["mastery_state"].get(next_skill, 0.3),
+                        student_id=current_state["student_id"],
+                        exclude_problem_ids=current_state.get("problems_attempted", []),
+                        misconception_text=misconception_desc,
+                    )
+                    if next_problem:
+                        current_state["current_problem"] = next_problem
+                        current_state["current_problem_credited"] = False
+                        current_state["current_skill_id"] = next_skill
+                        current_state["problems_attempted"] = current_state.get("problems_attempted", []) + [next_problem["id"]]
+                        await asyncio.to_thread(save_session, session_id, current_state)
 
-                yield f"data: {json.dumps({'type': 'thinking', 'content': 'Picking your next practice problem...'})}\n\n"
-                next_skill = get_next_skill(state["mastery_state"])
-                misconception_desc = diagnosis.get("description") or diagnosis.get("misconception_type")
-                next_problem = await asyncio.to_thread(
-                    get_next_problem,
-                    skill_id=next_skill,
-                    mastery_prob=state["mastery_state"].get(next_skill, 0.3),
-                    student_id=state["student_id"],
-                    exclude_problem_ids=state.get("problems_attempted", []),
-                    misconception_text=misconception_desc,
-                )
-                if next_problem:
-                    state["current_problem"] = next_problem
-                    state["current_problem_credited"] = False
-                    state["current_skill_id"] = next_skill
-                    state["problems_attempted"] = state.get("problems_attempted", []) + [next_problem["id"]]
-                    await asyncio.to_thread(save_session, session_id, state)
-
-            yield f"data: {json.dumps({'type': 'diagnosis', 'diagnosis': diagnosis, 'mastery_state': state['mastery_state'], 'next_problem': state.get('current_problem')})}\n\n"
-            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                yield f"data: {json.dumps({'type': 'diagnosis', 'diagnosis': diagnosis, 'mastery_state': current_state['mastery_state'], 'next_problem': current_state.get('current_problem')})}\n\n"
+                yield f"data: {json.dumps({'type': 'done'})}\n\n"
         except asyncio.CancelledError:
             # Client disconnected or cancelled upload stream; terminate cleanly
             return
