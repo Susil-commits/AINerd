@@ -153,7 +153,7 @@ def run_neo_agent(
     # Append past conversation history (last 6 turns, sanitized and length-capped)
     for msg in history[-6:]:
         role = msg.get("role")
-        raw_content = str(msg.get("content", "")).strip()[:1000]
+        raw_content = msg.get("content", "").strip()[:1000]
         if not raw_content:
             continue
         cleaned_turn = sanitize_input(raw_content, max_length=1000)
