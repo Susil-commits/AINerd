@@ -97,10 +97,26 @@ def main():
         except Exception as e:
             print(f"   ⚠️ Could not delete all rows (may be referenced by session_events): {e}")
 
-    existing_titles = {r["title"].strip().lower() for r in existing_rows}
-    to_insert = [p for p in problems if p["title"].strip().lower() not in existing_titles]
+    existing_by_title = {r["title"].strip().lower(): r["id"] for r in existing_rows}
+    to_insert = [p for p in problems if p["title"].strip().lower() not in existing_by_title]
 
-    print(f"   ⏩ Skipping {len(problems) - len(to_insert)} already existing problems.")
+    # Synchronize expected_steps for existing problems
+    print(f"   🔄 Synchronizing clean expected_steps for {len(existing_rows)} existing problems in Supabase...")
+    updated_count = 0
+    for p in problems:
+        t_key = p["title"].strip().lower()
+        if t_key in existing_by_title:
+            row_id = existing_by_title[t_key]
+            try:
+                supabase.table("problems").update({
+                    "expected_steps": p["expected_steps"],
+                    "difficulty": p["difficulty"],
+                }).eq("id", row_id).execute()
+                updated_count += 1
+            except Exception as e:
+                print(f"      ⚠️ Update failed for {p['title']}: {e}")
+    print(f"   ✅ Synchronized expected_steps for {updated_count} problems.")
+
     print(f"   📥 Inserting {len(to_insert)} new problems with 768-dim embeddings...")
 
     inserted_count = 0

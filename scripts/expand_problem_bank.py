@@ -46,9 +46,9 @@ def clean_gsm8k_steps(answer_raw: str) -> list[str]:
             ans = line.replace("####", "").strip()
             steps.append(f"Answer: {ans}")
         else:
-            # Strip <<calc=res>> markup and replace with clean equality
-            clean = re.sub(r"<<([^=]+)=([^>]+)>>", r"\2", line)
-            clean = clean.strip()
+            # In GSM8K, the calculator tag <<expr=res>> is followed by the human-written result in the text.
+            # Stripping the <<...>> tag leaves the clean mathematical equation without duplicating numbers.
+            clean = re.sub(r"<<[^>]+>>", "", line).strip()
             if clean and not clean.startswith("####"):
                 steps.append(clean)
     return steps or ["Follow standard arithmetic steps", f"Answer: {answer_raw[-20:]}"]

@@ -17,11 +17,11 @@
     "skill_id": "3.OA.A.1",
     "difficulty": 3,
     "expected_steps": [
-      "Roque takes 2*3 = 66 hours a week to walk to work.",
-      "Roque takes 6*2 = 1212 hours a week to walk to and from work.",
-      "Roque takes 1*2 = 22 hours a week to bike to work.",
-      "Roque takes 2*2 = 44 hours a week to bike to and from work.",
-      "In total, Roque takes 12+4 = 1616 hour a week to go to and from work.",
+      "Roque takes 2*3 = 6 hours a week to walk to work.",
+      "Roque takes 6*2 = 12 hours a week to walk to and from work.",
+      "Roque takes 1*2 = 2 hours a week to bike to work.",
+      "Roque takes 2*2 = 4 hours a week to bike to and from work.",
+      "In total, Roque takes 12+4 = 16 hour a week to go to and from work.",
       "Answer: 16"
     ],
     "source": "gsm8k"
@@ -32,11 +32,11 @@
     "skill_id": "3.OA.A.1",
     "difficulty": 3,
     "expected_steps": [
-      "There were 9-4 = 55 other pills",
-      "Each of the other pills cost 1.50+5.50 = 77 dollars each.",
-      "The 5 pills cost a total of 7*5 = 3535 dollars.",
-      "The first 4 pills cost 1.50*4 = 66 dollars in total.",
-      "Henry spent a total of 35+6 = 4141 dollars.",
+      "There were 9-4 = 5 other pills",
+      "Each of the other pills cost 1.50+5.50 = 7 dollars each.",
+      "The 5 pills cost a total of 7*5 = 35 dollars.",
+      "The first 4 pills cost 1.50*4 = 6 dollars in total.",
+      "Henry spent a total of 35+6 = 41 dollars.",
       "Answer: 41"
     ],
     "source": "gsm8k"
@@ -47,10 +47,10 @@
     "skill_id": "3.OA.A.1",
     "difficulty": 3,
     "expected_steps": [
-      "The discount for each gallon of whole milk is $3 - $2 = $11.",
-      "So the discount for 3 gallons of whole milk is $1/gallon x 3 gallons = $33.",
-      "The total discount for 5 boxes of cereal is $1/box x 5 boxes = $55.",
-      "You will save $3 + $5 = $88 for 3 gallons of whole milk and 5 boxes of cereal.",
+      "The discount for each gallon of whole milk is $3 - $2 = $1.",
+      "So the discount for 3 gallons of whole milk is $1/gallon x 3 gallons = $3.",
+      "The total discount for 5 boxes of cereal is $1/box x 5 boxes = $5.",
+      "You will save $3 + $5 = $8 for 3 gallons of whole milk and 5 boxes of cereal.",
       "Answer: 8"
     ],
     "source": "gsm8k"
@@ -75,10 +75,10 @@
     "skill_id": "3.OA.A.1",
     "difficulty": 3,
     "expected_steps": [
-      "Mary spent 5 x $6 = $3030 on drinks.",
-      "She spent 10 x $14 = $140140 on pizzas.",
-      "She spent a total amount of $30 + $140 = $170170.",
-      "Therefore, Mary got a change of $200 - $170 = $3030 after paying all the items for her pizza party.",
+      "Mary spent 5 x $6 = $30 on drinks.",
+      "She spent 10 x $14 = $140 on pizzas.",
+      "She spent a total amount of $30 + $140 = $170.",
+      "Therefore, Mary got a change of $200 - $170 = $30 after paying all the items for her pizza party.",
       "Answer: 30"
     ],
     "source": "gsm8k"
@@ -89,11 +89,11 @@
     "skill_id": "3.OA.A.1",
     "difficulty": 3,
     "expected_steps": [
-      "Ann had 3 dozen oatmeal cookies - 2 dozen = 11 dozen oatmeal cookies left.",
-      "Ann had 2 dozen sugar cookies - 1.5 dozen = .5.5 dozen sugar cookies left.",
+      "Ann had 3 dozen oatmeal cookies - 2 dozen = 1 dozen oatmeal cookies left.",
+      "Ann had 2 dozen sugar cookies - 1.5 dozen = .5 dozen sugar cookies left.",
       "Ann had 4 dozen chocolate chip cookies - 2.5 dozen = 1.5 dozen chocolate chip cookies left.",
-      "Ann has a total of 1 + .5 + 1.5 dozen cookies = 33 dozen cookies.",
-      "3 dozen cookies is 3 *12 cookies = 3636 cookies remaining.",
+      "Ann has a total of 1 + .5 + 1.5 dozen cookies = 3 dozen cookies.",
+      "3 dozen cookies is 3 *12 cookies = 36 cookies remaining.",
       "Answer: 36"
     ],
     "source": "gsm8k"
@@ -110,7 +110,7 @@
       "Total:x+3+2x+12+8x=301",
       "11x+15=301",
       "11x=286",
-      "x=2626",
+      "x=26",
       "Buicks:12+8(26)=220",
       "Answer: 220"
     ],
@@ -122,10 +122,10 @@
     "skill_id": "3.OA.A.1",
     "difficulty": 3,
     "expected_steps": [
-      "May will be able to make 2 x 3 = 66 red scarves.",
-      "She will be able to make 3 x 6 = 1818 blue scarves.",
-      "And she will be able to make 4 x 3 = 1212 yellow scarves.",
-      "Therefore the total scarves she can make is 12 + 18 + 6 = 3636.",
+      "May will be able to make 2 x 3 = 6 red scarves.",
+      "She will be able to make 3 x 6 = 18 blue scarves.",
+      "And she will be able to make 4 x 3 = 12 yellow scarves.",
+      "Therefore the total scarves she can make is 12 + 18 + 6 = 36.",
       "Answer: 36"
     ],
     "source": "gsm8k"
@@ -136,10 +136,10 @@
     "skill_id": "3.OA.A.1",
     "difficulty": 3,
     "expected_steps": [
-      "The two coloring books amount to 2 x $4 = $88.",
-      "The 4 packs of peanuts amount to 4 x $1.50 = $66.",
-      "The total cost for the coloring books and peanuts is $8 + $6 = $1414.",
-      "Thus, the stuffed animal cost $25 - $14 = $1111.",
+      "The two coloring books amount to 2 x $4 = $8.",
+      "The 4 packs of peanuts amount to 4 x $1.50 = $6.",
+      "The total cost for the coloring books and peanuts is $8 + $6 = $14.",
+      "Thus, the stuffed animal cost $25 - $14 = $11.",
       "Answer: 11"
     ],
     "source": "gsm8k"
@@ -150,10 +150,10 @@
     "skill_id": "3.OA.A.1",
     "difficulty": 3,
     "expected_steps": [
-      "Chad uses 2 crackers for each \"sandwich\" and has 5 sandwiches a night so he eats 2*5 = 1010 crackers a night",
-      "The box has 4 sleeves of crackers and each sleeve has 28 crackers for a total of 4*28 = 112112 crackers",
-      "1 box has 112 crackers so 5 boxes will have 112*5 = 560560 crackers",
-      "He eats 10 crackers a night and 5 boxes have 560 crackers so they will last him 560//10 = 5656 nights",
+      "Chad uses 2 crackers for each \"sandwich\" and has 5 sandwiches a night so he eats 2*5 = 10 crackers a night",
+      "The box has 4 sleeves of crackers and each sleeve has 28 crackers for a total of 4*28 = 112 crackers",
+      "1 box has 112 crackers so 5 boxes will have 112*5 = 560 crackers",
+      "He eats 10 crackers a night and 5 boxes have 560 crackers so they will last him 560//10 = 56 nights",
       "Answer: 56"
     ],
     "source": "gsm8k"
@@ -164,10 +164,10 @@
     "skill_id": "3.OA.A.1",
     "difficulty": 3,
     "expected_steps": [
-      "For the humans in the house, there are 5 * 2 = 1010 legs",
-      "Javier has a total of 2 + 1 = 33 four-legged pets",
-      "For the pets in the house, there are 3 * 4 = 1212 legs",
-      "There are a total of 10 + 12 = 2222 legs",
+      "For the humans in the house, there are 5 * 2 = 10 legs",
+      "Javier has a total of 2 + 1 = 3 four-legged pets",
+      "For the pets in the house, there are 3 * 4 = 12 legs",
+      "There are a total of 10 + 12 = 22 legs",
       "Answer: 22"
     ],
     "source": "gsm8k"
@@ -322,9 +322,9 @@
     "difficulty": 3,
     "expected_steps": [
       "According to the ratio, for every 5 parts that Johnson gets, Mike gets 2 parts",
-      "Since Johnson got $2500, each part is therefore $2500/5 = $500500",
-      "Mike will get 2*$500 = $10001000",
-      "After buying the shirt he will have $1000-$200 = $800800 left",
+      "Since Johnson got $2500, each part is therefore $2500/5 = $500",
+      "Mike will get 2*$500 = $1000",
+      "After buying the shirt he will have $1000-$200 = $800 left",
       "Answer: 800"
     ],
     "source": "gsm8k"
@@ -335,11 +335,11 @@
     "skill_id": "3.OA.A.2",
     "difficulty": 3,
     "expected_steps": [
-      "The cost of 5 pieces of hamburger is $3 x 5 = $1515.",
-      "The cost of 4 sets of French fries is $1.20 x 4 = $4.804.80.",
-      "The cost of 5 cups of soda is $0.5 x 5 = $2.502.50.",
-      "So their total bill is $15 + $4.80 + $2.50 +$2.7 = $2525.",
-      "Hence, each of the five friends will contribute $25/5 = $55.",
+      "The cost of 5 pieces of hamburger is $3 x 5 = $15.",
+      "The cost of 4 sets of French fries is $1.20 x 4 = $4.80.",
+      "The cost of 5 cups of soda is $0.5 x 5 = $2.50.",
+      "So their total bill is $15 + $4.80 + $2.50 +$2.7 = $25.",
+      "Hence, each of the five friends will contribute $25/5 = $5.",
       "Answer: 5"
     ],
     "source": "gsm8k"
@@ -350,9 +350,9 @@
     "skill_id": "3.OA.A.2",
     "difficulty": 3,
     "expected_steps": [
-      "The total ratio representing the number of children in the family is 5+7 = 1212",
-      "From the total ratio of children in the family, 5/12 represent the number of boys, meaning that the number of boys in the family is 5/12*180 = 7575",
-      "If the boys are given $3900 to share, each boy receives $3900/75 = $5252",
+      "The total ratio representing the number of children in the family is 5+7 = 12",
+      "From the total ratio of children in the family, 5/12 represent the number of boys, meaning that the number of boys in the family is 5/12*180 = 75",
+      "If the boys are given $3900 to share, each boy receives $3900/75 = $52",
       "Answer: 52"
     ],
     "source": "gsm8k"
@@ -363,15 +363,15 @@
     "skill_id": "3.OA.A.2",
     "difficulty": 3,
     "expected_steps": [
-      "If 36 fruits were evenly split between 3 types of fruits, then I bought 36/3 = 1212 units of each fruit",
-      "If 1 orange costs $0.50 then 12 oranges will cost $0.50 * 12 = $66",
-      "If my total bill was $66 and I spent $6 on oranges then I spent $66 - $6 = $6060 on the other 2 fruit types.",
+      "If 36 fruits were evenly split between 3 types of fruits, then I bought 36/3 = 12 units of each fruit",
+      "If 1 orange costs $0.50 then 12 oranges will cost $0.50 * 12 = $6",
+      "If my total bill was $66 and I spent $6 on oranges then I spent $66 - $6 = $60 on the other 2 fruit types.",
       "Assuming the price of watermelon is W, and knowing that you can buy 4 apples for the same price and that the price of one apple is A, then 1W=4A",
       "If we know we bought 12 watermelons and 12 apples for $60, then we know that $60 = 12W + 12A",
       "Knowing that 1W=4A, then we can convert the above to $60 = 12(4A) + 12A",
       "$60 = 48A + 12A",
-      "$60 = 6060A",
-      "Then we know the price of one apple (A) is $60/60= $11",
+      "$60 = 60A",
+      "Then we know the price of one apple (A) is $60/60= $1",
       "Answer: 1"
     ],
     "source": "gsm8k"
@@ -382,11 +382,11 @@
     "skill_id": "3.OA.A.2",
     "difficulty": 3,
     "expected_steps": [
-      "Since 1 dozen is equal to 12, then Samuel has 2 x 12 = 2424 doughnuts.",
-      "While Cathy has 3 x 12 = 3636.",
-      "They both have 24 + 36 = 6060 doughnuts together.",
-      "There are 8 friends + 1 (Samuel) + 1 (Cathy) = 1010 that will share the doughnuts.",
-      "Thus, each of them will get 60/10 = 66 doughnuts.",
+      "Since 1 dozen is equal to 12, then Samuel has 2 x 12 = 24 doughnuts.",
+      "While Cathy has 3 x 12 = 36.",
+      "They both have 24 + 36 = 60 doughnuts together.",
+      "There are 8 friends + 1 (Samuel) + 1 (Cathy) = 10 that will share the doughnuts.",
+      "Thus, each of them will get 60/10 = 6 doughnuts.",
       "Answer: 6"
     ],
     "source": "gsm8k"
@@ -397,9 +397,9 @@
     "skill_id": "3.OA.A.2",
     "difficulty": 3,
     "expected_steps": [
-      "Out of the 40 children taking part in the Halloween celebration, 80% were allowed to draw jelly beans from the bag, a total of 80/100*40=3232 children.",
-      "If each of the 32 children drew two jelly beans out of the bag, they drew a total of 32*2=6464 jelly beans from the bag.",
-      "The total number of jelly beans that remained is 100-64=3636",
+      "Out of the 40 children taking part in the Halloween celebration, 80% were allowed to draw jelly beans from the bag, a total of 80/100*40=32 children.",
+      "If each of the 32 children drew two jelly beans out of the bag, they drew a total of 32*2=64 jelly beans from the bag.",
+      "The total number of jelly beans that remained is 100-64=36",
       "Answer: 36"
     ],
     "source": "gsm8k"
@@ -410,7 +410,7 @@
     "skill_id": "3.OA.A.2",
     "difficulty": 1,
     "expected_steps": [
-      "Angie earned 80 and paid 42 for necessities, so she had 80 - 42 = $3838 left.",
+      "Angie earned 80 and paid 42 for necessities, so she had 80 - 42 = $38 left.",
       "Angie had 18 left after paying taxes, so her share of the taxes was 38- 18 = $20 this month.",
       "Answer: 20"
     ],
@@ -422,10 +422,10 @@
     "skill_id": "3.OA.A.2",
     "difficulty": 3,
     "expected_steps": [
-      "The total cost of The Life Journey is 3 \u00d7 $100 = $300300.",
-      "The total cost of When You Rescind is 3 \u00d7 $85 = $255255.",
-      "The total cost of A Day a Life is 3 \u00d7 $50 = $150150.",
-      "The total cost for all the CDs is $150 + $255 + $300 = $705705.",
+      "The total cost of The Life Journey is 3 \u00d7 $100 = $300.",
+      "The total cost of When You Rescind is 3 \u00d7 $85 = $255.",
+      "The total cost of A Day a Life is 3 \u00d7 $50 = $150.",
+      "The total cost for all the CDs is $150 + $255 + $300 = $705.",
       "Answer: 705"
     ],
     "source": "gsm8k"
@@ -438,7 +438,7 @@
     "expected_steps": [
       "Paige has 100 space stickers that she is dividing among 3 friends, so 100 stickers / 3 friends = 33 stickers for each friend, with 1 remaining.",
       "She also has 50 cat stickers that she is diving among 3 friends, so 50 stickers / 3 friends = 16 stickers for each friend, with 2 remaining.",
-      "So Paige will have 1 remaining space sticker + 2 remaining cat stickers = 33 stickers left.",
+      "So Paige will have 1 remaining space sticker + 2 remaining cat stickers = 3 stickers left.",
       "Answer: 3"
     ],
     "source": "gsm8k"
@@ -450,7 +450,7 @@
     "difficulty": 1,
     "expected_steps": [
       "If Monroe and her husband ate 80 granola bars, then the number of granola bars the children shared is 200-80 = 120",
-      "Each child received 20 bars, and there were 120 granola bars, meaning there were 120/20 = 66 children in the family.",
+      "Each child received 20 bars, and there were 120 granola bars, meaning there were 120/20 = 6 children in the family.",
       "Answer: 6"
     ],
     "source": "gsm8k"
@@ -613,9 +613,9 @@
     "skill_id": "3.OA.D.8",
     "difficulty": 3,
     "expected_steps": [
-      "He writes each friend 3*2=66 pages a week",
-      "So he writes 6*2=1212 pages every week",
-      "That means he writes 12*52=624624 pages a year",
+      "He writes each friend 3*2=6 pages a week",
+      "So he writes 6*2=12 pages every week",
+      "That means he writes 12*52=624 pages a year",
       "Answer: 624"
     ],
     "source": "gsm8k"
@@ -626,9 +626,9 @@
     "skill_id": "3.OA.D.8",
     "difficulty": 3,
     "expected_steps": [
-      "He eats 32 from the largest pizzas because 2 x 16 = 3232",
-      "He eats 16 from the small pizza because 2 x 8 = 1616",
-      "He eats 48 pieces because 32 + 16 = 4848",
+      "He eats 32 from the largest pizzas because 2 x 16 = 32",
+      "He eats 16 from the small pizza because 2 x 8 = 16",
+      "He eats 48 pieces because 32 + 16 = 48",
       "Answer: 48"
     ],
     "source": "gsm8k"
@@ -639,9 +639,9 @@
     "skill_id": "3.OA.D.8",
     "difficulty": 3,
     "expected_steps": [
-      "To the initial 2 pounds of jelly beans, he added enough brownies to cause the weight to triple, bringing the weight to 2*3=66 pounds.",
-      "Next, he added another 2 pounds of jelly beans, bringing the weight to 6+2=88 pounds.",
-      "And finally, he added enough gummy worms to double the weight once again, to a final weight of 8*2=1616 pounds.",
+      "To the initial 2 pounds of jelly beans, he added enough brownies to cause the weight to triple, bringing the weight to 2*3=6 pounds.",
+      "Next, he added another 2 pounds of jelly beans, bringing the weight to 6+2=8 pounds.",
+      "And finally, he added enough gummy worms to double the weight once again, to a final weight of 8*2=16 pounds.",
       "Answer: 16"
     ],
     "source": "gsm8k"
@@ -653,9 +653,9 @@
     "difficulty": 2,
     "expected_steps": [
       "Let S be the amount Alexis paid for the shoes.",
-      "She spent S + 30 + 46 + 38 + 11 + 18 = S + 143143.",
+      "She spent S + 30 + 46 + 38 + 11 + 18 = S + 143.",
       "She used all but $16 of her budget, so S + 143 = 200 - 16 = 184.",
-      "Thus, Alexis paid S = 184 - 143 = $4141 for the shoes.",
+      "Thus, Alexis paid S = 184 - 143 = $41 for the shoes.",
       "Answer: 41"
     ],
     "source": "gsm8k"
@@ -666,9 +666,9 @@
     "skill_id": "3.OA.D.8",
     "difficulty": 3,
     "expected_steps": [
-      "The number of truck stamps is 11 + 9 = 2020.",
-      "The number of rose stamps is 20 \u2212 13 = 77.",
-      "Bella bought 11 + 20 + 7 = 3838 stamps in all.",
+      "The number of truck stamps is 11 + 9 = 20.",
+      "The number of rose stamps is 20 \u2212 13 = 7.",
+      "Bella bought 11 + 20 + 7 = 38 stamps in all.",
       "Answer: 38"
     ],
     "source": "gsm8k"
@@ -679,9 +679,9 @@
     "skill_id": "3.OA.D.8",
     "difficulty": 3,
     "expected_steps": [
-      "First find the total number of snakes eaten: 5 snakes/jaguar * 6 jaguars = 3030 snakes",
-      "Then find the total number of birds eaten per day: 30 snakes * 3 birds/snake = 9090 snakes",
-      "Then multiply the number of snakes by the number of beetles per snake to find the total number of beetles eaten per day: 90 snakes * 12 beetles/snake = 10801080 beetles",
+      "First find the total number of snakes eaten: 5 snakes/jaguar * 6 jaguars = 30 snakes",
+      "Then find the total number of birds eaten per day: 30 snakes * 3 birds/snake = 90 snakes",
+      "Then multiply the number of snakes by the number of beetles per snake to find the total number of beetles eaten per day: 90 snakes * 12 beetles/snake = 1080 beetles",
       "Answer: 1080"
     ],
     "source": "gsm8k"
@@ -692,8 +692,8 @@
     "skill_id": "3.OA.D.8",
     "difficulty": 2,
     "expected_steps": [
-      "There are 4 letters in Jamie\u2019s last name, so Bobbie\u2019s name is 4*2 +2 = 1010 letters long.",
-      "Samantha\u2019s last name is 3 letters shorter than Bobbie\u2019s, so there are 10 - 3 = 77 letters in Samantha\u2019s last name.",
+      "There are 4 letters in Jamie\u2019s last name, so Bobbie\u2019s name is 4*2 +2 = 10 letters long.",
+      "Samantha\u2019s last name is 3 letters shorter than Bobbie\u2019s, so there are 10 - 3 = 7 letters in Samantha\u2019s last name.",
       "Answer: 7"
     ],
     "source": "gsm8k"
@@ -704,8 +704,8 @@
     "skill_id": "3.OA.D.8",
     "difficulty": 2,
     "expected_steps": [
-      "So far, Mary has paid back $15 +$23=$3838 of the credit.",
-      "So she still needs to pay $100-$38=$6262",
+      "So far, Mary has paid back $15 +$23=$38 of the credit.",
+      "So she still needs to pay $100-$38=$62",
       "Answer: 62"
     ],
     "source": "gsm8k"
@@ -716,8 +716,8 @@
     "skill_id": "3.OA.D.8",
     "difficulty": 2,
     "expected_steps": [
-      "First find how many liters of the seawater are salt: 2 liters * 20% = .4.4 liters",
-      "Then multiply that amount by 1000 ml/liter to find the number of ml of salt Jack gets: .4 liters * 1000 ml/liter = 400400 ml",
+      "First find how many liters of the seawater are salt: 2 liters * 20% = .4 liters",
+      "Then multiply that amount by 1000 ml/liter to find the number of ml of salt Jack gets: .4 liters * 1000 ml/liter = 400 ml",
       "Answer: 400"
     ],
     "source": "gsm8k"
@@ -728,8 +728,8 @@
     "skill_id": "3.OA.D.8",
     "difficulty": 2,
     "expected_steps": [
-      "In the first four houses, there are a total of 4 houses * 3 gnomes = 1212 gnomes.",
-      "Therefore, the fifth house had 20 total gnomes \u2013 12 gnomes = 88 gnomes.",
+      "In the first four houses, there are a total of 4 houses * 3 gnomes = 12 gnomes.",
+      "Therefore, the fifth house had 20 total gnomes \u2013 12 gnomes = 8 gnomes.",
       "Answer: 8"
     ],
     "source": "gsm8k"
@@ -1140,10 +1140,10 @@
     "skill_id": "4.NF.B.3",
     "difficulty": 4,
     "expected_steps": [
-      "Maila read 12 x 2 = 2424 pages today.",
-      "So she was able to read a total of 12 + 24 = 3636 pages since yesterday.",
-      "There are 120 - 36 = 8484 pages left to be read.",
-      "Since she wants to read half of the remaining pages tomorrow, then she should read 84/2 = 4242 pages.",
+      "Maila read 12 x 2 = 24 pages today.",
+      "So she was able to read a total of 12 + 24 = 36 pages since yesterday.",
+      "There are 120 - 36 = 84 pages left to be read.",
+      "Since she wants to read half of the remaining pages tomorrow, then she should read 84/2 = 42 pages.",
       "Answer: 42"
     ],
     "source": "gsm8k"
@@ -1154,14 +1154,14 @@
     "skill_id": "4.NF.B.3",
     "difficulty": 4,
     "expected_steps": [
-      "She works 8 hours a day for $18 per hour so she makes 8*18 = $144.00144.00 per 8-hour shift",
-      "She works 10 hours a day and anything over 8 hours is eligible for overtime, so she gets 10-8 = 22 hours of overtime",
-      "Overtime is calculated as time and a half so and she makes $18/hour so her overtime pay is 18*.5 = $9.009.00",
-      "Her overtime pay is 18+9 = $27.0027.00",
-      "Her base pay is $144.00 per 8-hour shift and she works 5 days and makes 5 * $144 = $720.00720.00",
-      "Her overtime pay is $27.00 per hour and she works 2 hours of overtime per day and makes 27*2 = $54.0054.00 in overtime pay",
+      "She works 8 hours a day for $18 per hour so she makes 8*18 = $144.00 per 8-hour shift",
+      "She works 10 hours a day and anything over 8 hours is eligible for overtime, so she gets 10-8 = 2 hours of overtime",
+      "Overtime is calculated as time and a half so and she makes $18/hour so her overtime pay is 18*.5 = $9.00",
+      "Her overtime pay is 18+9 = $27.00",
+      "Her base pay is $144.00 per 8-hour shift and she works 5 days and makes 5 * $144 = $720.00",
+      "Her overtime pay is $27.00 per hour and she works 2 hours of overtime per day and makes 27*2 = $54.00 in overtime pay",
       "2 hours of overtime pay for 5 days means she makes 54*5 = $270.00",
-      "In 5 days her base pay is $720.00 and she makes $270.00 in overtime pay so she makes $720 + $270 = $990.00990.00",
+      "In 5 days her base pay is $720.00 and she makes $270.00 in overtime pay so she makes $720 + $270 = $990.00",
       "Answer: 990"
     ],
     "source": "gsm8k"
@@ -1172,10 +1172,10 @@
     "skill_id": "4.NF.B.3",
     "difficulty": 4,
     "expected_steps": [
-      "She bought 5 shorts at $7 each so 5*7=$3535",
-      "She bought 2 pair of shoes at $10 each so 2*10=$2020",
-      "The shorts and shoes cost her 35+20 = $5555",
-      "We know she spent 75 total and the shorts and shoes cost $55 which left a difference of 75-55 = $2020",
+      "She bought 5 shorts at $7 each so 5*7=$35",
+      "She bought 2 pair of shoes at $10 each so 2*10=$20",
+      "The shorts and shoes cost her 35+20 = $55",
+      "We know she spent 75 total and the shorts and shoes cost $55 which left a difference of 75-55 = $20",
       "She bought 4 tops for a total of $20 so 20/4 = $5",
       "Answer: 5"
     ],
@@ -1205,9 +1205,9 @@
     "skill_id": "4.NF.B.3",
     "difficulty": 3,
     "expected_steps": [
-      "Lisa earned $60 * 1/2 = $3030.",
-      "Tommy earned $30 * 1/2 = $1515.",
-      "Lisa earned $30 - $15 = $1515 more than Tommy.",
+      "Lisa earned $60 * 1/2 = $30.",
+      "Tommy earned $30 * 1/2 = $15.",
+      "Lisa earned $30 - $15 = $15 more than Tommy.",
       "Answer: 15"
     ],
     "source": "gsm8k"
@@ -1218,10 +1218,10 @@
     "skill_id": "4.NF.B.3",
     "difficulty": 4,
     "expected_steps": [
-      "The first 60 megabytes take 60/5=1212 seconds.",
-      "There are 90-60=3030 remaining megabytes.",
-      "The remaining 30 megabytes take 30/10=33 seconds.",
-      "And 12+3=1515 seconds.",
+      "The first 60 megabytes take 60/5=12 seconds.",
+      "There are 90-60=30 remaining megabytes.",
+      "The remaining 30 megabytes take 30/10=3 seconds.",
+      "And 12+3=15 seconds.",
       "Answer: 15"
     ],
     "source": "gsm8k"
@@ -1232,10 +1232,10 @@
     "skill_id": "4.NF.B.3",
     "difficulty": 4,
     "expected_steps": [
-      "Leah spent 28 / 7 = $44 on a milkshake.",
-      "She had 28 - 4 = $2424 left.",
-      "She put half in her savings account and half in her wallet, so she had 24 / 2 = $1212 in her wallet.",
-      "Her dog shredded all the money in her wallet but $1, so Leah lost 12 - 1 = $1111.",
+      "Leah spent 28 / 7 = $4 on a milkshake.",
+      "She had 28 - 4 = $24 left.",
+      "She put half in her savings account and half in her wallet, so she had 24 / 2 = $12 in her wallet.",
+      "Her dog shredded all the money in her wallet but $1, so Leah lost 12 - 1 = $11.",
       "Answer: 11"
     ],
     "source": "gsm8k"
@@ -1246,12 +1246,12 @@
     "skill_id": "4.NF.B.3",
     "difficulty": 4,
     "expected_steps": [
-      "Liza used 10/2 = 55 kilograms of butter for the chocolate chip cookies.",
-      "Then, she used 10/5 = 22 kilograms of butter for the peanut butter cookies.",
-      "She used 5 + 2 = 77 kilograms of butter for the chocolate and peanut butter cookies.",
-      "So, only 10 -7 = 33 kilograms of butter was left.",
-      "Then, Liza used 3/3 = 11 kilograms of butter for the sugar cookies.",
-      "Therefore, only 3-1 = 22 kilograms of butter were left.",
+      "Liza used 10/2 = 5 kilograms of butter for the chocolate chip cookies.",
+      "Then, she used 10/5 = 2 kilograms of butter for the peanut butter cookies.",
+      "She used 5 + 2 = 7 kilograms of butter for the chocolate and peanut butter cookies.",
+      "So, only 10 -7 = 3 kilograms of butter was left.",
+      "Then, Liza used 3/3 = 1 kilograms of butter for the sugar cookies.",
+      "Therefore, only 3-1 = 2 kilograms of butter were left.",
       "Answer: 2"
     ],
     "source": "gsm8k"
@@ -1262,11 +1262,11 @@
     "skill_id": "4.NF.B.3",
     "difficulty": 4,
     "expected_steps": [
-      "The bear gained 1 / 5 * 1000 = 200200 pounds from berries.",
-      "It gained 2 * 200 = 400400 pounds from acorns.",
-      "It still needed 1000 - 200 - 400 = 400400 pounds.",
-      "Thus, it gained 400 / 2 = 200200 pounds from salmon.",
-      "Therefore, the bear gained 400 - 200 = 200200 pounds from small animals.",
+      "The bear gained 1 / 5 * 1000 = 200 pounds from berries.",
+      "It gained 2 * 200 = 400 pounds from acorns.",
+      "It still needed 1000 - 200 - 400 = 400 pounds.",
+      "Thus, it gained 400 / 2 = 200 pounds from salmon.",
+      "Therefore, the bear gained 400 - 200 = 200 pounds from small animals.",
       "Answer: 200"
     ],
     "source": "gsm8k"
@@ -1409,8 +1409,8 @@
     "skill_id": "4.NF.B.4",
     "difficulty": 2,
     "expected_steps": [
-      "Weng earns 12/60 = $0.20.2 per minute.",
-      "Working 50 minutes, she earned 0.2 x 50 = $1010.",
+      "Weng earns 12/60 = $0.2 per minute.",
+      "Working 50 minutes, she earned 0.2 x 50 = $10.",
       "Answer: 10"
     ],
     "source": "gsm8k"
@@ -1421,9 +1421,9 @@
     "skill_id": "4.NF.B.4",
     "difficulty": 3,
     "expected_steps": [
-      "A pound of cream cheese cost $10 / 2 = $55.",
-      "A pack of cold cuts cost $10 x 2 = $2020.",
-      "Jasper spent $10 + $5 + $20 = $3535 on the ingredients.",
+      "A pound of cream cheese cost $10 / 2 = $5.",
+      "A pack of cold cuts cost $10 x 2 = $20.",
+      "Jasper spent $10 + $5 + $20 = $35 on the ingredients.",
       "Answer: 35"
     ],
     "source": "gsm8k"
@@ -1434,10 +1434,10 @@
     "skill_id": "4.NF.B.4",
     "difficulty": 3,
     "expected_steps": [
-      "He bikes 20*2=4040 miles each day for work",
-      "So he bikes 40*5=200200 miles for work",
-      "That means he bikes a total of 200+200=400400 miles for work",
-      "So he bikes a total of 400/25=1616 hours",
+      "He bikes 20*2=40 miles each day for work",
+      "So he bikes 40*5=200 miles for work",
+      "That means he bikes a total of 200+200=400 miles for work",
+      "So he bikes a total of 400/25=16 hours",
       "Answer: 16"
     ],
     "source": "gsm8k"
@@ -1448,9 +1448,9 @@
     "skill_id": "4.NF.B.4",
     "difficulty": 3,
     "expected_steps": [
-      "To make the pizza, Kimber half as many teaspoons of salt as the number of cups of flour, meaning she needs 1/2*16 = 88 teaspoons of salt.",
-      "The total number of cups of flour and teaspoons of salt she needs is 8+16 = 2424",
-      "She also needs 10 cups of water, which means the total number of cups of water and flour and teaspoons of salt she needs is 24+10 = 3434",
+      "To make the pizza, Kimber half as many teaspoons of salt as the number of cups of flour, meaning she needs 1/2*16 = 8 teaspoons of salt.",
+      "The total number of cups of flour and teaspoons of salt she needs is 8+16 = 24",
+      "She also needs 10 cups of water, which means the total number of cups of water and flour and teaspoons of salt she needs is 24+10 = 34",
       "Answer: 34"
     ],
     "source": "gsm8k"
@@ -1461,10 +1461,10 @@
     "skill_id": "4.NF.B.4",
     "difficulty": 3,
     "expected_steps": [
-      "The second earthquake caused 2 * 4 = 88 buildings to collapse.",
-      "The third earthquake caused 2 * 8 = 1616 buildings to collapse.",
-      "The fourth earthquake caused 16 * 2 = 3232 buildings to collapse.",
-      "Including the first earthquake, the earthquakes caused 4 + 8 + 16 + 32 = 6060 buildings to collapse.",
+      "The second earthquake caused 2 * 4 = 8 buildings to collapse.",
+      "The third earthquake caused 2 * 8 = 16 buildings to collapse.",
+      "The fourth earthquake caused 16 * 2 = 32 buildings to collapse.",
+      "Including the first earthquake, the earthquakes caused 4 + 8 + 16 + 32 = 60 buildings to collapse.",
       "Answer: 60"
     ],
     "source": "gsm8k"
@@ -1475,7 +1475,7 @@
     "skill_id": "4.NF.B.4",
     "difficulty": 2,
     "expected_steps": [
-      "Carlos memorized 24/6=44 digits of pi.",
+      "Carlos memorized 24/6=4 digits of pi.",
       "Sam memorized 4+6=10 digits of pi.",
       "Answer: 10"
     ],
@@ -1487,8 +1487,8 @@
     "skill_id": "4.NF.B.4",
     "difficulty": 2,
     "expected_steps": [
-      "Ben collected 36/3=1212 shells",
-      "Alan collected 12*4=4848 shells",
+      "Ben collected 36/3=12 shells",
+      "Alan collected 12*4=48 shells",
       "Answer: 48"
     ],
     "source": "gsm8k"
@@ -1499,9 +1499,9 @@
     "skill_id": "4.NF.B.4",
     "difficulty": 3,
     "expected_steps": [
-      "There are 25+40+35=100100 flowers total.",
-      "There are 40+35=7575 flowers that are not roses.",
-      "Therefore, (75/100)*100=7575% of the flowers are not roses.",
+      "There are 25+40+35=100 flowers total.",
+      "There are 40+35=75 flowers that are not roses.",
+      "Therefore, (75/100)*100=75% of the flowers are not roses.",
       "Answer: 75"
     ],
     "source": "gsm8k"
@@ -1512,11 +1512,11 @@
     "skill_id": "4.NF.B.4",
     "difficulty": 3,
     "expected_steps": [
-      "There are 60 students x 2/3 = 4040 students who have a $6 daily allowance.",
-      "While there are 60 students - 40 students = 2020 students who have a $4 daily allowance.",
-      "The sum of the allowances of the 40 students who received $6 daily is 40 students x $6/day = $240240.",
-      "The sum of the allowances of the 20 students who received $4 daily is 20 students x $4/day = $8080.",
-      "The total daily amount of money of those 60 students is $240 + $80 = $320320.",
+      "There are 60 students x 2/3 = 40 students who have a $6 daily allowance.",
+      "While there are 60 students - 40 students = 20 students who have a $4 daily allowance.",
+      "The sum of the allowances of the 40 students who received $6 daily is 40 students x $6/day = $240.",
+      "The sum of the allowances of the 20 students who received $4 daily is 20 students x $4/day = $80.",
+      "The total daily amount of money of those 60 students is $240 + $80 = $320.",
       "Answer: 320"
     ],
     "source": "gsm8k"
@@ -1527,12 +1527,12 @@
     "skill_id": "4.NF.B.4",
     "difficulty": 3,
     "expected_steps": [
-      "James earns 20*.2=$44 less while working his second job",
-      "So he earns 20-4=$1616 an hour",
-      "At his first job he earns 20*30=$600600",
-      "He works 30/2=1515 hours at his second job",
-      "So he earns 15*16=$240240",
-      "So he earns 600+240=$840840 a week",
+      "James earns 20*.2=$4 less while working his second job",
+      "So he earns 20-4=$16 an hour",
+      "At his first job he earns 20*30=$600",
+      "He works 30/2=15 hours at his second job",
+      "So he earns 15*16=$240",
+      "So he earns 600+240=$840 a week",
       "Answer: 840"
     ],
     "source": "gsm8k"
@@ -1699,11 +1699,11 @@
     "skill_id": "5.NF.B.7",
     "difficulty": 4,
     "expected_steps": [
-      "The first 6 bunches had 6 x 9 x 14 = 756756 bananas.",
-      "There were 10 - 6 = 44 remaining bunches.",
-      "The 4 remaining bunches had 4 x 12 x 9 = 432432 bananas.",
-      "All together, there were 756 + 432 = 11881188 bananas",
-      "Each monkey would get 1188/12 = 9999 bananas.",
+      "The first 6 bunches had 6 x 9 x 14 = 756 bananas.",
+      "There were 10 - 6 = 4 remaining bunches.",
+      "The 4 remaining bunches had 4 x 12 x 9 = 432 bananas.",
+      "All together, there were 756 + 432 = 1188 bananas",
+      "Each monkey would get 1188/12 = 99 bananas.",
       "Answer: 99"
     ],
     "source": "gsm8k"
@@ -1714,9 +1714,9 @@
     "skill_id": "5.NF.B.7",
     "difficulty": 4,
     "expected_steps": [
-      "Arnel shared 5 x 8 = 4040 pencils with his friends.",
-      "So, he had 10 + 40 = 5050 pencils in all.",
-      "Therefore, each box had 50/10 = 55 pencils inside.",
+      "Arnel shared 5 x 8 = 40 pencils with his friends.",
+      "So, he had 10 + 40 = 50 pencils in all.",
+      "Therefore, each box had 50/10 = 5 pencils inside.",
       "Answer: 5"
     ],
     "source": "gsm8k"
@@ -1727,8 +1727,8 @@
     "skill_id": "5.NF.B.7",
     "difficulty": 3,
     "expected_steps": [
-      "Roger will need 13 + 3 + 2 = 1818 pouches of trail mix.",
-      "If you divide the amount of trail mix pouches by the amount in each pack, 18 / 6 = 33 packs of trail mix.",
+      "Roger will need 13 + 3 + 2 = 18 pouches of trail mix.",
+      "If you divide the amount of trail mix pouches by the amount in each pack, 18 / 6 = 3 packs of trail mix.",
       "Answer: 3"
     ],
     "source": "gsm8k"
@@ -1739,9 +1739,9 @@
     "skill_id": "5.NF.B.7",
     "difficulty": 4,
     "expected_steps": [
-      "First subtract the cost of Mark's groceries from the amount he gives the cashier to find how much he gets in change: $7.00 - $4.20 - $2.05 = $0.750.75",
-      "Then subtract the value of a quarter in cents (25) and the value of a dime in cents (10) from the change amount to find how much Mark gets paid in nickels: $0.75 - $0.25 - $0.10 = $0.400.40",
-      "Now divide the amount Mark gets in nickels by the value per nickel in cents (5) to find how many nickels Mark gets: $0.40 / $0.05/nickel = 88 nickels",
+      "First subtract the cost of Mark's groceries from the amount he gives the cashier to find how much he gets in change: $7.00 - $4.20 - $2.05 = $0.75",
+      "Then subtract the value of a quarter in cents (25) and the value of a dime in cents (10) from the change amount to find how much Mark gets paid in nickels: $0.75 - $0.25 - $0.10 = $0.40",
+      "Now divide the amount Mark gets in nickels by the value per nickel in cents (5) to find how many nickels Mark gets: $0.40 / $0.05/nickel = 8 nickels",
       "Answer: 8"
     ],
     "source": "gsm8k"
@@ -1752,8 +1752,8 @@
     "skill_id": "5.NF.B.7",
     "difficulty": 3,
     "expected_steps": [
-      "Caleb was left with 40 - 3 - 3 - 5 - 2 = 2727 dandelion puffs to give to his friends.",
-      "They each received 27/3 = 99 dandelion puffs",
+      "Caleb was left with 40 - 3 - 3 - 5 - 2 = 27 dandelion puffs to give to his friends.",
+      "They each received 27/3 = 9 dandelion puffs",
       "Answer: 9"
     ],
     "source": "gsm8k"
@@ -1764,10 +1764,10 @@
     "skill_id": "5.NF.B.7",
     "difficulty": 4,
     "expected_steps": [
-      "First find the number of cars in Section G by multiplying the number of rows by the number of cars per row: 15 rows * 10 cars/row = 150150 cars",
-      "Then do the same thing for Section H: 20 rows * 9 cars/row = 180180 cars",
-      "Then add the two quantities of cars to find the total number of cars Nate walked past: 150 cars + 180 cars = 330330 cars",
-      "Finally, divide the number of cars Nate passed by the numbers he passes each minute to find how long he spent searching: 330 cars / 11 cars/minute = 3030 minutes",
+      "First find the number of cars in Section G by multiplying the number of rows by the number of cars per row: 15 rows * 10 cars/row = 150 cars",
+      "Then do the same thing for Section H: 20 rows * 9 cars/row = 180 cars",
+      "Then add the two quantities of cars to find the total number of cars Nate walked past: 150 cars + 180 cars = 330 cars",
+      "Finally, divide the number of cars Nate passed by the numbers he passes each minute to find how long he spent searching: 330 cars / 11 cars/minute = 30 minutes",
       "Answer: 30"
     ],
     "source": "gsm8k"
@@ -1778,12 +1778,12 @@
     "skill_id": "5.NF.B.7",
     "difficulty": 4,
     "expected_steps": [
-      "The total number of eggs the family had is 3 * 12 = 3636 eggs",
-      "If each adult received 3 eggs, the total number of eggs they got is 3 * 3 = 99 eggs.",
-      "The children shared 36 - 9 = 2727 eggs",
-      "Since each girl received an egg, the boys shared 27 - 7 = 2020 eggs",
-      "If each boy received 1 egg more than each girl, each received 1+1 = 22 eggs",
-      "The boys received 20 eggs, and if each got 2 eggs, then 20/2 = 1010 boys went on the trip",
+      "The total number of eggs the family had is 3 * 12 = 36 eggs",
+      "If each adult received 3 eggs, the total number of eggs they got is 3 * 3 = 9 eggs.",
+      "The children shared 36 - 9 = 27 eggs",
+      "Since each girl received an egg, the boys shared 27 - 7 = 20 eggs",
+      "If each boy received 1 egg more than each girl, each received 1+1 = 2 eggs",
+      "The boys received 20 eggs, and if each got 2 eggs, then 20/2 = 10 boys went on the trip",
       "Answer: 10"
     ],
     "source": "gsm8k"
@@ -1794,12 +1794,12 @@
     "skill_id": "5.NF.B.7",
     "difficulty": 4,
     "expected_steps": [
-      "First figure out how much water beans take by multiplying the water use for corn by 2: 20 gallons/acre * 2 = 4040 gallons/acre",
-      "Next, calculate Bob's water use by multiplying each plant's water use per acre by the number of acres he planted, then adding up the total water use for all three crops: 3 * 20 + 9 * 80 + 12 * 40 = 12601260",
-      "Now do the same thing for Brenda: 6 * 20 + 7 * 80 + 14 * 40 = 12401240",
+      "First figure out how much water beans take by multiplying the water use for corn by 2: 20 gallons/acre * 2 = 40 gallons/acre",
+      "Next, calculate Bob's water use by multiplying each plant's water use per acre by the number of acres he planted, then adding up the total water use for all three crops: 3 * 20 + 9 * 80 + 12 * 40 = 1260",
+      "Now do the same thing for Brenda: 6 * 20 + 7 * 80 + 14 * 40 = 1240",
       "And do the same thing for Bernie: 2 * 20 + 12 * 80 = 1000",
-      "Now add up each farmer's water use to find the total water use: 1260 + 1240 + 1000 = 35003500",
-      "Now divide Bob's water use by the total water use and multiply by 100 to find what percentage of the water he used: 1260 / 3500 * 100 = 3636%",
+      "Now add up each farmer's water use to find the total water use: 1260 + 1240 + 1000 = 3500",
+      "Now divide Bob's water use by the total water use and multiply by 100 to find what percentage of the water he used: 1260 / 3500 * 100 = 36%",
       "Answer: 36"
     ],
     "source": "gsm8k"
@@ -1810,8 +1810,8 @@
     "skill_id": "5.NF.B.7",
     "difficulty": 3,
     "expected_steps": [
-      "First find how many ml of water Jason needs for 1 gram of charcoal: 30 ml / 2 grams = 1515 ml/g",
-      "Then divide the amount of water Jason uses by the amount of water per gram of charcoal to find how much charcoal he uses: 900 ml / 15 ml/g = 6060 g",
+      "First find how many ml of water Jason needs for 1 gram of charcoal: 30 ml / 2 grams = 15 ml/g",
+      "Then divide the amount of water Jason uses by the amount of water per gram of charcoal to find how much charcoal he uses: 900 ml / 15 ml/g = 60 g",
       "Answer: 60"
     ],
     "source": "gsm8k"
@@ -1822,10 +1822,10 @@
     "skill_id": "5.NF.B.7",
     "difficulty": 4,
     "expected_steps": [
-      "First find the total number of baby minks: 30 minks * 6 babies/mink = 180180 minks",
-      "Add this to the number of adult minks: 180 minks + 30 minks = 210210 minks",
-      "Then divide this number in half to find how many aren't set free: 210 minks / 2 = 105105 minks",
-      "Then divide the remaining number of minks by the number of minks per coat to find the number of coats: 105 minks / 15 minks/coat = 77 coats",
+      "First find the total number of baby minks: 30 minks * 6 babies/mink = 180 minks",
+      "Add this to the number of adult minks: 180 minks + 30 minks = 210 minks",
+      "Then divide this number in half to find how many aren't set free: 210 minks / 2 = 105 minks",
+      "Then divide the remaining number of minks by the number of minks per coat to find the number of coats: 105 minks / 15 minks/coat = 7 coats",
       "Answer: 7"
     ],
     "source": "gsm8k"
