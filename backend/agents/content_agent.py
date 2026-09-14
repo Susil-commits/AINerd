@@ -5,6 +5,7 @@ Picks the NEXT problem targeted at the student's diagnosed skill gap.
 # pyright: reportMissingImports=false
 import os
 import json
+from pathlib import Path
 from pydantic import SecretStr
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -79,35 +80,86 @@ def get_next_problem(
     except Exception as e:
         print(f"[WARN] pgvector match_problems RPC skipped/failed ({e}), falling back to direct SQL query.")
 
+LOCAL_SEED_FILE = Path(__file__).resolve().parent.parent.parent / "data" / "seed_problems.json"
+_LOCAL_PROBLEMS_CACHE: list[dict] | None = None
+
+
+def _load_local_problems() -> list[dict]:
+    global _LOCAL_PROBLEMS_CACHE
+    if _LOCAL_PROBLEMS_CACHE is not None:
+        return _LOCAL_PROBLEMS_CACHE
+    if not LOCAL_SEED_FILE.exists():
+        return []
+    try:
+        with open(LOCAL_SEED_FILE, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+            problems = []
+            for i, p in enumerate(raw):
+                item = dict(p)
+                if not item.get("id"):
+                    item["id"] = f"seed_{i+1}_{item.get('skill_id', 'math')}"
+                problems.append(item)
+            _LOCAL_PROBLEMS_CACHE = problems
+            return problems
+    except Exception as e:
+        print(f"[WARN] Failed to load local seed problems: {e}")
+        return []
+
+
+def _get_local_fallback_problem(skill_id: str, exclude_ids: set[str]) -> dict | None:
+    problems = _load_local_problems()
+    if not problems:
+        return None
+    skill_matches = [p for p in problems if p.get("skill_id") == skill_id and str(p.get("id")) not in exclude_ids]
+    if skill_matches:
+        return skill_matches[0]
+    skill_any = [p for p in problems if p.get("skill_id") == skill_id]
+    if skill_any:
+        return skill_any[0]
+    non_excluded = [p for p in problems if str(p.get("id")) not in exclude_ids]
+    if non_excluded:
+        return non_excluded[0]
+    return problems[0]
+
+
     # ── 2. Fallback SQL query (filter by skill + difficulty) ──────────────────
-    query = (
-        supabase.table("problems")
-        .select("*")
-        .eq("skill_id", skill_id)
-        .gte("difficulty", min_diff)
-        .lte("difficulty", max_diff)
-    )
+    result_data = []
+    try:
+        query = (
+            supabase.table("problems")
+            .select("*")
+            .eq("skill_id", skill_id)
+            .gte("difficulty", min_diff)
+            .lte("difficulty", max_diff)
+        )
 
-    if exclude_problem_ids:
-        query = query.not_.in_("id", exclude_problem_ids)
-
-    result = query.limit(5).execute()
-
-    if not result.data:
-        # Fallback: get any problem with this skill, regardless of difficulty
-        fallback_query = supabase.table("problems").select("*").eq("skill_id", skill_id)
         if exclude_problem_ids:
-            fallback_query = fallback_query.not_.in_("id", exclude_problem_ids)
-        result = fallback_query.limit(3).execute()
+            query = query.not_.in_("id", exclude_problem_ids)
 
-    if not result.data:
-        # Ultimate fallback: any problem for this skill ignoring exclusion if exhausted
-        result = supabase.table("problems").select("*").eq("skill_id", skill_id).limit(1).execute()
+        result = query.limit(5).execute()
+        result_data = result.data or []
 
-    if not result.data:
+        if not result_data:
+            fallback_query = supabase.table("problems").select("*").eq("skill_id", skill_id)
+            if exclude_problem_ids:
+                fallback_query = fallback_query.not_.in_("id", exclude_problem_ids)
+            result = fallback_query.limit(3).execute()
+            result_data = result.data or []
+
+        if not result_data:
+            result = supabase.table("problems").select("*").eq("skill_id", skill_id).limit(1).execute()
+            result_data = result.data or []
+    except Exception as sql_err:
+        print(f"[WARN] Fallback SQL query error ({sql_err}), falling back to local problems.")
+
+    if not result_data:
+        local_fallback = _get_local_fallback_problem(skill_id, exclude_ids)
+        if local_fallback:
+            print(f"[INFO] Using resilient local seed problem for skill {skill_id}: {local_fallback.get('title')}")
+            return local_fallback
         return None
 
-    return result.data[0]
+    return result_data[0]
 
 
 def generate_session_summary(

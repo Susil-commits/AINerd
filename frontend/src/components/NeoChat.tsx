@@ -152,12 +152,30 @@ export default function NeoChat() {
 
   const handleActionClick = (action: string) => {
     const actLower = action.toLowerCase()
-    if (actLower.includes('start a practice') || actLower.includes('practice')) {
+    if (actLower.includes('start a practice session') || actLower === 'start a practice' || actLower === 'start practice') {
       setIsOpen(false)
-      navigate('/student-session')
-    } else if (actLower.includes('parent dashboard')) {
+      if (user) {
+        navigate('/student-session')
+      } else {
+        const authSection = document.getElementById('auth-section') || document.querySelector('.auth-card')
+        if (authSection) {
+          authSection.scrollIntoView({ behavior: 'smooth' })
+        } else {
+          navigate('/')
+        }
+      }
+    } else if (actLower.includes('parent dashboard') || actLower === 'view parent dashboard') {
       setIsOpen(false)
-      navigate('/parent-dashboard')
+      if (user && role === 'parent') {
+        navigate('/parent-dashboard')
+      } else {
+        const authSection = document.getElementById('auth-section') || document.querySelector('.auth-card')
+        if (authSection) {
+          authSection.scrollIntoView({ behavior: 'smooth' })
+        } else {
+          navigate('/')
+        }
+      }
     } else {
       handleSend(action)
     }

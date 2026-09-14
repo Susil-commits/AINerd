@@ -26,6 +26,7 @@ export interface SessionData {
 }
 
 export function getAuthHeaders(): Record<string, string> {
+  // 1. Prioritize active practice session token
   try {
     const raw = sessionStorage.getItem('session')
     if (raw) {
@@ -36,19 +37,59 @@ export function getAuthHeaders(): Record<string, string> {
           try {
             const payloadJson = atob(parts[0].replace(/-/g, '+').replace(/_/g, '/'))
             const payload = JSON.parse(payloadJson)
-            if (payload.exp && payload.exp * 1000 < Date.now()) {
-              console.warn('[Auth] Session token in sessionStorage has expired.')
-              return {}
+            if (payload.exp && payload.exp * 1000 >= Date.now()) {
+              return {
+                'Authorization': `Bearer ${session.session_token}`,
+                'X-Session-Token': session.session_token,
+              }
             }
           } catch {}
-        }
-        return {
-          'Authorization': `Bearer ${session.session_token}`,
-          'X-Session-Token': session.session_token,
         }
       }
     }
   } catch {}
+
+  // 2. Check localStorage for Supabase authenticated session token
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        const raw = localStorage.getItem(key)
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          const token = parsed?.access_token || parsed?.session?.access_token
+          if (token && typeof token === 'string') {
+            return {
+              'Authorization': `Bearer ${token}`,
+              'X-Session-Token': token,
+            }
+          }
+        }
+      }
+    }
+  } catch {}
+
+  // 3. Check demo user profile
+  try {
+    const role = localStorage.getItem('veritas_user_role') || localStorage.getItem('ainerd_user_role')
+    const storedDemo = localStorage.getItem('veritas_demo_user') || localStorage.getItem('ainerd_demo_user')
+    if (storedDemo) {
+      const parsed = JSON.parse(storedDemo)
+      if (parsed?.id) {
+        if (role === 'parent' || parsed.user_metadata?.user_role === 'parent') {
+          return {
+            'X-Parent-Id': parsed.id,
+            'Authorization': `Bearer demo_parent_${parsed.id}`,
+          }
+        }
+        return {
+          'Authorization': `Bearer demo_${parsed.id}`,
+          'X-Session-Token': `demo_${parsed.id}`,
+        }
+      }
+    }
+  } catch {}
+
   return {}
 }
 
