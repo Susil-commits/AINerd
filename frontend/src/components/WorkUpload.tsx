@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import type { Diagnosis, Problem } from '../lib/api'
 import { streamDiagnosis } from '../lib/api'
 import './WorkUpload.css'
@@ -20,7 +20,29 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
   const fileInputRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
   const [cameraOpen, setCameraOpen] = useState(false)
+
+  const stopCameraStream = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+  }, [])
+
+  const closeCamera = useCallback(() => {
+    stopCameraStream()
+    setCameraOpen(false)
+  }, [stopCameraStream])
+
+  useEffect(() => {
+    return () => {
+      stopCameraStream()
+    }
+  }, [stopCameraStream])
 
   const handleFile = (f: File) => {
     // 1. Client-side file-size check matching backend's 10MB cap
@@ -57,9 +79,21 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
   }
 
   const openCamera = async () => {
-    setCameraOpen(true)
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-    if (videoRef.current) videoRef.current.srcObject = stream
+    setUploadError(null)
+    try {
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        throw new Error('Camera API is not supported in this browser environment')
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      streamRef.current = stream
+      setCameraOpen(true)
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+      }
+    } catch (err) {
+      console.error('Camera access failed:', err)
+      setUploadError('Could not access camera — check your browser permissions, or upload a photo instead.')
+    }
   }
 
   const capturePhoto = () => {
@@ -73,8 +107,7 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
       if (!blob) return
       const f = new File([blob], 'work.jpg', { type: 'image/jpeg' })
       handleFile(f)
-      ;(video.srcObject as MediaStream)?.getTracks().forEach(t => t.stop())
-      setCameraOpen(false)
+      closeCamera()
     }, 'image/jpeg', 0.9)
   }
 
@@ -110,11 +143,21 @@ export default function WorkUpload({ sessionId, onThinking, onDiagnosis }: Props
 
       {cameraOpen ? (
         <div className="camera-view">
-          <video ref={videoRef} autoPlay playsInline className="camera-video" />
+          <video
+            ref={(el) => {
+              videoRef.current = el
+              if (el && streamRef.current && el.srcObject !== streamRef.current) {
+                el.srcObject = streamRef.current
+              }
+            }}
+            autoPlay
+            playsInline
+            className="camera-video"
+          />
           <canvas ref={canvasRef} style={{ display: 'none' }} />
           <div className="camera-actions">
             <button className="btn btn-primary" onClick={capturePhoto} aria-label="Take photo of handwritten work">Capture</button>
-            <button className="btn btn-ghost" onClick={() => setCameraOpen(false)} aria-label="Cancel camera capture">Cancel</button>
+            <button className="btn btn-ghost" onClick={closeCamera} aria-label="Cancel camera capture">Cancel</button>
           </div>
         </div>
       ) : preview ? (

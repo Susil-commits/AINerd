@@ -109,6 +109,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (userMetaRole) {
           setRole(userMetaRole)
         }
+        // Purge cached session if it belonged to a different student
+        try {
+          const rawSession = sessionStorage.getItem('session')
+          if (rawSession) {
+            const parsed = JSON.parse(rawSession)
+            if (parsed?.student_id && parsed.student_id !== newSession.user.id) {
+              sessionStorage.removeItem('session')
+            }
+          }
+        } catch {}
+
         saveProfile({
           email: newSession.user.email || '',
           name: newSession.user.user_metadata?.name || (userMetaRole === 'parent' ? 'Parent' : 'Student'),
@@ -218,6 +229,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setUser(fakeUser)
     setRole(targetRole)
+    sessionStorage.removeItem('session')
     localStorage.setItem('veritas_demo_user', JSON.stringify(fakeUser))
     localStorage.setItem('veritas_user_role', targetRole)
     saveProfile({

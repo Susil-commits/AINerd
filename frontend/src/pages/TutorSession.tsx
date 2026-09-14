@@ -18,7 +18,7 @@ interface Message {
 
 export default function TutorSession() {
   const navigate = useNavigate()
-  const { user, signOut, role } = useAuth()
+  const { user, signOut, role, loading: authLoading } = useAuth()
   const [session, setSession] = useState<SessionData | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -60,16 +60,15 @@ export default function TutorSession() {
     let mounted = true
 
     async function initSession() {
+      if (authLoading) return
       setSessionError(null)
       const raw = sessionStorage.getItem('session')
       if (raw) {
         try {
           const s: SessionData = JSON.parse(raw)
           if (s && s.session_id) {
-            // Only reuse the cached session if it actually belongs to the current user
-            if (user && s.student_id && s.student_id !== user.id) {
-              sessionStorage.removeItem('session')
-            } else {
+            // Only reuse the cached session if it explicitly belongs to the current user
+            if (user && s.student_id && s.student_id === user.id) {
               setSession(s)
               document.title = `Veritas — Math Practice (${s.student_name})`
               setMasteryState(s.mastery_state || {})
@@ -80,6 +79,9 @@ export default function TutorSession() {
               ])
               speak(s.welcome_message)
               return
+            } else {
+              // Mismatched or unauthenticated cached session token: purge to prevent token reuse
+              sessionStorage.removeItem('session')
             }
           }
         } catch {}
@@ -119,7 +121,7 @@ export default function TutorSession() {
       console.error('initSession unexpected error:', e)
     })
     return () => { mounted = false }
-  }, [navigate, user, speak, sessionRetryCount])
+  }, [navigate, user, authLoading, speak, sessionRetryCount])
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 

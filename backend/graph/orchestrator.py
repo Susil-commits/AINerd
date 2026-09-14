@@ -52,18 +52,21 @@ class TutorState(TypedDict):
 
 def tutor_node(state: TutorState) -> dict:
     """Socratic tutor — responds to student text messages."""
-    steps = state.get("thinking_steps", [])
+    steps = list(state.get("thinking_steps") or [])
     steps.append("Tutor agent: formulating Socratic response...")
 
+    latest_input = state.get("latest_input", "")
+    conversation_history = list(state.get("conversation_history") or [])
+
     response = run_tutor_agent(
-        student_message=state["latest_input"],
-        conversation_history=state["conversation_history"],
+        student_message=latest_input,
+        conversation_history=conversation_history,
         current_problem=state.get("current_problem"),
     )
 
     # Update conversation history
-    history = state["conversation_history"] + [
-        {"role": "student", "content": state["latest_input"]},
+    history = conversation_history + [
+        {"role": "student", "content": latest_input},
         {"role": "tutor", "content": response},
     ]
 
@@ -79,44 +82,49 @@ def tutor_node(state: TutorState) -> dict:
 
 def diagnose_node(state: TutorState) -> dict:
     """Diagnostic agent — OCR + misconception detection on uploaded image."""
-    steps = state.get("thinking_steps", [])
+    steps = list(state.get("thinking_steps") or [])
     steps.append("Diagnostic agent: reading handwritten work...")
 
     current_problem = state.get("current_problem") or {}
+    skill_id = state.get("current_skill_id") or current_problem.get("skill_id", "")
     diagnosis = run_diagnostic_agent(
         image_bytes=state.get("latest_image_bytes"),
         expected_steps=current_problem.get("expected_steps", []),
         problem_text=current_problem.get("text", ""),
-        skill_id=state.get("current_skill_id", ""),
+        skill_id=skill_id,
     )
 
     steps.append(f"Found: {diagnosis.get('misconception_type', 'unknown')} at step {diagnosis.get('step_number', '?')}")
 
     # Update mastery based on correctness
-    mastery_state = dict(state["mastery_state"])
-    skill_id = state["current_skill_id"]
+    mastery_state = dict(state.get("mastery_state") or {})
     is_correct = diagnosis.get("is_correct", False)
     new_mastery = update_mastery(
         current_mastery=mastery_state.get(skill_id, 0.3),
         is_correct=is_correct,
         skill_id=skill_id,
     )
-    mastery_state[skill_id] = new_mastery
-
-    # Persist mastery to Supabase
-    _save_mastery(state["student_id"], skill_id, new_mastery)
+    if skill_id:
+        mastery_state[skill_id] = new_mastery
+        student_id = state.get("student_id")
+        if student_id:
+            # Persist mastery to Supabase
+            _save_mastery(student_id, skill_id, new_mastery)
 
     steps.append(f"Mastery for {skill_id}: {new_mastery*100:.0f}%")
 
     # Log the session event
-    _log_event(
-        session_id=state["session_id"],
-        student_id=state["student_id"],
-        problem_id=current_problem.get("id"),
-        attempt_text=diagnosis.get("ocr_text", ""),
-        is_correct=is_correct,
-        agent_response=diagnosis.get("corrective_question", ""),
-    )
+    session_id = state.get("session_id")
+    student_id = state.get("student_id")
+    if session_id and student_id:
+        _log_event(
+            session_id=session_id,
+            student_id=student_id,
+            problem_id=current_problem.get("id"),
+            attempt_text=diagnosis.get("ocr_text", ""),
+            is_correct=is_correct,
+            agent_response=diagnosis.get("corrective_question", ""),
+        )
 
     return {
         "diagnosis": diagnosis,
@@ -129,20 +137,25 @@ def diagnose_node(state: TutorState) -> dict:
 
 def select_problem_node(state: TutorState) -> dict:
     """Content agent — selects the next problem based on mastery."""
-    steps = state.get("thinking_steps", [])
+    steps = list(state.get("thinking_steps") or [])
     steps.append("Content agent: finding the best next problem...")
 
     # Determine next skill
-    next_skill = get_next_skill(state["mastery_state"])
-    mastery_prob = state["mastery_state"].get(next_skill, 0.3)
+    mastery_state = state.get("mastery_state") or {}
+    next_skill = get_next_skill(mastery_state)
+    mastery_prob = mastery_state.get(next_skill, 0.3)
 
     steps.append(f"Targeting skill: {next_skill} (mastery: {mastery_prob*100:.0f}%)")
+
+    diagnosis = state.get("diagnosis") or {}
+    misconception_desc = diagnosis.get("description") or diagnosis.get("misconception_type")
 
     problem = get_next_problem(
         skill_id=next_skill,
         mastery_prob=mastery_prob,
-        student_id=state["student_id"],
+        student_id=state.get("student_id", ""),
         exclude_problem_ids=state.get("problems_attempted", []),
+        misconception_text=misconception_desc,
     )
 
     if problem is None:
@@ -166,6 +179,13 @@ def select_problem_node(state: TutorState) -> dict:
 
 
 # ── Routing ─────────────────────────────────────────────────────────────────
+
+def entry_router(state: TutorState) -> str:
+    """Route from START to either photo diagnosis or text tutor based on payload."""
+    if state.get("latest_image_bytes") or state.get("next_action") == "diagnose":
+        return "diagnose"
+    return "tutor"
+
 
 def route(state: TutorState) -> str:
     action = state.get("next_action")
@@ -197,8 +217,11 @@ def build_graph() -> Any:
     # Select problem: always ends
     builder.add_edge("select_problem", END)
 
-    # Entry point: START → tutor (default; photo flow invokes diagnose_node directly)
-    builder.add_edge(START, "tutor")
+    # Entry point: dynamic routing based on message vs uploaded photo
+    builder.add_conditional_edges(START, entry_router, {
+        "tutor": "tutor",
+        "diagnose": "diagnose",
+    })
 
     return builder.compile()
 
