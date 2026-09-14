@@ -570,11 +570,13 @@ async def next_problem_endpoint(req: NextProblemRequest):
         session_state["mastery_state"][curr_skill] = round(new_m, 4)
         try:
             supabase = get_supabase()
-            supabase.table("student_skill_mastery").upsert({
-                "student_id": session_state["student_id"],
-                "skill_id": curr_skill,
-                "mastery_prob": session_state["mastery_state"][curr_skill],
-            }, on_conflict="student_id,skill_id").execute()
+            await asyncio.to_thread(
+                lambda: supabase.table("student_skill_mastery").upsert({
+                    "student_id": session_state["student_id"],
+                    "skill_id": curr_skill,
+                    "mastery_prob": session_state["mastery_state"][curr_skill],
+                }, on_conflict="student_id,skill_id").execute()
+            )
         except Exception:
             pass
 
