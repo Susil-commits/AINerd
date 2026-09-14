@@ -59,11 +59,12 @@ def tutor_node(state: TutorState) -> dict:
     latest_input = state.get("latest_input", "")
     conversation_history = list(state.get("conversation_history") or [])
 
-    response = run_tutor_agent(
+    tutor_result = run_tutor_agent(
         student_message=latest_input,
         conversation_history=conversation_history,
         current_problem=state.get("current_problem"),
     )
+    response = tutor_result["reply"] if isinstance(tutor_result, dict) else str(tutor_result)
 
     # Update conversation history
     history = conversation_history + [

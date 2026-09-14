@@ -4,8 +4,44 @@ Uses Gemini 2.0 Flash via LangChain.
 """
 # pyright: reportMissingImports=false, reportMissingModuleSource=false
 import os
+import json
+import re
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, AIMessage
+
+
+def _parse_tutor_response(raw: str, fallback_text: str) -> dict:
+    """Parse the tutor LLM's JSON response. Falls back to old keyword-matching if parsing fails."""
+    clean_text = raw.strip()
+    clean_text = re.sub(r"^```(?:json)?\s*", "", clean_text, flags=re.IGNORECASE)
+    clean_text = re.sub(r"\s*```$", "", clean_text).strip()
+
+    json_match = re.search(r"\{[\s\S]*\}", clean_text)
+    clean_json = json_match.group(0) if json_match else clean_text
+
+    try:
+        data = json.loads(clean_json)
+        if not isinstance(data, dict) or not data.get("reply"):
+            raise ValueError("Missing reply field")
+        return {
+            "reply": str(data["reply"]).strip(),
+            "problem_solved": bool(data.get("problem_solved", False)),
+        }
+    except Exception as parse_err:
+        print(f"[WARN] Failed to parse tutor JSON: {parse_err}. Raw text: {raw[:150]}")
+        # Fallback: use the raw text as the reply, and fall back to the old
+        # keyword heuristic so a parsing failure never breaks the "solved" signal entirely.
+        congrats_signals = [
+            "spot on", "correct!", "that's right", "thats right", "great job", "you got it",
+            "wonderful work", "excellent", "nailed it", "well done", "perfect!", "exactly right",
+            "you solved it", "you arrived at the correct"
+        ]
+        resp_lower = fallback_text.lower()
+        return {
+            "reply": fallback_text,
+            "problem_solved": any(s in resp_lower for s in congrats_signals),
+        }
+
 
 SOCRATIC_SYSTEM_PROMPT = """You are an expert math tutor using the Socratic method.
 
@@ -27,7 +63,14 @@ Misconception patterns to watch for:
 - "Place value error" → Ask: "What does the digit in the tens place represent?"
 
 Current problem context will be provided in the conversation.
-Remember: Guide, don't tell. Questions, not answers."""
+Remember: Guide, don't tell. Questions, not answers.
+
+RESPONSE FORMAT: Respond with ONLY a JSON object, no other text, in this exact shape:
+{
+  "reply": "<your Socratic response to the student, 1-3 sentences plus a guiding question>",
+  "problem_solved": <true if the student's final answer to THIS problem is now fully correct and complete, false otherwise — false if they only made partial progress, a good step, or a correct intermediate calculation that isn't the final answer>
+}
+Only set problem_solved to true when the student has reached the actual final answer to the problem, not for encouraging partial progress."""
 
 # Few-shot examples based on GSM8K style
 FEW_SHOT_EXAMPLES = [
@@ -60,7 +103,7 @@ def build_tutor_llm(model_name: str) -> ChatGoogleGenerativeAI:
         model=model_name,
         google_api_key=api_key,
         temperature=0.7,
-        max_output_tokens=300,
+        max_output_tokens=1000,
         max_retries=0,
     )
 
@@ -101,7 +144,7 @@ def run_tutor_agent(
     student_message: str,
     conversation_history: list[dict],
     current_problem: dict | None = None,
-) -> str:
+) -> dict:
     """
     Given a student message and conversation history, return a Socratic guiding response.
     conversation_history: list of {"role": "student"|"tutor", "content": str}
@@ -150,11 +193,12 @@ Expected solution steps (for your reference only — do NOT reveal these):
             response = llm.invoke(messages)
             text = str(response.content).strip()
             if text:
-                return text
+                return _parse_tutor_response(text, text)
         except Exception as e:
             last_err = e
             print(f"[WARN] Tutor agent invoke failed on model '{model_name}': {e}")
             continue
 
     print(f"[WARN] All models in cascade failed ({last_err}), using intelligent Socratic fallback.")
-    return _intelligent_socratic_fallback(student_message, current_problem)
+    fallback_text = _intelligent_socratic_fallback(student_message, current_problem)
+    return {"reply": fallback_text, "problem_solved": False}

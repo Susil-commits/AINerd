@@ -475,18 +475,21 @@ async def send_message(req: MessageRequest):
             await asyncio.sleep(0.1)
 
             # Route through safety boundary if flagged, otherwise invoke Socratic tutor
+            problem_solved = False
             if is_harmful:
                 response = SAFE_SUPPORT_RESPONSE
             elif is_injection:
                 response = SOCRATIC_BOUNDARY_RESPONSE
             else:
                 from agents.tutor_agent import run_tutor_agent
-                response = await asyncio.to_thread(
+                tutor_result = await asyncio.to_thread(
                     run_tutor_agent,
                     clean_message,
                     session_state["conversation_history"],
                     current_prob,
                 )
+                response = tutor_result["reply"]
+                problem_solved = tutor_result["problem_solved"]
 
                 # Secondary safety check: Prevent accidental final answer disclosure
                 prob_ans = current_prob.get("answer") or ""
@@ -495,17 +498,7 @@ async def send_message(req: MessageRequest):
                         "That's a great direction! Let's pause right before the final calculation: "
                         "what math property explains why this step works?"
                     )
-
-            # Check if student solved the problem or reached final answer
-            problem_solved = False
-            resp_lower = response.lower()
-            congrats_signals = [
-                "spot on", "correct!", "that's right", "thats right", "great job", "you got it",
-                "wonderful work", "excellent", "nailed it", "well done", "perfect!", "exactly right",
-                "you solved it", "you arrived at the correct"
-            ]
-            if any(s in resp_lower for s in congrats_signals):
-                problem_solved = True
+                    problem_solved = False
 
             curr_skill = current_prob.get("skill_id") or session_state.get("current_skill_id")
             if problem_solved and curr_skill and curr_skill in session_state.get("mastery_state", {}):
