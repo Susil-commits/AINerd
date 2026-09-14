@@ -32,6 +32,7 @@ class TutorState(TypedDict):
 
     # Current problem
     current_problem: dict | None
+    current_problem_credited: bool       # True once problem solved and mastery credited
     problems_attempted: list[str]        # problem IDs seen this session
 
     # Mastery
@@ -131,6 +132,7 @@ def diagnose_node(state: TutorState) -> dict:
     return {
         "diagnosis": diagnosis,
         "mastery_state": mastery_state,
+        "current_problem_credited": True if is_correct else state.get("current_problem_credited", False),
         "thinking_steps": steps,
         "agent_response": diagnosis.get("corrective_question", "Let's try again."),
         "next_action": "select_problem" if is_correct else None,
@@ -172,6 +174,7 @@ def select_problem_node(state: TutorState) -> dict:
 
     return {
         "current_problem": problem,
+        "current_problem_credited": False,
         "current_skill_id": next_skill,
         "problems_attempted": attempted,
         "agent_response": f"Great job! Let's try a new problem:\n\n**{problem.get('title', 'Problem')}**\n\n{problem['text']}",

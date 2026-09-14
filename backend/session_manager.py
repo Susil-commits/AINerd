@@ -196,6 +196,7 @@ def get_session(session_id: str) -> dict[str, Any] | None:
             "latest_input": "",
             "latest_image_bytes": None,
             "current_problem": current_problem,
+            "current_problem_credited": False,
             "problems_attempted": problems_attempted,
             "mastery_state": mastery_state,
             "current_skill_id": current_problem.get("skill_id", current_skill) if current_problem else current_skill,

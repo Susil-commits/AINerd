@@ -95,9 +95,20 @@ async def db_exec(query: Any) -> Any:
 
 async def _update_mastery_for_skill(session_state: dict, skill_id: str) -> None:
     """Update BKT mastery for a solved skill and persist to Supabase. Safe to call from any async route."""
-    old_m = session_state["mastery_state"][skill_id]
+    if not skill_id:
+        return
+    if session_state.get("current_problem_credited", False):
+        logger.info(
+            "Skill %s already credited for current problem in session %s, skipping duplicate update.",
+            skill_id,
+            session_state.get("session_id"),
+        )
+        return
+
+    session_state["current_problem_credited"] = True
+    old_m = session_state.get("mastery_state", {}).get(skill_id, 0.3)
     new_m = update_mastery(old_m, True, skill_id)
-    session_state["mastery_state"][skill_id] = round(new_m, 4)
+    session_state.setdefault("mastery_state", {})[skill_id] = round(new_m, 4)
     try:
         supabase = get_supabase()
         await asyncio.to_thread(
@@ -107,8 +118,8 @@ async def _update_mastery_for_skill(session_state: dict, skill_id: str) -> None:
                 "mastery_prob": session_state["mastery_state"][skill_id],
             }, on_conflict="student_id,skill_id").execute()
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to persist updated mastery to Supabase: %s", e)
 
 
 # SSE Response headers to prevent proxy/CDN buffering (Render, Cloudflare, Nginx)
@@ -398,6 +409,7 @@ async def start_session(req: StartSessionRequest):
         "latest_input": "",
         "latest_image_bytes": None,
         "current_problem": problem,
+        "current_problem_credited": False,
         "problems_attempted": [problem["id"]],
         "mastery_state": mastery_state,
         "current_skill_id": current_skill,
@@ -588,6 +600,7 @@ async def next_problem_endpoint(req: NextProblemRequest):
         raise HTTPException(status_code=503, detail="No further practice problems found in problem bank.")
 
     session_state["current_problem"] = next_prob
+    session_state["current_problem_credited"] = False
     session_state["current_skill_id"] = next_skill
     if next_prob.get("id") and next_prob["id"] not in attempted:
         attempted.append(next_prob["id"])
@@ -667,26 +680,30 @@ async def upload_work(
             yield f"data: {json.dumps({'type': 'thinking', 'content': 'Checking step: ' + friendly_misc})}\n\n"
 
             # Update mastery
-            skill_id = state["current_skill_id"]
+            curr_skill = current_problem.get("skill_id") or state.get("current_skill_id")
             is_correct = diagnosis.get("is_correct", False)
-            new_mastery = update_mastery(
-                current_mastery=state["mastery_state"].get(skill_id, 0.3),
-                is_correct=is_correct,
-                skill_id=skill_id,
-            )
-            state["mastery_state"][skill_id] = new_mastery
 
-            mastery_pct = f"{new_mastery*100:.0f}%"
-            yield f"data: {json.dumps({'type': 'thinking', 'content': 'Updating skill progress: ' + mastery_pct})}\n\n"
+            if not is_correct and curr_skill:
+                new_mastery = update_mastery(
+                    current_mastery=state["mastery_state"].get(curr_skill, 0.3),
+                    is_correct=False,
+                    skill_id=curr_skill,
+                )
+                state["mastery_state"][curr_skill] = round(new_mastery, 4)
+                mastery_pct = f"{new_mastery*100:.0f}%"
+                yield f"data: {json.dumps({'type': 'thinking', 'content': 'Updating skill progress: ' + mastery_pct})}\n\n"
+                try:
+                    supabase = get_supabase()
+                    await db_exec(supabase.table("student_skill_mastery").upsert({
+                        "student_id": state["student_id"],
+                        "skill_id": curr_skill,
+                        "mastery_prob": new_mastery,
+                    }, on_conflict="student_id,skill_id"))
+                except Exception as e:
+                    print(f"[WARN] Supabase write failed: {e}")
 
-            # Persist to Supabase
+            # Record event turn in session_events
             try:
-                supabase = get_supabase()
-                await db_exec(supabase.table("student_skill_mastery").upsert({
-                    "student_id": state["student_id"],
-                    "skill_id": skill_id,
-                    "mastery_prob": new_mastery,
-                }, on_conflict="student_id,skill_id"))
                 await asyncio.to_thread(
                     record_session_event,
                     session_id=state["session_id"],
@@ -702,8 +719,14 @@ async def upload_work(
             state["diagnosis"] = diagnosis
             await asyncio.to_thread(save_session, session_id, state)
 
-            # If correct, select next problem targeted with pgvector RAG
+            # If correct, update mastery for solved problem and select next problem targeted with pgvector RAG
             if is_correct:
+                if curr_skill:
+                    await _update_mastery_for_skill(state, curr_skill)
+                cur_m = state["mastery_state"].get(curr_skill, 0.3)
+                mastery_pct = f"{cur_m*100:.0f}%"
+                yield f"data: {json.dumps({'type': 'thinking', 'content': 'Updating skill progress: ' + mastery_pct})}\n\n"
+
                 yield f"data: {json.dumps({'type': 'thinking', 'content': 'Picking your next practice problem...'})}\n\n"
                 next_skill = get_next_skill(state["mastery_state"])
                 misconception_desc = diagnosis.get("description") or diagnosis.get("misconception_type")
@@ -717,6 +740,7 @@ async def upload_work(
                 )
                 if next_problem:
                     state["current_problem"] = next_problem
+                    state["current_problem_credited"] = False
                     state["current_skill_id"] = next_skill
                     state["problems_attempted"] = state.get("problems_attempted", []) + [next_problem["id"]]
                     await asyncio.to_thread(save_session, session_id, state)
