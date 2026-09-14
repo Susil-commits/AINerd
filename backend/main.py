@@ -49,7 +49,6 @@ from agents.tutor_agent import run_tutor_agent
 from bkt.tracker import (
     initialize_mastery,
     get_all_skills,
-    get_skill_params,
     get_next_skill,
     update_mastery,
 )
@@ -96,7 +95,6 @@ async def db_exec(query: Any) -> Any:
 
 async def _update_mastery_for_skill(session_state: dict, skill_id: str) -> None:
     """Update BKT mastery for a solved skill and persist to Supabase. Safe to call from any async route."""
-    from bkt.tracker import update_mastery
     old_m = session_state["mastery_state"][skill_id]
     new_m = update_mastery(old_m, True, skill_id)
     session_state["mastery_state"][skill_id] = round(new_m, 4)
@@ -373,7 +371,6 @@ async def start_session(req: StartSessionRequest):
         print(f"[WARN] Supabase session insert error: {e}")
 
     # Pick first problem
-    from bkt.tracker import get_next_skill
     current_skill = get_next_skill(mastery_state)
     problem = await asyncio.to_thread(
         get_next_problem,
@@ -481,7 +478,6 @@ async def send_message(req: MessageRequest):
             elif is_injection:
                 response = SOCRATIC_BOUNDARY_RESPONSE
             else:
-                from agents.tutor_agent import run_tutor_agent
                 tutor_result = await asyncio.to_thread(
                     run_tutor_agent,
                     clean_message,
@@ -560,8 +556,6 @@ async def next_problem_endpoint(req: NextProblemRequest):
     session_state: dict[str, Any] = state
     current_prob = session_state.get("current_problem") or {}
     curr_skill = current_prob.get("skill_id") or session_state.get("current_skill_id")
-
-    from bkt.tracker import get_next_skill
 
     # 1. Update BKT mastery if previous problem was solved / completed
     if req.mark_previous_correct and curr_skill and curr_skill in session_state.get("mastery_state", {}):
@@ -657,9 +651,6 @@ async def upload_work(
             yield f"data: {json.dumps({'type': 'thinking', 'content': 'Reading your handwritten work...'})}\n\n"
             await asyncio.sleep(0.1)
 
-            from agents.diagnostic_agent import run_diagnostic_agent
-            from bkt.tracker import update_mastery
-
             current_problem = state.get("current_problem") or {}
             yield f"data: {json.dumps({'type': 'thinking', 'content': 'Checking your steps...'})}\n\n"
 
@@ -714,7 +705,6 @@ async def upload_work(
             # If correct, select next problem targeted with pgvector RAG
             if is_correct:
                 yield f"data: {json.dumps({'type': 'thinking', 'content': 'Picking your next practice problem...'})}\n\n"
-                from bkt.tracker import get_next_skill
                 next_skill = get_next_skill(state["mastery_state"])
                 misconception_desc = diagnosis.get("description") or diagnosis.get("misconception_type")
                 next_problem = await asyncio.to_thread(
@@ -1124,8 +1114,6 @@ async def get_parent_children(parent_id: str):
         days_since = 3
         if latest_session_time:
             try:
-                import datetime
-
                 ts = datetime.datetime.fromisoformat(
                     latest_session_time.replace("Z", "+00:00")
                 )

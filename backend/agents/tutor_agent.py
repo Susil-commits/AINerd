@@ -119,7 +119,7 @@ def _intelligent_socratic_fallback(
     if any(w in clean for w in ["stuck", "don't know", "dont know", "hint", "help", "what next", "lost"]):
         if current_problem and current_problem.get("expected_steps"):
             first_step = current_problem["expected_steps"][0]
-            return f"That's completely okay — let's break it down together! First, look at the given numbers. Can you tell me what information the problem gives us?"
+            return f"That's completely okay — let's break it down together! Here's a starting point: {first_step} Can you tell me what information the problem gives us from there?"
         return "No worries at all, math takes step-by-step thinking! What is the very first number or quantity you see in the problem?"
 
     # Check if student gave a number / answer
