@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getParentChildren, addChild, getChildDetails, deleteParentData, type ChildItem } from '../lib/api'
@@ -47,6 +47,16 @@ export default function ParentDashboard() {
     return null
   })
 
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const liveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
+      if (liveTimerRef.current) clearTimeout(liveTimerRef.current)
+    }
+  }, [])
+
   useEffect(() => {
     if (!warmupBadge) return
     const t = setTimeout(() => setWarmupBadge(null), 3500)
@@ -61,7 +71,8 @@ export default function ParentDashboard() {
     deleteParentData(parentId)
       .then((res) => {
         setDeleteSuccessMsg(res.message || 'All activity data successfully purged.')
-        setTimeout(() => {
+        if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
+        deleteTimerRef.current = setTimeout(() => {
           setShowDeleteModal(false)
           setDeleteSuccessMsg('')
           refreshChildren().catch(() => {})
@@ -155,7 +166,8 @@ export default function ParentDashboard() {
           (payload) => {
             console.log('Realtime learning event received:', payload)
             setLiveIndicator(true)
-            setTimeout(() => setLiveIndicator(false), 2000)
+            if (liveTimerRef.current) clearTimeout(liveTimerRef.current)
+            liveTimerRef.current = setTimeout(() => setLiveIndicator(false), 2000)
             refreshChildDetails(selectedChildId).catch(() => {})
           }
         )
@@ -173,6 +185,9 @@ export default function ParentDashboard() {
 
     return () => {
       clearInterval(pollTimer)
+      if (liveTimerRef.current) {
+        clearTimeout(liveTimerRef.current)
+      }
       if (channel) {
         supabase.removeChannel(channel)
       }

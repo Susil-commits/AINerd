@@ -1160,10 +1160,10 @@ async def neo_chat(
     user_context = {"role": "visitor", "authenticated": False}
     token = None
     if authorization:
-        parts = authorization.split(" ")
-        token = parts[1] if len(parts) == 2 and parts[0].lower() == "bearer" else parts[0]
+        parts = authorization.strip().split()
+        token = parts[1] if len(parts) == 2 and parts[0].lower() == "bearer" else (parts[0] if parts else None)
     elif x_session_token:
-        token = x_session_token
+        token = x_session_token.strip()
 
     client_identifier = req.visitor_id or x_visitor_id or (request.client.host if request.client else "visitor_anon")
 

@@ -224,13 +224,13 @@ async def verify_student_access(
     """
     token = None
     if authorization:
-        parts = authorization.split(" ")
+        parts = authorization.strip().split()
         if len(parts) == 2 and parts[0].lower() == "bearer":
             token = parts[1]
         elif len(parts) == 1:
             token = parts[0]
     elif x_session_token:
-        token = x_session_token
+        token = x_session_token.strip()
 
     if x_parent_id and isinstance(x_parent_id, str):
         return {"sub": student_id, "role": "parent", "parent_id": x_parent_id}
