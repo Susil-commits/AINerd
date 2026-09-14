@@ -66,16 +66,21 @@ export default function TutorSession() {
         try {
           const s: SessionData = JSON.parse(raw)
           if (s && s.session_id) {
-            setSession(s)
-            document.title = `Veritas — Math Practice (${s.student_name})`
-            setMasteryState(s.mastery_state || {})
-            setCurrentProblem(s.current_problem || null)
-            setMessages([
-              { role: 'system', content: `Session started for ${s.student_name}`, timestamp: new Date() },
-              { role: 'tutor', content: s.welcome_message, timestamp: new Date() },
-            ])
-            speak(s.welcome_message)
-            return
+            // Only reuse the cached session if it actually belongs to the current user
+            if (user && s.student_id && s.student_id !== user.id) {
+              sessionStorage.removeItem('session')
+            } else {
+              setSession(s)
+              document.title = `Veritas — Math Practice (${s.student_name})`
+              setMasteryState(s.mastery_state || {})
+              setCurrentProblem(s.current_problem || null)
+              setMessages([
+                { role: 'system', content: `Session started for ${s.student_name}`, timestamp: new Date() },
+                { role: 'tutor', content: s.welcome_message, timestamp: new Date() },
+              ])
+              speak(s.welcome_message)
+              return
+            }
           }
         } catch {}
       }

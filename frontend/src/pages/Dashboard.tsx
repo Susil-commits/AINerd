@@ -20,12 +20,20 @@ export default function Dashboard() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [authDenied, setAuthDenied] = useState<string | null>(null)
   const [retryTrigger, setRetryTrigger] = useState(0)
-  const sessionId = sessionStorage.getItem('session')
-    ? JSON.parse(sessionStorage.getItem('session')!).session_id
-    : null
-  const studentName = sessionStorage.getItem('session')
-    ? JSON.parse(sessionStorage.getItem('session')!).student_name
-    : 'Student'
+  const cachedSession = (() => {
+    try {
+      const raw = sessionStorage.getItem('session')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (!studentId || parsed.student_id === studentId) {
+          return parsed
+        }
+      }
+    } catch {}
+    return null
+  })()
+  const sessionId = cachedSession?.session_id || null
+  const studentName = cachedSession?.student_name || 'Student'
 
   useEffect(() => {
     document.title = `Veritas — ${studentName}'s Progress Dashboard`
