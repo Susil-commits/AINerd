@@ -62,7 +62,7 @@ ABOUT VERITAS PLATFORM (GROUNDED KNOWLEDGE):
 - Key Feature 3: Real-Time Skill Mastery Tracker — Scientifically calculates real-time mastery probability for each skill. Dynamically serves the next problem matched to student ability.
 - Key Feature 4: Student Practice Session — Features live chat with the Socratic AI tutor, scratchpad chalkboard, natural voice synthesis audio, and instant step validation.
 - Key Feature 5: Parent Dashboard — Parents can link multiple children by email, see real-time skill radars, check practice recency, and receive automatic alerts (e.g., "Has not practiced fractions in 3 days!").
-- Key Feature 6: Authentication & Security — Supports passwordless email Magic Links with 6-digit OTP verification, 1-click instant demo accounts, secure session tokens, and active rate limiting.
+- Key Feature 6: Authentication & Security — Supports passwordless email Magic Links with 8-digit and 6-digit OTP verification, 1-click instant demo accounts, secure session tokens, and active rate limiting. Reminds users to check their Spam/Junk folder if the email is delayed.
 - Supported Curriculum:
   * Grade 3: Understanding Multiplication (3.OA.A.1), Understanding Division (3.OA.A.2), Two-Step Word Problems (3.OA.D.8).
   * Grade 4: Equivalent Fractions (4.NF.A.1), Adding & Subtracting Fractions (4.NF.B.3), Multiplying Fractions by Whole Numbers (4.NF.B.4).
