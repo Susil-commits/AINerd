@@ -144,6 +144,7 @@ export default function Landing() {
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '', '', ''])
   const [resendTimer, setResendTimer] = useState(45)
   const [resendCount, setResendCount] = useState(0)
+  const [resendSuccess, setResendSuccess] = useState(false)
   const MAX_RESENDS = 3
   const [rememberedDismissed, setRememberedDismissed] = useState(false)
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -406,6 +407,8 @@ export default function Landing() {
         const nextCount = resendCount + 1
         setResendCount(nextCount)
         setResendTimer(45 * (nextCount + 1)) // 45s, then 90s, then 135s progressive backoff
+        setResendSuccess(true)
+        setTimeout(() => setResendSuccess(false), 9000)
       }
     } catch (err: any) {
       console.error('Resend OTP failed:', err)
@@ -711,9 +714,23 @@ export default function Landing() {
                     </h2>
                     <p className="auth-tagline">
                       {authMode === 'signup'
-                        ? "We've sent a verification code to activate your new account — check your inbox."
-                        : "If that email is valid, we've sent a verification code — check your inbox (and spam folder)."}
+                        ? "We've sent a verification code to activate your new account. Please check your inbox and Spam / Junk folder."
+                        : "If that email is registered, we've sent your code. Please check your inbox and Spam / Junk folder."}
                     </p>
+
+                    {/* Dedicated Spam Alert Banner */}
+                    <div className="otp-spam-alert-banner animate-fadein">
+                      <span className="otp-spam-alert-icon">📬</span>
+                      <div className="otp-spam-alert-content">
+                        <strong>Please check your Spam / Junk folder!</strong> Automated security codes often land in Spam, Junk, or Promotions. Look there if you don't see the email in your main inbox.
+                      </div>
+                    </div>
+
+                    {resendSuccess && (
+                      <div className="otp-success-banner animate-fadein">
+                        ✅ Fresh verification code sent! Remember to check your <strong>Spam / Junk folder</strong>.
+                      </div>
+                    )}
 
                     {/* Format switcher for 8-digit vs 6-digit */}
                     <div className="otp-format-toggle-row">
@@ -762,25 +779,25 @@ export default function Landing() {
                       <div className="otp-device-tip-body">
                         <span className="otp-device-tip-title">Signing in on this laptop?</span>
                         <span className="otp-device-tip-desc">
-                          Type your verification code directly into the boxes above. Tapping "Sign in to Veritas" on your phone logs in your phone's browser, not this laptop.
+                          Type your verification code directly into the boxes above. Tapping "Sign in to Veritas" on your phone logs in your phone's browser, not this laptop. (Also remember to check your Spam folder!)
                         </span>
                       </div>
                     </div>
 
-                    {otpScreenSeconds >= 45 && otpScreenSeconds < 90 && (
+                    {otpScreenSeconds >= 20 && otpScreenSeconds < 75 && (
                       <p className="otp-hint otp-hint--soft animate-fadein">
-                        Taking a bit longer than usual — check your spam or promotions folder.
+                        📬 <strong>Helpful reminder:</strong> If the email hasn't appeared yet, please check your <strong>Spam, Junk, or Promotions folder</strong>!
                       </p>
                     )}
 
-                    {otpScreenSeconds >= 90 && (
+                    {otpScreenSeconds >= 75 && (
                       <p className="otp-hint otp-hint--direct animate-fadein">
-                        Still nothing? Double-check <strong>{magicLinkEmail || email}</strong> is spelled
+                        Still nothing? Make sure to check your <strong>Spam / Junk folder</strong>, confirm <strong>{magicLinkEmail || email}</strong> is spelled
                         correctly, or{' '}
                         <button
                           type="button"
                           className="otp-hint-link"
-                          onClick={() => { setAuthScreen('form'); setAuthError('') }}
+                          onClick={() => { setAuthScreen('form'); setAuthError(''); setResendSuccess(false) }}
                         >
                           try a different email
                         </button>.
@@ -823,7 +840,10 @@ export default function Landing() {
 
                     <div className="otp-resend-row">
                       {resendTimer > 0 ? (
-                        <span className="otp-timer-text">Resend new code in <strong>{resendTimer}s</strong></span>
+                        <div className="otp-resend-col">
+                          <span className="otp-timer-text">Resend new code in <strong>{resendTimer}s</strong></span>
+                          <span className="otp-spam-subtext">Check your Spam / Junk folder while waiting</span>
+                        </div>
                       ) : (
                         <button
                           type="button"
@@ -1027,6 +1047,10 @@ export default function Landing() {
                             ? (authMode === 'signup' ? 'Sending Verification Code…' : 'Sending Secure Code…')
                             : (authMode === 'signup' ? 'Create Free Account & Launch' : 'Sign In with Secure Code')}
                         </button>
+
+                        <div className="auth-spam-pre-hint">
+                          <span>📬 Note: Security codes sent by email may arrive in your <strong>Spam or Junk folder</strong>. Please check there if not found in your inbox!</span>
+                        </div>
 
                         <div className="auth-mode-switch-row">
                           {authMode === 'signin' ? (

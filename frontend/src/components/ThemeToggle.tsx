@@ -15,7 +15,7 @@ export default function ThemeToggle() {
       <span className="theme-toggle-track">
         <span className="theme-toggle-thumb" />
       </span>
-      <span>{isLight ? '☀️ Light' : '🌙 Dark'}</span>
+      <span className="theme-toggle-label">{isLight ? '☀️ Light' : '🌙 Dark'}</span>
     </button>
   )
 }

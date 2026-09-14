@@ -54,7 +54,7 @@ export default function TutorSession() {
   const [mobileTab, setMobileTab] = useState<'chat' | 'problem' | 'progress'>('chat')
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  const { isSpeaking, speak } = useTTS()
+  const { isSpeaking, speak, stop } = useTTS()
   // Stabilize `speak` ref to prevent session init from re-running on every TTS state change
   const speakRef = useRef(speak)
   useEffect(() => { speakRef.current = speak }, [speak])
@@ -308,13 +308,19 @@ export default function TutorSession() {
       {/* ── Mobile Top Header & Segmented Tab Navigation (<= 1024px) ── */}
       <div className="session-mobile-nav">
         <div className="session-header-mini session-header-mini--mobile">
-          <span className="badge badge-violet">{session.student_name}</span>
-          <div className="session-header-actions">
+          <div className="session-header-top-row">
+            <span className="badge badge-violet">{session.student_name}</span>
+            <ThemeToggle />
+          </div>
+          <div className="session-header-actions-row">
             {role === 'parent' && (
               <button
                 className="btn btn-ghost"
                 style={{ padding: '5px 8px', fontSize: '0.74rem' }}
-                onClick={() => navigate('/parent-dashboard')}
+                onClick={() => {
+                  stop()
+                  navigate('/parent-dashboard')
+                }}
                 title="Go to Parent Portal"
               >
                 Parent Portal
@@ -323,7 +329,10 @@ export default function TutorSession() {
             <button
               className="btn btn-ghost"
               style={{ padding: '5px 8px', fontSize: '0.74rem' }}
-              onClick={() => navigate(`/dashboard/${session.student_id}`)}
+              onClick={() => {
+                stop()
+                navigate(`/dashboard/${session.student_id}`)
+              }}
               aria-label="View learning dashboard"
               title="View Student Progress Dashboard"
             >
@@ -334,6 +343,7 @@ export default function TutorSession() {
                 className="btn btn-ghost"
                 style={{ padding: '5px 8px', fontSize: '0.74rem' }}
                 onClick={() => {
+                  stop()
                   signOut()
                     .then(() => navigate('/'))
                     .catch((err) => {
@@ -347,7 +357,6 @@ export default function TutorSession() {
                 Sign Out
               </button>
             )}
-            <ThemeToggle />
           </div>
         </div>
 
@@ -386,13 +395,19 @@ export default function TutorSession() {
       {/* ── Left sidebar: problem + upload ── */}
       <aside className={`session-sidebar ${mobileTab !== 'problem' ? 'mobile-hidden' : ''}`}>
         <div className="session-header-mini session-header-mini--desktop">
-          <span className="badge badge-violet">{session.student_name}</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div className="session-header-top-row">
+            <span className="badge badge-violet">{session.student_name}</span>
+            <ThemeToggle />
+          </div>
+          <div className="session-header-actions-row">
             {role === 'parent' && (
               <button
                 className="btn btn-ghost"
-                style={{ padding: '6px 10px', fontSize: '0.78rem' }}
-                onClick={() => navigate('/parent-dashboard')}
+                style={{ padding: '5px 10px', fontSize: '0.78rem' }}
+                onClick={() => {
+                  stop()
+                  navigate('/parent-dashboard')
+                }}
                 title="Go to Parent Portal"
               >
                 Parent Portal
@@ -400,8 +415,11 @@ export default function TutorSession() {
             )}
             <button
               className="btn btn-ghost"
-              style={{ padding: '6px 10px', fontSize: '0.78rem' }}
-              onClick={() => navigate(`/dashboard/${session.student_id}`)}
+              style={{ padding: '5px 10px', fontSize: '0.78rem' }}
+              onClick={() => {
+                stop()
+                navigate(`/dashboard/${session.student_id}`)
+              }}
               aria-label="View learning dashboard"
               title="View Student Progress Dashboard"
             >
@@ -410,8 +428,9 @@ export default function TutorSession() {
             {user && (
               <button
                 className="btn btn-ghost"
-                style={{ padding: '6px 8px', fontSize: '0.78rem' }}
+                style={{ padding: '5px 10px', fontSize: '0.78rem' }}
                 onClick={() => {
+                  stop()
                   signOut()
                     .then(() => navigate('/'))
                     .catch((err) => {
@@ -425,7 +444,6 @@ export default function TutorSession() {
                 Sign Out
               </button>
             )}
-            <ThemeToggle />
           </div>
         </div>
 
@@ -505,7 +523,7 @@ export default function TutorSession() {
           </div>
         )}
 
-        {/* Action bar for stuck-student hint affordance */}
+        {/* Action bar for stuck-student hint affordance & mute speaking */}
         <div className="chat-actions-bar">
           <button
             className="btn-hint"
@@ -516,6 +534,16 @@ export default function TutorSession() {
           >
             Need a hint?
           </button>
+          {isSpeaking && (
+            <button
+              className="btn-stop-speaking animate-fadein"
+              onClick={stop}
+              aria-label="Stop tutor voice"
+              title="Stop tutor from speaking"
+            >
+              🔇 Stop Voice
+            </button>
+          )}
         </div>
 
         {/* Input area */}

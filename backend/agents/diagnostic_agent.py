@@ -6,6 +6,7 @@ Identifies SPECIFIC errors in student handwritten work, not generic "wrong answe
 import os
 import base64
 import json
+import re
 from typing import Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -251,7 +252,6 @@ Target Skill: {skill_id}"""
             return res
 
     # Extract JSON object using regex to handle potential conversational wrappers
-    import re
     clean_text = raw.strip()
     clean_text = re.sub(r"^```(?:json)?\s*", "", clean_text, flags=re.IGNORECASE)
     clean_text = re.sub(r"\s*```$", "", clean_text).strip()

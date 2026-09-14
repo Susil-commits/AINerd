@@ -10,6 +10,7 @@ from collections import OrderedDict
 from typing import Any
 from db.supabase_client import get_supabase
 from bkt.tracker import initialize_mastery, get_next_skill
+from agents.content_agent import get_next_problem
 
 import threading
 
@@ -179,7 +180,6 @@ def get_session(session_id: str) -> dict[str, Any] | None:
 
         current_skill = get_next_skill(mastery_state)
         if not current_problem:
-            from agents.content_agent import get_next_problem
             current_problem = get_next_problem(
                 skill_id=current_skill,
                 mastery_prob=mastery_state.get(current_skill, 0.3),

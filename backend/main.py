@@ -8,10 +8,14 @@ import re
 import uuid
 import json
 import time
+import datetime
 import asyncio
 import warnings
+import logging
 import httpx
 from pathlib import Path
+
+logger = logging.getLogger("ainerd-backend")
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
 
@@ -40,7 +44,15 @@ load_dotenv()
 
 from graph.orchestrator import build_graph, TutorState
 from agents.content_agent import get_next_problem, generate_session_summary
-from bkt.tracker import initialize_mastery, get_all_skills, get_skill_params
+from agents.diagnostic_agent import run_diagnostic_agent
+from agents.tutor_agent import run_tutor_agent
+from bkt.tracker import (
+    initialize_mastery,
+    get_all_skills,
+    get_skill_params,
+    get_next_skill,
+    update_mastery,
+)
 from db.supabase_client import get_supabase
 from auth import (
     create_session_token,
@@ -712,7 +724,9 @@ async def text_to_speech(text: str):
         )
 
     if resp.status_code != 200:
-        raise HTTPException(status_code=resp.status_code, detail="TTS API error")
+        logger.warning("ElevenLabs TTS status %d: %s", resp.status_code, resp.text[:200])
+        detail = "Cloud TTS character quota exceeded" if resp.status_code == 402 else "TTS API error"
+        raise HTTPException(status_code=resp.status_code, detail=detail)
 
     return Response(content=resp.content, media_type="audio/mpeg")
 

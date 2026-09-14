@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase, type UserRole } from '../lib/supabase'
 
@@ -35,6 +35,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [role, setRoleState] = useState<UserRole>(() => {
     return (localStorage.getItem('veritas_user_role') as UserRole) || (localStorage.getItem('ainerd_user_role') as UserRole) || 'student'
   })
+  const roleRef = useRef<UserRole>(role)
+  useEffect(() => {
+    roleRef.current = role
+  }, [role])
   const [loading, setLoading] = useState(true)
   const [rememberedProfile, setRememberedProfile] = useState<RememberedProfile | null>(() => {
     try {
@@ -58,6 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const setRole = (newRole: UserRole) => {
+    roleRef.current = newRole
     setRoleState(newRole)
     localStorage.setItem('veritas_user_role', newRole)
   }
@@ -75,9 +80,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveProfile({
           email: currentSession.user.email || '',
           name: currentSession.user.user_metadata?.name || (userMetaRole === 'parent' ? 'Parent' : 'Student'),
-          role: userMetaRole || role,
+          role: userMetaRole || roleRef.current,
           lastActive: new Date().toISOString(),
-          avatar: userMetaRole === 'parent' ? 'P' : 'S',
+          avatar: (userMetaRole || roleRef.current) === 'parent' ? 'P' : 'S',
         })
       } else {
         // Check if demo user is stored
@@ -123,9 +128,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveProfile({
           email: newSession.user.email || '',
           name: newSession.user.user_metadata?.name || (userMetaRole === 'parent' ? 'Parent' : 'Student'),
-          role: userMetaRole || role,
+          role: userMetaRole || roleRef.current,
           lastActive: new Date().toISOString(),
-          avatar: (userMetaRole || role) === 'parent' ? 'P' : 'S',
+          avatar: (userMetaRole || roleRef.current) === 'parent' ? 'P' : 'S',
         })
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
@@ -250,6 +255,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const signOut = async () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel()
+      } catch {}
+    }
     try {
       await supabase.auth.signOut()
     } catch {}
@@ -258,6 +268,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('veritas_demo_user')
     localStorage.removeItem('ainerd_demo_user')
     sessionStorage.removeItem('session')
+    sessionStorage.removeItem('veritas_cloud_tts_disabled')
     // Clear remembered profile on explicit sign-out so landing page shows fresh sign-in
     clearRememberedProfile()
   }

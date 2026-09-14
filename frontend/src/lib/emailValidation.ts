@@ -70,7 +70,7 @@ export function friendlyAuthError(rawError: string): string {
     return 'Connection issue — please check your internet and try again.'
   }
   if (lower.includes('token has expired') || lower.includes('otp expired') || lower.includes('invalid token')) {
-    return 'Verification code is invalid or has expired. Please request a new code.'
+    return 'Verification code is invalid or has expired. Please check the latest code in your inbox or Spam folder, or request a fresh code.'
   }
   return 'Something went wrong sending your code. Please try again.'
 }
