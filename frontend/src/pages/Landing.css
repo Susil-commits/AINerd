@@ -845,6 +845,54 @@
   color: var(--amber);
 }
 
+/* Auth Mode Segmented Tabs (Sign In vs Create Account) */
+.auth-mode-tabs {
+  display: flex;
+  background: #F1F5F9;
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 1.25rem;
+  border: 1.5px solid #E2E8F0;
+}
+
+.auth-mode-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: #64748B;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.auth-mode-tab:hover:not(.auth-mode-tab--active) {
+  color: #1E1B4B;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.auth-mode-tab--active {
+  background: #FFFFFF;
+  color: #4338CA;
+  box-shadow: 0 2px 6px rgba(67, 56, 202, 0.12), 0 1px 2px rgba(0, 0, 0, 0.04);
+  font-weight: 700;
+}
+
+.tab-icon {
+  font-size: 0.95rem;
+}
+
+.auth-greeting-block {
+  margin-bottom: 0.25rem;
+}
+
 .auth-greeting {
   font-size: 1.95rem;
   font-weight: 800;
@@ -862,6 +910,43 @@
   font-size: 0.88rem;
   color: #64748B;
   margin: 0 0 1.5rem;
+}
+
+.auth-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auth-label-optional {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #94A3B8;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.auth-mode-switch-row {
+  text-align: center;
+  font-size: 0.82rem;
+  color: #64748B;
+  margin: 2px 0 4px;
+}
+
+.auth-mode-switch-link {
+  background: none;
+  border: none;
+  color: #6342E8;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0 2px;
+  text-decoration: underline;
+  transition: color 0.15s;
+}
+
+.auth-mode-switch-link:hover {
+  color: #4338CA;
 }
 
 .auth-form-body {

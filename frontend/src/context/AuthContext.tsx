@@ -15,8 +15,8 @@ interface AuthContextType {
   session: Session | null
   role: UserRole
   loading: boolean
-  sendMagicLink: (email: string, targetRole: UserRole) => Promise<{ error: string | null }>
-  verifyOtp: (email: string, token: string, targetRole: UserRole) => Promise<{ error: string | null }>
+  sendMagicLink: (email: string, targetRole: UserRole, fullName?: string) => Promise<{ error: string | null }>
+  verifyOtp: (email: string, token: string, targetRole: UserRole, preferredName?: string) => Promise<{ error: string | null }>
   demoSignIn: (targetRole: UserRole, customEmail?: string) => Promise<void>
   signOut: () => Promise<void>
   setRole: (role: UserRole) => void
@@ -141,15 +141,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [])
 
-  const sendMagicLink = async (email: string, targetRole: UserRole): Promise<{ error: string | null }> => {
+  const sendMagicLink = async (email: string, targetRole: UserRole, fullName?: string): Promise<{ error: string | null }> => {
     try {
       setRole(targetRole)
+      const trimmedName = fullName?.trim()
       // Call Supabase Auth signInWithOtp to issue magic link with user_role stored in metadata
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim().toLowerCase(),
         options: {
           data: {
             user_role: targetRole,
+            ...(trimmedName ? { name: trimmedName } : {}),
           },
           emailRedirectTo: `${window.location.origin}/`,
         },
@@ -163,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
-  const verifyOtp = async (email: string, token: string, targetRole: UserRole): Promise<{ error: string | null }> => {
+  const verifyOtp = async (email: string, token: string, targetRole: UserRole, preferredName?: string): Promise<{ error: string | null }> => {
     const cleanEmail = email.trim().toLowerCase()
     const cleanToken = token.trim()
 
@@ -192,9 +194,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data?.user) {
         setUser(data.user)
         setSession(data.session)
+        const resolvedName = data.user.user_metadata?.name || preferredName?.trim() || (targetRole === 'parent' ? 'Parent' : 'Student')
         saveProfile({
           email: data.user.email || cleanEmail,
-          name: data.user.user_metadata?.name || (targetRole === 'parent' ? 'Parent' : 'Student'),
+          name: resolvedName,
           role: targetRole,
           lastActive: new Date().toISOString(),
           avatar: targetRole === 'parent' ? 'P' : 'S',

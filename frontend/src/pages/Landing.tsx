@@ -148,6 +148,17 @@ export default function Landing() {
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
   const [otpScreenSeconds, setOtpScreenSeconds] = useState(0)
 
+  // Smart auth mode: defaults to 'signin' if remembered profile is cached, else 'signup' for new visitors
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>(() => {
+    try {
+      const raw = localStorage.getItem('veritas_remembered_profile')
+      return raw ? 'signin' : 'signup'
+    } catch {
+      return 'signup'
+    }
+  })
+  const [fullName, setFullName] = useState('')
+
   // Cold-start warmup hook
   const {
     isReady: isWarmupReady,
@@ -345,7 +356,7 @@ export default function Landing() {
     setAuthLoading(true)
     setAuthError('')
     try {
-      const res = await sendMagicLink(targetEmail, targetRole)
+      const res = await sendMagicLink(targetEmail, targetRole, authMode === 'signup' ? fullName : undefined)
       if (res.error) {
         setAuthError(friendlyAuthError(res.error))
       } else {
@@ -374,7 +385,7 @@ export default function Landing() {
     setAuthLoading(true)
     setAuthError('')
     try {
-      const res = await sendMagicLink(target, role)
+      const res = await sendMagicLink(target, role, authMode === 'signup' ? fullName : undefined)
       if (res.error) {
         setAuthError(friendlyAuthError(res.error))
       } else {
@@ -402,7 +413,7 @@ export default function Landing() {
     setAuthError('')
     try {
       const targetEmail = magicLinkEmail || email || (activeRole === 'parent' ? 'parent.sarah@veritas.dev' : 'student.alex@veritas.dev')
-      const res = await verifyOtp(targetEmail, cleanCode, activeRole)
+      const res = await verifyOtp(targetEmail, cleanCode, activeRole, authMode === 'signup' ? fullName : undefined)
       if (res.error) {
         setAuthError(friendlyAuthError(res.error))
       } else {
@@ -653,10 +664,23 @@ export default function Landing() {
                     </div>
 
                     <h2 className="auth-greeting">
-                      Security Code<br />
-                      <span className="auth-greeting-sub">Verification</span>
+                      {authMode === 'signup' ? (
+                        <>
+                          Account Setup<br />
+                          <span className="auth-greeting-sub">Verification</span>
+                        </>
+                      ) : (
+                        <>
+                          Security Code<br />
+                          <span className="auth-greeting-sub">Verification</span>
+                        </>
+                      )}
                     </h2>
-                    <p className="auth-tagline">If that email is valid, we've sent a 6-digit code — check your inbox (and spam folder).</p>
+                    <p className="auth-tagline">
+                      {authMode === 'signup'
+                        ? "We've sent a 6-digit verification code to activate your new account — check your inbox."
+                        : "If that email is valid, we've sent a 6-digit code — check your inbox (and spam folder)."}
+                    </p>
 
                     <div className="otp-inputs-grid">
                       {otpDigits.map((digit, idx) => (
@@ -705,7 +729,9 @@ export default function Landing() {
                       onClick={() => handleVerifyOtpCode(otpDigits.join(''))}
                       disabled={authLoading || otpDigits.join('').length !== 6}
                     >
-                      {authLoading ? 'Verifying Code…' : 'Verify & Launch Session'}
+                      {authLoading
+                        ? 'Verifying Code…'
+                        : (authMode === 'signup' ? 'Verify & Launch Account' : 'Verify & Launch Session')}
                     </button>
 
                     {/* Quick Demo Access Codes */}
@@ -749,13 +775,81 @@ export default function Landing() {
                   </div>
                 ) : (
                   <div className="animate-fadein">
-                    <h2 className="auth-greeting">
-                      Holla,<br />
-                      <span className="auth-greeting-sub">Welcome Back</span>
-                    </h2>
-                    <p className="auth-tagline">Hey, welcome back to your learning space</p>
+                    {/* Modern Segmented Auth Mode Switcher */}
+                    <div className="auth-mode-tabs" role="tablist" aria-label="Authentication Mode">
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={authMode === 'signin'}
+                        className={`auth-mode-tab ${authMode === 'signin' ? 'auth-mode-tab--active' : ''}`}
+                        onClick={() => {
+                          setAuthMode('signin')
+                          setAuthError('')
+                        }}
+                      >
+                        <span className="tab-icon">👋</span>
+                        <span>Sign In</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={authMode === 'signup'}
+                        className={`auth-mode-tab ${authMode === 'signup' ? 'auth-mode-tab--active' : ''}`}
+                        onClick={() => {
+                          setAuthMode('signup')
+                          setAuthError('')
+                        }}
+                      >
+                        <span className="tab-icon">✨</span>
+                        <span>Create Account</span>
+                      </button>
+                    </div>
+
+                    {authMode === 'signin' ? (
+                      <div className="auth-greeting-block animate-fadein">
+                        <h2 className="auth-greeting">
+                          Holla,<br />
+                          <span className="auth-greeting-sub">
+                            {rememberedProfile ? `Welcome Back, ${rememberedProfile.name.split(' ')[0]}` : 'Welcome Back'}
+                          </span>
+                        </h2>
+                        <p className="auth-tagline">Hey, welcome back to your learning space</p>
+                      </div>
+                    ) : (
+                      <div className="auth-greeting-block animate-fadein">
+                        <h2 className="auth-greeting">
+                          Welcome to Veritas,<br />
+                          <span className="auth-greeting-sub">Start Learning</span>
+                        </h2>
+                        <p className="auth-tagline">Create your student or parent account to begin Socratic discovery</p>
+                      </div>
+                    )}
 
                     <form onSubmit={handleSendMagicLinkOrOtp} className="auth-form-body">
+                      {/* Name input for new users */}
+                      {authMode === 'signup' && (
+                        <div className="auth-field-group animate-fadein">
+                          <div className="auth-label-row">
+                            <label htmlFor="auth-name-input">
+                              {role === 'parent' ? 'Parent / Guardian Name' : 'Student Name'}
+                            </label>
+                            <span className="auth-label-optional">(Optional)</span>
+                          </div>
+                          <div className="auth-input-wrapper">
+                            <input
+                              id="auth-name-input"
+                              type="text"
+                              className="auth-text-input"
+                              placeholder={role === 'parent' ? 'e.g. Sarah Jenkins' : 'e.g. Alex Jenkins'}
+                              value={fullName}
+                              onChange={(e) => setFullName(e.target.value)}
+                              disabled={authLoading}
+                              maxLength={50}
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       <div className="auth-field-group">
                         <div className="auth-label-row">
                           <label htmlFor="auth-email-input">Email Address</label>
@@ -765,7 +859,7 @@ export default function Landing() {
                             id="auth-email-input"
                             type="email"
                             className="auth-text-input"
-                            placeholder="student.alex@veritas.dev"
+                            placeholder={authMode === 'signup' ? 'your.name@example.com' : (role === 'parent' ? 'parent.sarah@veritas.dev' : 'student.alex@veritas.dev')}
                             value={email}
                             onChange={(e) => {
                               setEmail(e.target.value)
@@ -858,8 +952,42 @@ export default function Landing() {
                           disabled={authLoading}
                           id="magic-link-submit-btn"
                         >
-                          {authLoading ? 'Sending Secure Code…' : 'Sign In with Magic Link / OTP'}
+                          {authLoading
+                            ? (authMode === 'signup' ? 'Sending Verification Code…' : 'Sending Secure Code…')
+                            : (authMode === 'signup' ? 'Create Free Account & Launch' : 'Sign In with Secure Code')}
                         </button>
+
+                        <div className="auth-mode-switch-row">
+                          {authMode === 'signin' ? (
+                            <span>
+                              New to Veritas?{' '}
+                              <button
+                                type="button"
+                                className="auth-mode-switch-link"
+                                onClick={() => {
+                                  setAuthMode('signup')
+                                  setAuthError('')
+                                }}
+                              >
+                                Create a free account
+                              </button>
+                            </span>
+                          ) : (
+                            <span>
+                              Already have an account?{' '}
+                              <button
+                                type="button"
+                                className="auth-mode-switch-link"
+                                onClick={() => {
+                                  setAuthMode('signin')
+                                  setAuthError('')
+                                }}
+                              >
+                                Sign in
+                              </button>
+                            </span>
+                          )}
+                        </div>
 
                         <button
                           type="button"
