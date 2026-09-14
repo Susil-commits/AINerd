@@ -61,10 +61,11 @@ export default function NeoChat() {
     getNeoSuggestions().then(setSuggestions).catch(() => {})
   }, [])
 
-  // Save chat history to localStorage
+  // Save chat history to localStorage (capped at 50 messages to prevent quota overflow)
   useEffect(() => {
     try {
-      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages))
+      const toSave = messages.length > 50 ? messages.slice(-50) : messages
+      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(toSave))
     } catch {}
   }, [messages])
 

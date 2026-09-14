@@ -688,6 +688,8 @@ async def get_summary(
 @app.post("/tts")
 async def text_to_speech(text: str):
     """Proxy ElevenLabs TTS to protect the API key."""
+    if not text or not text.strip():
+        raise HTTPException(status_code=400, detail="Text cannot be empty for TTS synthesis.")
     api_key = os.getenv("ELEVENLABS_API_KEY")
     voice_id = os.getenv("ELEVENLABS_VOICE_ID", "cgSgspJ2msm6clMCkdW9")
 

@@ -81,6 +81,7 @@ def create_session_token(
     student_id: str,
     session_id: str,
     student_name: str,
+    role: str = "student",
     expires_in_seconds: int = 86400 * 7,  # 7 days for ease of demoing
 ) -> str:
     """Issue an HMAC-SHA256 signed session token containing student & session claims."""
@@ -89,6 +90,7 @@ def create_session_token(
         "sub": student_id,
         "sid": session_id,
         "name": student_name,
+        "role": role,
         "iat": now,
         "exp": now + expires_in_seconds,
     }

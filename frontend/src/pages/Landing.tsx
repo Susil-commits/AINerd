@@ -183,13 +183,15 @@ export default function Landing() {
 
   // Resend OTP countdown
   useEffect(() => {
-    let interval: any = null
+    let interval: ReturnType<typeof setInterval> | null = null
     if (authScreen === 'otp' && resendTimer > 0) {
       interval = setInterval(() => {
         setResendTimer(prev => prev - 1)
       }, 1000)
     }
-    return () => clearInterval(interval)
+    return () => {
+      if (interval !== null) clearInterval(interval)
+    }
   }, [authScreen, resendTimer])
 
   // Animated intro portal control
@@ -319,7 +321,10 @@ export default function Landing() {
       // Real user account: re-authenticate properly via real magic link / OTP rather than fabricating a fake session
       setEmail(remEmail)
       setRole(remRole)
-      await handleSendMagicLinkOrOtp(undefined, remEmail, remRole)
+      handleSendMagicLinkOrOtp(undefined, remEmail, remRole).catch((err) => {
+        console.error('Fast resume send magic link failed:', err)
+        setAuthError(friendlyAuthError('Could not send verification code. Please try signing in again.'))
+      })
     }
   }
 
@@ -412,7 +417,13 @@ export default function Landing() {
     setAuthLoading(true)
     setAuthError('')
     try {
-      const targetEmail = magicLinkEmail || email || (activeRole === 'parent' ? 'parent.sarah@veritas.dev' : 'student.alex@veritas.dev')
+      const targetEmail = magicLinkEmail || email
+      if (!targetEmail) {
+        setAuthError('Please enter your email address before verifying the code.')
+        setAuthLoading(false)
+        setAuthScreen('form')
+        return
+      }
       const res = await verifyOtp(targetEmail, cleanCode, activeRole, authMode === 'signup' ? fullName : undefined)
       if (res.error) {
         setAuthError(friendlyAuthError(res.error))
@@ -429,7 +440,8 @@ export default function Landing() {
   }
 
   const handleOtpChange = (index: number, val: string) => {
-    const char = val.slice(-1)
+    // Only accept numeric digits
+    const char = val.replace(/\D/g, '').slice(-1)
     const nextDigits = [...otpDigits]
     nextDigits[index] = char
     setOtpDigits(nextDigits)
@@ -808,12 +820,17 @@ export default function Landing() {
                     {authMode === 'signin' ? (
                       <div className="auth-greeting-block animate-fadein">
                         <h2 className="auth-greeting">
-                          Holla,<br />
-                          <span className="auth-greeting-sub">
-                            {rememberedProfile ? `Welcome Back, ${rememberedProfile.name.split(' ')[0]}` : 'Welcome Back'}
-                          </span>
+                          {rememberedProfile ? (
+                            <>Holla,<br /><span className="auth-greeting-sub">Welcome Back, {rememberedProfile.name.split(' ')[0]}!</span></>
+                          ) : (
+                            <>Sign In<br /><span className="auth-greeting-sub">Good to See You</span></>
+                          )}
                         </h2>
-                        <p className="auth-tagline">Hey, welcome back to your learning space</p>
+                        <p className="auth-tagline">
+                          {rememberedProfile
+                            ? 'Hey, welcome back to your learning space'
+                            : 'Enter your email to receive a one-time verification code'}
+                        </p>
                       </div>
                     ) : (
                       <div className="auth-greeting-block animate-fadein">

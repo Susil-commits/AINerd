@@ -82,7 +82,7 @@ export default function Dashboard() {
   return (
     <div className="dashboard">
       <header className="dash-header">
-        <button className="btn btn-ghost" onClick={() => navigate('/session')} aria-label="Back to Session">
+        <button className="btn btn-ghost" onClick={() => navigate('/student-session')} aria-label="Back to Session">
           Back to Session
         </button>
         <div>

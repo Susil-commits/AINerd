@@ -81,10 +81,17 @@ export function useSpeechInput(onResult: (text: string) => void) {
 export function useTTS() {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const audioContextRef = useRef<AudioContext | null>(null)
+  const isSpeakingRef = useRef(false)
+
+  // Keep ref in sync with state so callbacks always read current value
+  const setSpeaking = (val: boolean) => {
+    isSpeakingRef.current = val
+    setIsSpeaking(val)
+  }
 
   const speak = useCallback(async (text: string) => {
-    if (!text || isSpeaking) return
-    setIsSpeaking(true)
+    if (!text || isSpeakingRef.current) return
+    setSpeaking(true)
     try {
       const buffer = await synthesizeSpeech(text)
       const ctx = new AudioContext()
@@ -93,22 +100,22 @@ export function useTTS() {
       const source = ctx.createBufferSource()
       source.buffer = decoded
       source.connect(ctx.destination)
-      source.onended = () => { setIsSpeaking(false); ctx.close() }
+      source.onended = () => { setSpeaking(false); ctx.close() }
       source.start()
     } catch {
       // Fallback to browser TTS
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.rate = 0.95
       utterance.pitch = 1.0
-      utterance.onend = () => setIsSpeaking(false)
+      utterance.onend = () => setSpeaking(false)
       window.speechSynthesis.speak(utterance)
     }
-  }, [isSpeaking])
+  }, [])
 
   const stop = useCallback(() => {
     audioContextRef.current?.close()
     window.speechSynthesis.cancel()
-    setIsSpeaking(false)
+    setSpeaking(false)
   }, [])
 
   return { isSpeaking, speak, stop }

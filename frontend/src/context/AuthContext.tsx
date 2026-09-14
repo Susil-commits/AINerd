@@ -75,7 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveProfile({
           email: currentSession.user.email || '',
           name: currentSession.user.user_metadata?.name || (userMetaRole === 'parent' ? 'Parent' : 'Student'),
-          role: userMetaRole || 'student',
+          role: userMetaRole || role,
           lastActive: new Date().toISOString(),
           avatar: userMetaRole === 'parent' ? 'P' : 'S',
         })
@@ -123,9 +123,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveProfile({
           email: newSession.user.email || '',
           name: newSession.user.user_metadata?.name || (userMetaRole === 'parent' ? 'Parent' : 'Student'),
-          role: userMetaRole || 'student',
+          role: userMetaRole || role,
           lastActive: new Date().toISOString(),
-          avatar: userMetaRole === 'parent' ? 'P' : 'S',
+          avatar: (userMetaRole || role) === 'parent' ? 'P' : 'S',
         })
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
@@ -253,6 +253,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('veritas_demo_user')
     localStorage.removeItem('ainerd_demo_user')
     sessionStorage.removeItem('session')
+    // Clear remembered profile on explicit sign-out so landing page shows fresh sign-in
+    clearRememberedProfile()
   }
 
   return (

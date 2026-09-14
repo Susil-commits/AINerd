@@ -31,6 +31,10 @@ export default function TutorSession() {
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   const { isSpeaking, speak } = useTTS()
+  // Stabilize `speak` ref to prevent session init from re-running on every TTS state change
+  const speakRef = useRef(speak)
+  useEffect(() => { speakRef.current = speak }, [speak])
+  const stableSpeak = useCallback((text: string) => speakRef.current(text), [])
   const { isListening, interimText, startListening, stopListening, isSupported } = useSpeechInput(
     (text) => { setInput(text) }
   )
@@ -77,7 +81,7 @@ export default function TutorSession() {
                 { role: 'system', content: `Session started for ${s.student_name}`, timestamp: new Date() },
                 { role: 'tutor', content: s.welcome_message, timestamp: new Date() },
               ])
-              speak(s.welcome_message)
+              stableSpeak(s.welcome_message)
               return
             } else {
               // Mismatched or unauthenticated cached session token: purge to prevent token reuse
@@ -102,7 +106,7 @@ export default function TutorSession() {
               { role: 'system', content: `Session started for ${s.student_name}`, timestamp: new Date() },
               { role: 'tutor', content: s.welcome_message, timestamp: new Date() },
             ])
-            speak(s.welcome_message)
+            stableSpeak(s.welcome_message)
           })
           .catch((e) => {
             console.error('Could not auto-start session:', e)
@@ -121,7 +125,7 @@ export default function TutorSession() {
       console.error('initSession unexpected error:', e)
     })
     return () => { mounted = false }
-  }, [navigate, user, authLoading, speak, sessionRetryCount])
+  }, [navigate, user, authLoading, stableSpeak, sessionRetryCount])
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
@@ -153,7 +157,7 @@ export default function TutorSession() {
       (newMastery) => {
         if (newMastery && Object.keys(newMastery).length) setMasteryState(newMastery)
         setIsStreaming(false)
-        if (responseAcc) speak(responseAcc)
+        if (responseAcc) stableSpeak(responseAcc)
       },
       (_err) => {
         setIsStreaming(false)
@@ -165,7 +169,7 @@ export default function TutorSession() {
         })
       },
     )
-  }, [input, session, isStreaming, speak])
+  }, [input, session, isStreaming, stableSpeak])
 
   const handleRequestHint = useCallback(() => {
     if (!session || isStreaming) return
@@ -194,7 +198,7 @@ export default function TutorSession() {
       (newMastery) => {
         if (newMastery && Object.keys(newMastery).length) setMasteryState(newMastery)
         setIsStreaming(false)
-        if (responseAcc) speak(responseAcc)
+        if (responseAcc) stableSpeak(responseAcc)
       },
       (_err) => {
         setIsStreaming(false)
@@ -206,14 +210,14 @@ export default function TutorSession() {
         })
       },
     )
-  }, [session, isStreaming, speak])
+  }, [session, isStreaming, stableSpeak])
 
   const handleDiagnosis = (d: Diagnosis, mastery: Record<string, number>, next: Problem | null) => {
     setMasteryState(mastery)
     if (next) setCurrentProblem(next)
     const tutorMsg: Message = { role: 'tutor', content: d.corrective_question, timestamp: new Date() }
     setMessages(prev => [...prev, tutorMsg])
-    speak(d.corrective_question)
+    stableSpeak(d.corrective_question)
   }
 
   const masterySkills = Object.entries(masteryState).map(([skill_id, prob]) => ({
@@ -354,9 +358,9 @@ export default function TutorSession() {
                   <div className="tutor-avatar">AI</div>
                 )}
                 <div className="bubble-body">
-                  <p className="bubble-text">{msg.content || <span className="typing">…</span>}</p>
+                  <p className="bubble-text">{msg.content?.trim() ? msg.content : <span className="typing">…</span>}</p>
                   <span className="bubble-time">
-                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {(msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
               </div>

@@ -164,9 +164,11 @@ export default function ParentDashboard() {
       console.warn('Supabase realtime subscription failed:', err)
     }
 
-    // 2. High-frequency polling fallback (every 3 seconds) for live demo responsiveness
+    // 2. Polling fallback (every 3 seconds) — paused when tab is not visible
     const pollTimer = setInterval(() => {
-      refreshChildDetails(selectedChildId).catch(() => {})
+      if (!document.hidden) {
+        refreshChildDetails(selectedChildId).catch(() => {})
+      }
     }, 3000)
 
     return () => {
@@ -356,13 +358,8 @@ export default function ParentDashboard() {
                 <button
                   className="btn btn-amber alert-action-btn"
                   onClick={() => {
-                    sessionStorage.setItem(
-                      'session',
-                      JSON.stringify({
-                        student_id: selectedChild.student_id,
-                        student_name: selectedChild.student_name,
-                      })
-                    )
+                    // Open a student session in a new tab. TutorSession will initialize
+                    // a fresh session once the student (or parent on behalf) authenticates.
                     window.open('/student-session', '_blank')
                   }}
                 >

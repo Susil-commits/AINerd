@@ -264,7 +264,9 @@ export function streamDiagnosis(
 }
 
 export async function synthesizeSpeech(text: string): Promise<ArrayBuffer> {
-  const res = await fetch(`${BASE_URL}/tts?text=${encodeURIComponent(text)}`, {
+  const trimmed = text.trim().slice(0, 500) // match backend's ElevenLabs free tier limit
+  if (!trimmed) throw new Error('TTS: text cannot be empty')
+  const res = await fetch(`${BASE_URL}/tts?text=${encodeURIComponent(trimmed)}`, {
     method: 'POST',
     headers: getAuthHeaders(),
   })
