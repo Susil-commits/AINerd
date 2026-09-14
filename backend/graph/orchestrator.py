@@ -4,6 +4,7 @@ Routes between: Tutor Agent, Diagnostic Agent, Content Agent.
 """
 # pyright: reportMissingImports=false, reportMissingModuleSource=false
 import os
+import uuid
 import warnings
 warnings.filterwarnings("ignore", message=".*allowed_objects.*")
 from typing import TypedDict, Literal, Any
@@ -243,13 +244,29 @@ def _save_mastery(student_id: str, skill_id: str, mastery_prob: float):
 def _log_event(session_id, student_id, problem_id, attempt_text, is_correct, agent_response):
     try:
         supabase = get_supabase()
-        supabase.table("session_events").insert({
+        clean_prob_id = None
+        if problem_id:
+            try:
+                uuid.UUID(str(problem_id))
+                clean_prob_id = str(problem_id)
+            except (ValueError, AttributeError):
+                clean_prob_id = None
+
+        payload = {
             "session_id": session_id,
             "student_id": student_id,
-            "problem_id": problem_id,
+            "problem_id": clean_prob_id,
             "attempt_text": attempt_text,
             "is_correct": is_correct,
             "agent_response": agent_response,
-        }).execute()
+        }
+        try:
+            supabase.table("session_events").insert(payload).execute()
+        except Exception as insert_err:
+            if clean_prob_id is not None and ("foreign key" in str(insert_err).lower() or "fkey" in str(insert_err).lower()):
+                payload["problem_id"] = None
+                supabase.table("session_events").insert(payload).execute()
+            else:
+                raise insert_err
     except Exception as e:
         print(f"[WARN] Failed to log event: {e}")

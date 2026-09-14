@@ -35,7 +35,11 @@ export function getAuthHeaders(): Record<string, string> {
         const parts = session.session_token.split('.')
         if (parts.length === 2) {
           try {
-            const payloadJson = atob(parts[0].replace(/-/g, '+').replace(/_/g, '/'))
+            let b64 = parts[0].replace(/-/g, '+').replace(/_/g, '/')
+            while (b64.length % 4 !== 0) {
+              b64 += '='
+            }
+            const payloadJson = atob(b64)
             const payload = JSON.parse(payloadJson)
             if (payload.exp && payload.exp * 1000 >= Date.now()) {
               return {

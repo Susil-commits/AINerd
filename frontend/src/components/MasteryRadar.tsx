@@ -87,14 +87,14 @@ export default function MasteryRadar({ skills = [] }: Props) {
               <div className="mastery-bar-label">
                 <span>{s.name}</span>
                 <span className="mastery-pct" style={{ color: level.color }}>
-                  {Math.round(s.mastery_prob * 100)}%
+                  {Math.round((s.mastery_prob ?? 0) * 100)}%
                 </span>
               </div>
               <div className="mastery-bar-track">
                 <div
                   className="mastery-bar-fill"
                   style={{
-                    width: `${s.mastery_prob * 100}%`,
+                    width: `${Math.min(Math.max((s.mastery_prob ?? 0) * 100, 0), 100)}%`,
                     background: level.color,
                   }}
                 />

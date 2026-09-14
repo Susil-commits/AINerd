@@ -5,6 +5,7 @@ Picks the NEXT problem targeted at the student's diagnosed skill gap.
 # pyright: reportMissingImports=false
 import os
 import json
+import uuid
 from pathlib import Path
 from pydantic import SecretStr
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
@@ -97,7 +98,7 @@ def _load_local_problems() -> list[dict]:
             for i, p in enumerate(raw):
                 item = dict(p)
                 if not item.get("id"):
-                    item["id"] = f"seed_{i+1}_{item.get('skill_id', 'math')}"
+                    item["id"] = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"veritas.seed.{i+1}.{item.get('title', 'math')}"))
                 problems.append(item)
             _LOCAL_PROBLEMS_CACHE = problems
             return problems

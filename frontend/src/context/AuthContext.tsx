@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase, type UserRole } from '../lib/supabase'
+import { stopAllSpeech } from '../hooks/useVoice'
 
 export interface RememberedProfile {
   email: string
@@ -255,11 +256,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const signOut = async () => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel()
-      } catch {}
-    }
+    stopAllSpeech()
     try {
       await supabase.auth.signOut()
     } catch {}

@@ -140,8 +140,17 @@ export default function Dashboard() {
           <h3 style={{ margin: 0, fontSize: '1.3rem', color: '#F87171' }}>Access Restricted</h3>
           <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{authDenied}</p>
           <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button className="btn btn-primary" onClick={() => navigate('/session')}>
-              Go to My Practice
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                if (role === 'parent') {
+                  navigate('/parent-dashboard')
+                } else {
+                  navigate('/student-session')
+                }
+              }}
+            >
+              {role === 'parent' ? 'Go to Parent Portal' : 'Go to My Practice'}
             </button>
             <button className="btn btn-ghost" onClick={() => navigate('/')}>
               Return Home

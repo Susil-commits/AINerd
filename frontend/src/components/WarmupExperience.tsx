@@ -1,5 +1,5 @@
 // WarmupExperience.tsx — Engaging role-based mini-games & holding experience for cold-starts
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import './WarmupExperience.css'
 
 export interface WarmupExperienceProps {
@@ -130,6 +130,16 @@ export default function WarmupExperience({
   const [isFinished, setIsFinished] = useState(false)
   const [userChoseToFinish, setUserChoseToFinish] = useState(false)
   const [factIndex, setFactIndex] = useState(0)
+  const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Clear pending timers on unmount
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimerRef.current) {
+        clearTimeout(autoAdvanceTimerRef.current)
+      }
+    }
+  }, [])
 
   // Rotating facts ticker
   useEffect(() => {
@@ -148,9 +158,8 @@ export default function WarmupExperience({
     setSelectedOpt(optionIdx)
     setIsAnswered(true)
 
-    const isCorrect = role === 'student'
-      ? optionIdx === studentQuestions[currentIdx].correctIndex
-      : optionIdx === parentQuestions[currentIdx].correctIndex
+    const currentQ = role === 'student' ? studentQuestions[currentIdx] : parentQuestions[currentIdx]
+    const isCorrect = currentQ ? optionIdx === currentQ.correctIndex : false
 
     if (isCorrect) {
       setScore(prev => prev + 1)
@@ -158,7 +167,10 @@ export default function WarmupExperience({
 
     // Auto-advance after brief visual feedback
     const delay = role === 'student' ? 600 : 1800 // Give parents time to read the explanation
-    setTimeout(() => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current)
+    }
+    autoAdvanceTimerRef.current = setTimeout(() => {
       if (currentIdx + 1 < totalQuestions) {
         setCurrentIdx(prev => prev + 1)
         setSelectedOpt(null)
@@ -174,7 +186,17 @@ export default function WarmupExperience({
     }, delay)
   }, [isAnswered, role, studentQuestions, parentQuestions, currentIdx, totalQuestions, isReady, score, onComplete])
 
+  const handleDismiss = useCallback(() => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current)
+    }
+    onDismiss()
+  }, [onDismiss])
+
   const handleSkipNow = () => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current)
+    }
     onComplete({ score, total: currentIdx + (isAnswered ? 1 : 0) || totalQuestions })
   }
 
@@ -193,7 +215,7 @@ export default function WarmupExperience({
           <button
             type="button"
             className="warmup-close-btn"
-            onClick={onDismiss}
+            onClick={handleDismiss}
             title="Close warmup"
           >
             ✕

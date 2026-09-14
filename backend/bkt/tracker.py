@@ -12,9 +12,13 @@ _SKILL_PARAMS: dict[str, dict] = {}
 
 def _load_params():
     global _SKILL_PARAMS
-    with open(_PARAMS_PATH) as f:
-        data = json.load(f)
-    _SKILL_PARAMS = {s["id"]: s for s in data["skills"]}
+    try:
+        if _PARAMS_PATH.exists():
+            with open(_PARAMS_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            _SKILL_PARAMS = {s["id"]: s for s in data.get("skills", [])}
+    except Exception as e:
+        print(f"[WARN] Failed to load BKT parameters: {e}")
 
 _load_params()
 
@@ -74,8 +78,9 @@ def get_next_skill(mastery_state: dict[str, float]) -> str:
     respecting the curriculum sequence order.
     Falls back to the first skill if all are mastered.
     """
-    # Sort skills by sequence_order
-    ordered = sorted(_SKILL_PARAMS.values(), key=lambda s: s["sequence_order"])
+    ordered = sorted(_SKILL_PARAMS.values(), key=lambda s: s.get("sequence_order", 0))
+    if not ordered:
+        return "3.OA.A.1"
 
     for skill in ordered:
         skill_id = skill["id"]
@@ -91,7 +96,9 @@ def get_next_skill(mastery_state: dict[str, float]) -> str:
 
 def initialize_mastery() -> dict[str, float]:
     """Return a fresh mastery state using each skill's prior probability."""
+    if not _SKILL_PARAMS:
+        return {"3.OA.A.1": 0.3}
     return {
-        skill_id: params["prior"]
+        skill_id: float(params.get("prior", 0.3))
         for skill_id, params in _SKILL_PARAMS.items()
     }

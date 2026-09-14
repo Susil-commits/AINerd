@@ -132,11 +132,32 @@ export function cleanTextForSpeech(raw: string): string {
 // Cache cloud TTS quota state in memory and sessionStorage to prevent spamming failed 402 requests
 let cloudTtsExhausted = typeof window !== 'undefined' && sessionStorage.getItem('veritas_cloud_tts_disabled') === 'true'
 
+// Global registry for currently playing AudioContext to ensure immediate cancellation on logout or route changes
+let activeAudioContext: AudioContext | null = null
+let globalSpeechGeneration = 0
+
+export function stopAllSpeech() {
+  globalSpeechGeneration += 1
+  try {
+    if (activeAudioContext && activeAudioContext.state !== 'closed') {
+      activeAudioContext.close()
+    }
+  } catch {}
+  activeAudioContext = null
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+      window.speechSynthesis.cancel()
+    } catch {}
+  }
+}
+
 // ElevenLabs TTS hook (via backend proxy) with seamless browser fallback
 export function useTTS() {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const audioContextRef = useRef<AudioContext | null>(null)
   const isSpeakingRef = useRef(false)
+  const currentTokenRef = useRef(0)
+  const isMountedRef = useRef(true)
 
   // Keep ref in sync with state so callbacks always read current value
   const setSpeaking = useCallback((val: boolean) => {
@@ -145,9 +166,18 @@ export function useTTS() {
   }, [])
 
   const stop = useCallback(() => {
+    currentTokenRef.current += 1
     try {
-      audioContextRef.current?.close()
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close()
+      }
       audioContextRef.current = null
+    } catch {}
+    try {
+      if (activeAudioContext && activeAudioContext.state !== 'closed') {
+        activeAudioContext.close()
+      }
+      activeAudioContext = null
     } catch {}
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
@@ -157,9 +187,12 @@ export function useTTS() {
     setSpeaking(false)
   }, [setSpeaking])
 
-  // Stop any ongoing speech when the component unmounts (e.g. sign out, navigation)
+  // Stop any ongoing speech and invalidate tokens when the component unmounts
   useEffect(() => {
+    isMountedRef.current = true
     return () => {
+      isMountedRef.current = false
+      currentTokenRef.current += 1
       stop()
     }
   }, [stop])
@@ -171,26 +204,46 @@ export function useTTS() {
 
     // Cancel any previous speech before starting a new one (prevents audio queue pile-up)
     stop()
+    const token = ++currentTokenRef.current
+    const localGen = globalSpeechGeneration
     setSpeaking(true)
 
     // 1. Try ElevenLabs cloud TTS only if quota hasn't previously failed with 402/401/503
     if (!cloudTtsExhausted) {
       try {
         const buffer = await synthesizeSpeech(speechText)
+        if (currentTokenRef.current !== token || !isMountedRef.current || localGen !== globalSpeechGeneration) {
+          return
+        }
         const ctx = new AudioContext()
         audioContextRef.current = ctx
+        activeAudioContext = ctx
         const decoded = await ctx.decodeAudioData(buffer)
+        if (currentTokenRef.current !== token || !isMountedRef.current || localGen !== globalSpeechGeneration) {
+          try { ctx.close() } catch {}
+          return
+        }
         const source = ctx.createBufferSource()
         source.buffer = decoded
         source.connect(ctx.destination)
         source.onended = () => {
-          setSpeaking(false)
-          try { ctx.close() } catch {}
-          audioContextRef.current = null
+          if (currentTokenRef.current === token) {
+            setSpeaking(false)
+            try { ctx.close() } catch {}
+            if (audioContextRef.current === ctx) {
+              audioContextRef.current = null
+            }
+            if (activeAudioContext === ctx) {
+              activeAudioContext = null
+            }
+          }
         }
         source.start()
         return
       } catch (err: any) {
+        if (currentTokenRef.current !== token || !isMountedRef.current || localGen !== globalSpeechGeneration) {
+          return
+        }
         // If error is 402 Payment Required (ElevenLabs quota exhausted) or similar, remember it
         const errMsg = String(err?.message || err)
         if (errMsg.includes('402') || errMsg.includes('401') || errMsg.includes('503')) {
@@ -200,6 +253,10 @@ export function useTTS() {
           } catch {}
         }
       }
+    }
+
+    if (currentTokenRef.current !== token || !isMountedRef.current || localGen !== globalSpeechGeneration) {
+      return
     }
 
     // 2. Clean browser TTS fallback
@@ -216,14 +273,26 @@ export function useTTS() {
           utterance.voice = naturalVoice
         }
 
-        utterance.onend = () => setSpeaking(false)
-        utterance.onerror = () => setSpeaking(false)
+        utterance.onend = () => {
+          if (currentTokenRef.current === token) {
+            setSpeaking(false)
+          }
+        }
+        utterance.onerror = () => {
+          if (currentTokenRef.current === token) {
+            setSpeaking(false)
+          }
+        }
         window.speechSynthesis.speak(utterance)
       } catch {
-        setSpeaking(false)
+        if (currentTokenRef.current === token) {
+          setSpeaking(false)
+        }
       }
     } else {
-      setSpeaking(false)
+      if (currentTokenRef.current === token) {
+        setSpeaking(false)
+      }
     }
   }, [setSpeaking, stop])
 
