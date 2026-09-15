@@ -809,10 +809,6 @@ export default function Landing() {
             <ThemeToggle />
             {user && (
               <div className="navbar-user-group">
-                <span className="navbar-user-chip" title={user.email || ''}>
-                  <span className="user-dot" />
-                  {user.email?.split('@')[0] || (role === 'parent' ? 'Parent' : 'Student')}
-                </span>
                 <button
                   type="button"
                   className="btn btn-sm btn-violet"
