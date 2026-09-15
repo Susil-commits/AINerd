@@ -150,10 +150,14 @@ def test_parent_data_deletion_endpoint():
     supabase = get_supabase()
     from fastapi.testclient import TestClient
     from main import app
+    from auth import create_session_token
 
     client = TestClient(app)
     test_parent_id = str(uuid.uuid4())
     test_child_id = str(uuid.uuid4())
+
+    parent_token = create_session_token(test_parent_id, "parent-del-sess", "Parent Del", role="parent")
+    parent_headers = {"Authorization": f"Bearer {parent_token}"}
 
     # Seed temporary child record and mastery record
     supabase.table("children").insert({
@@ -171,7 +175,12 @@ def test_parent_data_deletion_endpoint():
     except Exception:
         pass
 
-    del_resp = client.delete(f"/parent/{test_parent_id}/data")
+    # Unauthenticated deletion must be rejected (401)
+    unauth_del = client.delete(f"/parent/{test_parent_id}/data")
+    assert unauth_del.status_code == 401, f"Expected 401 for unauthenticated deletion, got {unauth_del.status_code}"
+
+    # Authenticated deletion succeeds (200)
+    del_resp = client.delete(f"/parent/{test_parent_id}/data", headers=parent_headers)
     assert del_resp.status_code == 200
     del_data = del_resp.json()
     assert del_data["status"] == "ok"

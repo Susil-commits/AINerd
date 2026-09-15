@@ -22,6 +22,7 @@ if sys.platform == "win32":
 
 from starlette.testclient import TestClient
 from main import app
+from auth import create_session_token
 
 client = TestClient(app)
 
@@ -32,6 +33,10 @@ def test_full_parent_child_flow():
     test_student_id = str(uuid.uuid4())
     test_child_email = f"student_{test_student_id[:8]}@veritas.dev"
     test_child_name = "Alex TestChild"
+
+    # Create parent token with role="parent"
+    parent_token = create_session_token(test_parent_id, "parent-session-1", "Sarah Parent", role="parent")
+    parent_headers = {"Authorization": f"Bearer {parent_token}"}
 
     # 1. Test Starting Student Session with explicit auth.user.id
     print("\n[TEST 1] Testing /session/start with explicit auth.user.id...")
@@ -49,15 +54,34 @@ def test_full_parent_child_flow():
     assert "mastery_state" in session_data
     print(f"   ✓ Session started successfully for student {test_student_id}")
 
-    # 2. Test Linking Child to Parent
+    # 2. Test Linking Child to Parent (With IDOR & Auth Verification)
     print("\n[TEST 2] Testing /parent/add-child...")
     add_payload = {
         "parent_id": test_parent_id,
         "parent_email": "parent.test@veritas.dev",
         "child_email": test_child_email,
         "child_name": test_child_name,
+        "student_id": test_student_id,
     }
-    resp = client.post("/parent/add-child", json=add_payload)
+
+    # 2a. Unauthenticated attempt must be rejected (401)
+    unauth_resp = client.post("/parent/add-child", json=add_payload)
+    assert unauth_resp.status_code == 401, f"Expected 401 for unauthenticated add-child, got {unauth_resp.status_code}"
+    print("   ✓ Unauthenticated add-child attempt correctly rejected with HTTP 401")
+
+    # 2b. Mismatched parent token (IDOR) must be rejected (403)
+    attacker_parent_id = str(uuid.uuid4())
+    attacker_token = create_session_token(attacker_parent_id, "attacker-session", "Attacker", role="parent")
+    idor_resp = client.post(
+        "/parent/add-child",
+        json=add_payload,
+        headers={"Authorization": f"Bearer {attacker_token}"},
+    )
+    assert idor_resp.status_code == 403, f"Expected 403 for IDOR add-child, got {idor_resp.status_code}"
+    print("   ✓ IDOR add-child attempt by mismatched parent correctly blocked with HTTP 403")
+
+    # 2c. Valid authenticated parent adds child
+    resp = client.post("/parent/add-child", json=add_payload, headers=parent_headers)
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
     add_data = resp.json()
     assert add_data["status"] == "ok"
@@ -66,7 +90,13 @@ def test_full_parent_child_flow():
 
     # 3. Test Getting Children List for Parent
     print("\n[TEST 3] Testing /parent/{parent_id}/children...")
-    resp = client.get(f"/parent/{test_parent_id}/children")
+    # 3a. Unauthenticated access blocked (401)
+    unauth_list = client.get(f"/parent/{test_parent_id}/children")
+    assert unauth_list.status_code == 401, f"Expected 401 for unauthenticated children list, got {unauth_list.status_code}"
+    print("   ✓ Unauthenticated parent children query correctly rejected with HTTP 401")
+
+    # 3b. Authenticated access allowed
+    resp = client.get(f"/parent/{test_parent_id}/children", headers=parent_headers)
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
     children_data = resp.json()
     assert "children" in children_data
@@ -79,10 +109,18 @@ def test_full_parent_child_flow():
 
     # 4. Test Getting Child Details & Real-Time Mastery Radar Data
     print("\n[TEST 4] Testing /parent/{parent_id}/child/{child_id}/details...")
-    resp = client.get(f"/parent/{test_parent_id}/child/{test_student_id}/details")
+    # 4a. Unlinked child must be rejected (403)
+    unlinked_student_id = str(uuid.uuid4())
+    unlinked_resp = client.get(f"/parent/{test_parent_id}/child/{unlinked_student_id}/details", headers=parent_headers)
+    assert unlinked_resp.status_code == 403, f"Expected 403 for unlinked child details, got {unlinked_resp.status_code}"
+    print("   ✓ Unlinked child details query correctly blocked with HTTP 403")
+
+    # 4b. Linked child access allowed
+    linked_student_id = child["student_id"]
+    resp = client.get(f"/parent/{test_parent_id}/child/{linked_student_id}/details", headers=parent_headers)
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
     details = resp.json()
-    assert details["student_id"] == test_student_id
+    assert details["student_id"] == linked_student_id
     assert "mastery" in details
     assert "all_skills" in details
     assert "sessions" in details
@@ -90,7 +128,8 @@ def test_full_parent_child_flow():
 
     # 5. Test Demo Parent Default
     print("\n[TEST 5] Testing demo parent fallback...")
-    resp = client.get("/parent/99999999-8888-7777-6666-555555555555/children")
+    demo_headers = {"Authorization": "Bearer demo_parent_99999999-8888-7777-6666-555555555555"}
+    resp = client.get("/parent/99999999-8888-7777-6666-555555555555/children", headers=demo_headers)
     assert resp.status_code == 200
     demo_children = resp.json()["children"]
     assert len(demo_children) >= 1

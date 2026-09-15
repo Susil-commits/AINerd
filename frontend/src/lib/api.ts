@@ -6,6 +6,16 @@ export const BASE_URL = rawUrl.replace(/\/+$/, '')
 
 export const api = axios.create({ baseURL: BASE_URL })
 
+api.interceptors.request.use((config) => {
+  const authHeaders = getAuthHeaders()
+  for (const [key, value] of Object.entries(authHeaders)) {
+    if (!config.headers.has(key)) {
+      config.headers.set(key, value)
+    }
+  }
+  return config
+})
+
 export interface Problem {
   id: string
   title: string
@@ -26,32 +36,36 @@ export interface SessionData {
 }
 
 export function getAuthHeaders(): Record<string, string> {
-  // 1. Prioritize active practice session token
-  try {
-    const raw = sessionStorage.getItem('session')
-    if (raw) {
-      const session = JSON.parse(raw)
-      if (session.session_token && typeof session.session_token === 'string') {
-        const parts = session.session_token.split('.')
-        if (parts.length === 2) {
-          try {
-            let b64 = parts[0].replace(/-/g, '+').replace(/_/g, '/')
-            while (b64.length % 4 !== 0) {
-              b64 += '='
-            }
-            const payloadJson = atob(b64)
-            const payload = JSON.parse(payloadJson)
-            if (payload.exp && payload.exp * 1000 >= Date.now()) {
-              return {
-                'Authorization': `Bearer ${session.session_token}`,
-                'X-Session-Token': session.session_token,
+  const currentRole = localStorage.getItem('veritas_user_role') || localStorage.getItem('ainerd_user_role')
+
+  // 1. Prioritize active student practice session token ONLY when role is not explicitly parent
+  if (currentRole !== 'parent') {
+    try {
+      const raw = sessionStorage.getItem('session')
+      if (raw) {
+        const session = JSON.parse(raw)
+        if (session.session_token && typeof session.session_token === 'string') {
+          const parts = session.session_token.split('.')
+          if (parts.length === 2) {
+            try {
+              let b64 = parts[0].replace(/-/g, '+').replace(/_/g, '/')
+              while (b64.length % 4 !== 0) {
+                b64 += '='
               }
-            }
-          } catch {}
+              const payloadJson = atob(b64)
+              const payload = JSON.parse(payloadJson)
+              if (payload.exp && payload.exp * 1000 >= Date.now()) {
+                return {
+                  'Authorization': `Bearer ${session.session_token}`,
+                  'X-Session-Token': session.session_token,
+                }
+              }
+            } catch {}
+          }
         }
       }
-    }
-  } catch {}
+    } catch {}
+  }
 
   // 2. Check localStorage for Supabase authenticated session token
   try {
@@ -84,6 +98,7 @@ export function getAuthHeaders(): Record<string, string> {
           return {
             'X-Parent-Id': parsed.id,
             'Authorization': `Bearer demo_parent_${parsed.id}`,
+            'X-Session-Token': `demo_parent_${parsed.id}`,
           }
         }
         return {
@@ -173,7 +188,9 @@ export interface ChildItem {
 }
 
 export async function getParentChildren(parentId: string): Promise<{ children: ChildItem[] }> {
-  const { data } = await api.get(`/parent/${parentId}/children`)
+  const { data } = await api.get(`/parent/${parentId}/children`, {
+    headers: getAuthHeaders(),
+  })
   return data
 }
 
@@ -183,17 +200,25 @@ export async function addChild(
   childName?: string,
   parentEmail?: string,
 ): Promise<{ status: string; child: { student_id: string; student_name: string; student_email: string } }> {
-  const { data } = await api.post('/parent/add-child', {
-    parent_id: parentId,
-    child_email: childEmail,
-    child_name: childName,
-    parent_email: parentEmail,
-  })
+  const { data } = await api.post(
+    '/parent/add-child',
+    {
+      parent_id: parentId,
+      child_email: childEmail,
+      child_name: childName,
+      parent_email: parentEmail,
+    },
+    {
+      headers: getAuthHeaders(),
+    },
+  )
   return data
 }
 
 export async function getChildDetails(parentId: string, childId: string) {
-  const { data } = await api.get(`/parent/${parentId}/child/${childId}/details`)
+  const { data } = await api.get(`/parent/${parentId}/child/${childId}/details`, {
+    headers: getAuthHeaders(),
+  })
   return data
 }
 
@@ -206,7 +231,9 @@ export async function deleteParentData(parentId: string): Promise<{
     events_deleted: number
   }
 }> {
-  const { data } = await api.delete(`/parent/${parentId}/data`)
+  const { data } = await api.delete(`/parent/${parentId}/data`, {
+    headers: getAuthHeaders(),
+  })
   return data
 }
 

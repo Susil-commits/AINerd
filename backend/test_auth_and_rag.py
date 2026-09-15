@@ -20,7 +20,13 @@ if sys.platform == "win32":
         pass
 
 from fastapi import HTTPException
-from auth import create_session_token, verify_session_token, verify_student_access
+from auth import (
+    create_session_token,
+    verify_session_token,
+    verify_student_access,
+    verify_parent_access,
+    verify_parent_caller,
+)
 from rate_limiter import RateLimiter
 from agents.content_agent import get_next_problem
 
@@ -101,7 +107,66 @@ async def test_student_scoping():
     assert auth_result["sub"] == alice_id
     print("   ✓ Authorized student granted access with matching token")
 
+    # 4. Spoofed unauthenticated X-Parent-Id header must NOT grant access without token (bypass fix)
+    try:
+        await verify_student_access(
+            student_id=bob_id,
+            authorization=None,
+            x_session_token=None,
+            x_parent_id="random-parent-id",
+        )
+        assert False, "Spoofed X-Parent-Id without token must raise 401"
+    except HTTPException as e:
+        assert e.status_code == 401
+        print("   ✓ Spoofed X-Parent-Id header rejected with HTTP 401 (header bypass successfully closed)")
+
     print("✅ [TEST 2 PASSED] Student scoping verification complete!\n")
+
+
+async def test_parent_scoping():
+    print("👨‍👩‍👧 [TEST 2B] Testing Parent Scoping, Role Checks & IDOR Protection...")
+    parent_a = "parent-uuid-0001"
+    parent_b = "parent-uuid-0002"
+
+    parent_a_token = create_session_token(parent_a, "sess-pa", "Sarah Parent", role="parent")
+    student_token = create_session_token("student-0001", "sess-st", "Sam Student", role="student")
+
+    # 1. Missing token raises 401
+    try:
+        await verify_parent_access(parent_id=parent_a, authorization=None)
+        assert False, "Missing token must raise 401"
+    except HTTPException as e:
+        assert e.status_code == 401
+        print("   ✓ Missing token on parent endpoint raises HTTP 401")
+
+    # 2. Student role attempting parent endpoint raises 403
+    try:
+        await verify_parent_access(parent_id=parent_a, authorization=f"Bearer {student_token}")
+        assert False, "Student token must raise 403 on parent endpoint"
+    except HTTPException as e:
+        assert e.status_code == 403
+        print("   ✓ Student role attempting parent route blocked with HTTP 403")
+
+    # 3. Parent ID mismatch (Parent A accessing Parent B data) raises 403
+    try:
+        await verify_parent_access(parent_id=parent_b, authorization=f"Bearer {parent_a_token}")
+        assert False, "Mismatched parent must raise 403"
+    except HTTPException as e:
+        assert e.status_code == 403
+        print("   ✓ Mismatched parent ID blocked with HTTP 403 (Parent B data protected from Parent A)")
+
+    # 4. Correct parent gets access
+    payload = await verify_parent_access(parent_id=parent_a, authorization=f"Bearer {parent_a_token}")
+    assert payload["sub"] == parent_a
+    assert payload["role"] == "parent"
+    print("   ✓ Authorized parent granted access with matching token")
+
+    # 5. verify_parent_caller dependency
+    caller_payload = await verify_parent_caller(authorization=f"Bearer {parent_a_token}")
+    assert caller_payload["sub"] == parent_a
+    print("   ✓ verify_parent_caller successfully authenticates valid parent")
+
+    print("✅ [TEST 2B PASSED] Parent scoping verification complete!\n")
 
 
 def test_rate_limiter():
@@ -164,6 +229,7 @@ if __name__ == "__main__":
     import asyncio
     test_token_lifecycle()
     asyncio.run(test_student_scoping())
+    asyncio.run(test_parent_scoping())
     test_rate_limiter()
     test_content_agent_rag()
     print("🎉 All test suites passed!")

@@ -33,7 +33,7 @@ BACKEND_DIR = Path(__file__).resolve().parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Header, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Header, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import StreamingResponse, Response
@@ -56,6 +56,8 @@ from db.supabase_client import get_supabase
 from auth import (
     create_session_token,
     verify_student_access,
+    verify_parent_access,
+    verify_parent_caller,
     verify_session_token,
     is_session_secret_configured,
 )
@@ -162,7 +164,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"^https://.*\.vercel\.app$",
+    allow_origin_regex=r"^https://veritas-tutor(-[a-z0-9-]+)?\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -216,6 +218,7 @@ class AddChildRequest(BaseModel):
     parent_email: str | None = None
     child_email: str
     child_name: str | None = None
+    student_id: str | None = None
 
 
 class MessageRequest(BaseModel):
@@ -962,9 +965,21 @@ def _sync_purge_fallback_file(parent_id: str):
 
 
 @app.post("/parent/add-child")
-async def add_child(req: AddChildRequest):
+async def add_child(
+    req: AddChildRequest,
+    auth: dict = Depends(verify_parent_caller),
+):
     """Link a child by email to a parent in the children table."""
-    # 0. Safety Guardrails & Validation
+    # 0. Authorization & Tenant Isolation check
+    caller_id = auth.get("sub")
+    DEMO_PARENT = "99999999-8888-7777-6666-555555555555"
+    if caller_id != req.parent_id and not (req.parent_id == DEMO_PARENT and (caller_id == DEMO_PARENT or caller_id == "demo_parent")):
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: you cannot link children to another parent's account.",
+        )
+
+    # 1. Safety Guardrails & Validation
     try:
         uuid.UUID(req.parent_id)
     except (ValueError, AttributeError):
@@ -981,22 +996,37 @@ async def add_child(req: AddChildRequest):
     limiter.enforce_cooldown(f"parent_add_{req.parent_id}", cooldown_seconds=0.5, action="add child", max_per_minute=20)
 
     supabase = get_supabase()
-    student_id = None
+    student_id = req.student_id
     student_name = req.child_name or email_clean.split("@")[0].capitalize()
 
     # 1. First search in students table (fast indexed lookup)
-    try:
-        found = await db_exec(
-            supabase.table("students")
-            .select("*")
-            .eq("email", email_clean)
-            .limit(1)
-        )
-        if found.data:
-            student_id = found.data[0]["id"]
-            student_name = found.data[0].get("name") or student_name
-    except Exception as e:
-        print(f"[DEBUG] Search students table: {e}")
+    if not student_id:
+        try:
+            found = await db_exec(
+                supabase.table("students")
+                .select("*")
+                .eq("email", email_clean)
+                .limit(1)
+            )
+            if found.data:
+                student_id = found.data[0]["id"]
+                student_name = found.data[0].get("name") or student_name
+        except Exception as e:
+            print(f"[DEBUG] Search students table: {e}")
+
+    # Fallback search by student name if provided
+    if not student_id and req.child_name:
+        try:
+            found_name = await db_exec(
+                supabase.table("students")
+                .select("id, name")
+                .eq("name", req.child_name)
+                .limit(1)
+            )
+            if found_name.data:
+                student_id = found_name.data[0]["id"]
+        except Exception:
+            pass
 
     # 2. If not found in students table, fallback to search in Supabase Auth users
     if not student_id:
@@ -1071,7 +1101,10 @@ async def add_child(req: AddChildRequest):
 
 
 @app.get("/parent/{parent_id}/children")
-async def get_parent_children(parent_id: str):
+async def get_parent_children(
+    parent_id: str,
+    auth: dict = Depends(verify_parent_access),
+):
     """List all children linked to parent, including mastery overview and practice recency."""
     supabase = get_supabase()
     children_map: dict[str, dict] = {}
@@ -1183,9 +1216,44 @@ async def get_parent_children(parent_id: str):
 
 
 @app.get("/parent/{parent_id}/child/{child_id}/details")
-async def get_child_details(parent_id: str, child_id: str):
+async def get_child_details(
+    parent_id: str,
+    child_id: str,
+    auth: dict = Depends(verify_parent_access),
+):
     """Return full mastery state and practice history for a child."""
     supabase = get_supabase()
+
+    # Verify child linkage to parent (Tenant & IDOR protection)
+    DEMO_PARENT = "99999999-8888-7777-6666-555555555555"
+    DEMO_STUDENT = "24e836e3-3b42-41a0-8a27-222f883eaa10"
+    is_linked = False
+    if parent_id == DEMO_PARENT and child_id == DEMO_STUDENT:
+        is_linked = True
+    else:
+        try:
+            check = await db_exec(
+                supabase.table("children")
+                .select("student_id")
+                .eq("parent_id", parent_id)
+                .eq("student_id", child_id)
+                .limit(1)
+            )
+            if check.data and len(check.data) > 0:
+                is_linked = True
+        except Exception:
+            pass
+
+        if not is_linked:
+            fallback_kids = await asyncio.to_thread(_get_fallback_children, parent_id)
+            if any(c.get("student_id") == child_id for c in fallback_kids):
+                is_linked = True
+
+    if not is_linked:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: student is not linked to this parent account",
+        )
 
     # Mastery
     mastery_rows = await db_exec(
@@ -1223,7 +1291,10 @@ async def get_child_details(parent_id: str, child_id: str):
 
 
 @app.delete("/parent/{parent_id}/data")
-async def delete_parent_data(parent_id: str):
+async def delete_parent_data(
+    parent_id: str,
+    auth: dict = Depends(verify_parent_access),
+):
     """
     Data Privacy & Deletion (Trust & GDPR/EdTech signal):
     Purge all session logs, events, and linked child records for this parent.

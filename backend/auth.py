@@ -10,7 +10,7 @@ import json
 import base64
 import time
 import secrets
-from typing import Optional
+from typing import Optional, Any
 from fastapi import Header, HTTPException, status
 from pathlib import Path
 from dotenv import load_dotenv
@@ -111,9 +111,14 @@ def verify_session_token(token: str) -> dict:
     # Support demo tokens
     if token.startswith("demo_"):
         sub_id = token[5:]
-        is_parent = "parent" in sub_id.lower()
+        is_parent = "parent" in sub_id.lower() or sub_id == "99999999-8888-7777-6666-555555555555"
+        clean_sub = sub_id
+        if sub_id.startswith("parent_"):
+            clean_sub = sub_id[7:]
+        if is_parent and (not clean_sub or clean_sub == "parent"):
+            clean_sub = "99999999-8888-7777-6666-555555555555"
         return {
-            "sub": sub_id if not is_parent else "99999999-8888-7777-6666-555555555555",
+            "sub": clean_sub,
             "role": "parent" if is_parent else "student",
             "name": "Demo Parent" if is_parent else "Demo Student",
             "exp": int(time.time()) + 86400 * 30,
@@ -130,8 +135,31 @@ def verify_session_token(token: str) -> dict:
 
     # Support 3-part Supabase Auth JWT tokens
     if len(parts) == 3:
+        header_b64, payload_b64, sig_b64 = parts
+        jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
+        if jwt_secret:
+            expected_sig = hmac.new(
+                jwt_secret.encode("utf-8"),
+                f"{header_b64}.{payload_b64}".encode("ascii"),
+                hashlib.sha256,
+            ).digest()
+            try:
+                provided_sig = _b64url_decode(sig_b64)
+            except Exception:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token signature encoding",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            if not hmac.compare_digest(expected_sig, provided_sig):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="JWT token signature verification failed",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
         try:
-            payload_bytes = _b64url_decode(parts[1])
+            payload_bytes = _b64url_decode(payload_b64)
             payload = json.loads(payload_bytes.decode("utf-8"))
             if payload.get("exp", 0) < time.time():
                 raise HTTPException(
@@ -209,6 +237,18 @@ def verify_session_token(token: str) -> dict:
     return payload
 
 
+def _extract_token(authorization: Any = None, x_session_token: Any = None) -> Optional[str]:
+    if isinstance(authorization, str) and authorization.strip():
+        parts = authorization.strip().split()
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            return parts[1]
+        elif len(parts) == 1:
+            return parts[0]
+    if isinstance(x_session_token, str) and x_session_token.strip():
+        return x_session_token.strip()
+    return None
+
+
 async def verify_student_access(
     student_id: str,
     authorization: Optional[str] = Header(None),
@@ -219,21 +259,9 @@ async def verify_student_access(
     FastAPI dependency to secure student data routes.
     Allows access if:
     1. Scoped session token matches student_id
-    2. Request is made by an authorized parent (X-Parent-Id)
-    3. Running in development/demo mode with non-empty student_id
+    2. Request is made by an authenticated, verified parent linked to the student
     """
-    token = None
-    if authorization:
-        parts = authorization.strip().split()
-        if len(parts) == 2 and parts[0].lower() == "bearer":
-            token = parts[1]
-        elif len(parts) == 1:
-            token = parts[0]
-    elif x_session_token:
-        token = x_session_token.strip()
-
-    if x_parent_id and isinstance(x_parent_id, str):
-        return {"sub": student_id, "role": "parent", "parent_id": x_parent_id}
+    token = _extract_token(authorization, x_session_token)
 
     if not token:
         raise HTTPException(
@@ -243,11 +271,109 @@ async def verify_student_access(
         )
 
     payload = verify_session_token(token)
+    caller_sub = payload.get("sub")
+    caller_role = payload.get("role", "student")
 
-    if payload.get("sub") != student_id and payload.get("role") != "parent":
+    if caller_sub == student_id:
+        return payload
+
+    if caller_role == "parent":
+        DEMO_PARENT = "99999999-8888-7777-6666-555555555555"
+        DEMO_STUDENT = "24e836e3-3b42-41a0-8a27-222f883eaa10"
+        if caller_sub == DEMO_PARENT and student_id == DEMO_STUDENT:
+            return payload
+
+        # Check database link
+        try:
+            import asyncio
+            from db.supabase_client import get_supabase
+            supabase = get_supabase()
+            res = await asyncio.to_thread(
+                lambda: supabase.table("children")
+                .select("student_id")
+                .eq("parent_id", caller_sub)
+                .eq("student_id", student_id)
+                .limit(1)
+                .execute()
+            )
+            if res.data and len(res.data) > 0:
+                return payload
+        except Exception:
+            pass
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=f"Access denied: this session token belongs to {caller_sub}, not authorized for student {student_id}",
+    )
+
+
+async def verify_parent_access(
+    parent_id: str,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+) -> dict:
+    """
+    FastAPI dependency to secure parent data routes.
+    Guarantees:
+    1. Caller provides a valid, unexpired token.
+    2. Caller ID matches parent_id (or caller is authorized demo parent).
+    3. Caller role is 'parent'.
+    """
+    token = _extract_token(authorization, x_session_token)
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required: missing token in Authorization or X-Session-Token header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = verify_session_token(token)
+    caller_id = payload.get("sub")
+    caller_role = payload.get("role", "student")
+
+    DEMO_PARENT = "99999999-8888-7777-6666-555555555555"
+    if parent_id == DEMO_PARENT and (caller_id == DEMO_PARENT or caller_id == "demo_parent"):
+        return payload
+
+    if caller_id != parent_id or caller_role != "parent":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Access denied: this session token belongs to student {payload.get('sub')}, not {student_id}",
+            detail=f"Access denied: you do not have permission to manage parent account {parent_id}",
+        )
+
+    return payload
+
+
+async def verify_parent_caller(
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+) -> dict:
+    """
+    FastAPI dependency to authenticate parent for requests where parent_id is passed
+    in request body (e.g. POST /parent/add-child).
+    """
+    token = _extract_token(authorization, x_session_token)
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required: missing token in Authorization or X-Session-Token header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = verify_session_token(token)
+    caller_id = payload.get("sub")
+    caller_role = payload.get("role", "student")
+
+    DEMO_PARENT = "99999999-8888-7777-6666-555555555555"
+    if caller_id == DEMO_PARENT or caller_id == "demo_parent":
+        return payload
+
+    if caller_role != "parent":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: parent role required",
         )
 
     return payload
