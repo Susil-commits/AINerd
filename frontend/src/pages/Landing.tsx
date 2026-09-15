@@ -302,9 +302,9 @@ export default function Landing() {
       const el = document.getElementById(cleanId)
       if (el) {
         el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' })
-      } else if (attempts < 8) {
+      } else if (attempts < 10) {
         attempts++
-        setTimeout(tryScroll, 100)
+        setTimeout(tryScroll, 60)
       }
     }
 
@@ -315,10 +315,20 @@ export default function Landing() {
   useEffect(() => {
     const rawHash = location.hash || window.location.hash
     if (rawHash && !rawHash.includes('access_token') && !rawHash.includes('error=')) {
-      const timer = setTimeout(() => {
-        scrollToSection(rawHash, false)
-      }, 100)
-      return () => clearTimeout(timer)
+      if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'manual'
+      }
+      // Instant initial positioning
+      scrollToSection(rawHash, false)
+      // Follow-up passes as React renders child elements
+      const timer1 = setTimeout(() => scrollToSection(rawHash, false), 50)
+      const timer2 = setTimeout(() => scrollToSection(rawHash, false), 200)
+      const timer3 = setTimeout(() => scrollToSection(rawHash, false), 500)
+      return () => {
+        clearTimeout(timer1)
+        clearTimeout(timer2)
+        clearTimeout(timer3)
+      }
     }
   }, [location.hash, scrollToSection])
 
@@ -336,29 +346,6 @@ export default function Landing() {
     window.addEventListener('hashchange', handleHashChange)
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [scrollToSection])
-
-  // When user scrolls back near the top (hero/header), clear obsolete hash from URL
-  // so refreshing cleanly reloads the main landing URL (https://veritas-tutor.vercel.app/)
-  useEffect(() => {
-    let ticking = false
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          if (window.scrollY < 180) {
-            const currentHash = window.location.hash
-            if (currentHash && !currentHash.includes('access_token') && !currentHash.includes('error=')) {
-              window.history.replaceState(null, '', window.location.pathname + window.location.search)
-            }
-          }
-          ticking = false
-        })
-        ticking = true
-      }
-    }
-
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
 
   // On verified login (Magic Link callback in URL hash/query), redirect to role destination
   useEffect(() => {
