@@ -44,15 +44,15 @@ export interface Connection {
 }
 
 const DEFAULT_NODES: PipelineNode[] = [
-  // ── LEFT: STUDENT & CONTEXT INPUTS ──
+  // ── LEFT: STUDENT & CONTEXT INPUTS (Width = 250) ──
   {
     id: 'paper-work',
     title: 'Student Paper Work',
     subtitle: 'Handwritten math steps & photos',
     category: 'input',
     icon: FileText,
-    x: 120,
-    y: 75,
+    x: 142,
+    y: 85,
     color: '#38BDF8',
     badge: 'PHOTO SCAN',
     description: 'The student snaps a quick camera photo of their handwritten pencil work on paper.',
@@ -64,8 +64,8 @@ const DEFAULT_NODES: PipelineNode[] = [
     subtitle: 'Spoken questions & thoughts',
     category: 'input',
     icon: Mic,
-    x: 120,
-    y: 205,
+    x: 142,
+    y: 235,
     color: '#818CF8',
     badge: 'AUDIO & TEXT',
     description: 'The student can speak out loud or type their ideas, questions, and points of confusion.',
@@ -73,12 +73,12 @@ const DEFAULT_NODES: PipelineNode[] = [
   },
   {
     id: 'math-problem',
-    title: 'Current Math Problem',
+    title: 'Target Math Problem',
     subtitle: 'Target concept & difficulty',
     category: 'input',
     icon: Target,
-    x: 120,
-    y: 335,
+    x: 142,
+    y: 405,
     color: '#F472B6',
     badge: 'PRACTICE GOAL',
     description: 'The math problem currently on the chalkboard (fractions, multiplication, or algebra).',
@@ -90,8 +90,8 @@ const DEFAULT_NODES: PipelineNode[] = [
     subtitle: 'Known strengths & struggles',
     category: 'input',
     icon: History,
-    x: 120,
-    y: 465,
+    x: 142,
+    y: 575,
     color: '#FB923C',
     badge: 'SKILL PROFILE',
     description: 'Records past problem attempts so the tutor knows what concepts need extra encouragement.',
@@ -105,8 +105,8 @@ const DEFAULT_NODES: PipelineNode[] = [
     subtitle: 'Understands pencil lines & signs',
     category: 'core',
     icon: Eye,
-    x: 385,
-    y: 140,
+    x: 425,
+    y: 160,
     color: '#34D399',
     badge: 'VISION STAGE 1',
     description: 'Inspects each line of handwritten math to understand what the student wrote.',
@@ -118,8 +118,8 @@ const DEFAULT_NODES: PipelineNode[] = [
     subtitle: 'Finds exact point of confusion',
     category: 'core',
     icon: Search,
-    x: 385,
-    y: 430,
+    x: 425,
+    y: 520,
     color: '#FBBF24',
     badge: 'ANALYSIS STAGE 2',
     description: 'Identifies the root thinking error rather than just marking the problem right or wrong.',
@@ -131,8 +131,8 @@ const DEFAULT_NODES: PipelineNode[] = [
     subtitle: 'Socratic reasoning engine',
     category: 'core',
     icon: Cpu,
-    x: 570,
-    y: 285,
+    x: 610,
+    y: 340,
     color: '#A78BFA',
     badge: 'AI REASONING CORE',
     description: 'Coordinates the learning cycle: never blurts out answers, always guides with questions.',
@@ -144,8 +144,8 @@ const DEFAULT_NODES: PipelineNode[] = [
     subtitle: 'Helpful guiding question',
     category: 'core',
     icon: MessageSquare,
-    x: 755,
-    y: 140,
+    x: 795,
+    y: 160,
     color: '#C084FC',
     badge: 'GUIDANCE STAGE 3',
     description: 'Formulates an encouraging question that prompts the student to discover their own error.',
@@ -157,23 +157,23 @@ const DEFAULT_NODES: PipelineNode[] = [
     subtitle: 'Calculates real understanding',
     category: 'core',
     icon: BarChart3,
-    x: 755,
-    y: 430,
+    x: 795,
+    y: 520,
     color: '#2DD4BF',
     badge: 'EVALUATION STAGE 4',
     description: 'Scientifically measures skill progress as the student works through steps.',
     sampleData: 'Fractions Mastery: 35% → 42% (Reflecting self-correction engagement)',
   },
 
-  // ── RIGHT: LIVE LEARNING OUTPUTS ──
+  // ── RIGHT: LIVE LEARNING OUTPUTS (Width = 250) ──
   {
     id: 'out-hint',
     title: 'Socratic Guiding Clue',
     subtitle: 'Audio speech & chat bubble',
     category: 'output',
     icon: Lightbulb,
-    x: 1020,
-    y: 65,
+    x: 1078,
+    y: 75,
     color: '#FBBF24',
     badge: 'SOCRATIC HINT',
     description: 'Spoken gently through voice and shown in chat so the student experiences a "lightbulb moment".',
@@ -185,8 +185,8 @@ const DEFAULT_NODES: PipelineNode[] = [
     subtitle: 'Visual box drawn on student work',
     category: 'output',
     icon: PenTool,
-    x: 1020,
-    y: 165,
+    x: 1078,
+    y: 195,
     color: '#F87171',
     badge: 'PAPER BOX',
     description: 'Draws a color-coded guidance box over the handwritten step that needs another look.',
@@ -198,8 +198,8 @@ const DEFAULT_NODES: PipelineNode[] = [
     subtitle: 'Real-time mastery growth',
     category: 'output',
     icon: Activity,
-    x: 1020,
-    y: 265,
+    x: 1078,
+    y: 320,
     color: '#34D399',
     badge: 'SKILL RADAR',
     description: 'Student and parent dashboards immediately reflect newly solidified math understanding.',
@@ -211,8 +211,8 @@ const DEFAULT_NODES: PipelineNode[] = [
     subtitle: 'Calibrated to ability level',
     category: 'output',
     icon: Compass,
-    x: 1020,
-    y: 365,
+    x: 1078,
+    y: 445,
     color: '#60A5FA',
     badge: 'NEXT PROBLEM',
     description: 'Selects a tailored follow-up question so the student can practice the new realization.',
@@ -224,8 +224,8 @@ const DEFAULT_NODES: PipelineNode[] = [
     subtitle: 'Celebration or friendly reminder',
     category: 'output',
     icon: Bell,
-    x: 1020,
-    y: 465,
+    x: 1078,
+    y: 575,
     color: '#C084FC',
     badge: 'PARENT UPDATE',
     description: 'Parents see daily milestones or get a friendly reminder if a skill has not been practiced in 3 days.',
@@ -327,14 +327,14 @@ export default function InteractivePipeline() {
 
     const rect = svgRef.current.getBoundingClientRect()
     // Convert client delta to SVG coordinate delta
-    const scaleX = 1140 / rect.width
-    const scaleY = 580 / rect.height
+    const scaleX = 1220 / rect.width
+    const scaleY = 680 / rect.height
 
     const dx = (e.clientX - draggingNodeRef.current.mouseStartX) * scaleX
     const dy = (e.clientY - draggingNodeRef.current.mouseStartY) * scaleY
 
-    const newX = Math.max(90, Math.min(1050, draggingNodeRef.current.startX + dx))
-    const newY = Math.max(45, Math.min(535, draggingNodeRef.current.startY + dy))
+    const newX = Math.max(100, Math.min(1120, draggingNodeRef.current.startX + dx))
+    const newY = Math.max(50, Math.min(630, draggingNodeRef.current.startY + dy))
 
     setNodes(prev =>
       prev.map(node =>
@@ -352,21 +352,21 @@ export default function InteractivePipeline() {
     let x1 = source.x
     let y1 = source.y
     if (source.id === 'hub-center') {
-      x1 = source.x + 48
+      x1 = source.x + 60
     } else if (source.category === 'input') {
-      x1 = source.x + 102
+      x1 = source.x + 125
     } else if (source.category === 'core') {
-      x1 = source.x + 92
+      x1 = source.x + 110
     }
 
     let x2 = target.x
     let y2 = target.y
     if (target.id === 'hub-center') {
-      x2 = target.x - 48
+      x2 = target.x - 60
     } else if (target.category === 'output') {
-      x2 = target.x - 102
+      x2 = target.x - 125
     } else if (target.category === 'core') {
-      x2 = target.x - 92
+      x2 = target.x - 110
     }
 
     return { x1, y1, x2, y2 }
@@ -408,7 +408,7 @@ export default function InteractivePipeline() {
             disabled={isSimulating}
             title="Watch a sample practice problem flow through the pipeline"
           >
-            <Sparkles size={14} />
+            <Sparkles size={16} />
             <span>{isSimulating ? 'Simulating…' : 'Send Practice Step'}</span>
           </button>
 
@@ -418,7 +418,7 @@ export default function InteractivePipeline() {
             onClick={() => setIsPaused(prev => !prev)}
             title={isPaused ? 'Resume animated flow' : 'Pause animation'}
           >
-            {isPaused ? <Play size={13} /> : <Pause size={13} />}
+            {isPaused ? <Play size={15} /> : <Pause size={15} />}
             <span>{isPaused ? 'Resume Flow' : 'Pause Flow'}</span>
           </button>
 
@@ -428,7 +428,7 @@ export default function InteractivePipeline() {
             onClick={handleResetLayout}
             title="Reset dragged nodes to initial positions"
           >
-            <RotateCcw size={13} />
+            <RotateCcw size={15} />
             <span>Reset Nodes</span>
           </button>
 
@@ -457,14 +457,14 @@ export default function InteractivePipeline() {
       {viewMode === 'canvas' ? (
         <div className="pipeline-stage-container">
           <div className="pipeline-hint-bar">
-            <Lightbulb size={14} style={{ color: '#FBBF24', flexShrink: 0 }} />
+            <Lightbulb size={16} style={{ color: '#FBBF24', flexShrink: 0 }} />
             <span>Click any node to inspect payload — or <strong>drag nodes freely</strong> to see live cables flex!</span>
           </div>
 
           <div className="pipeline-svg-wrapper">
             <svg
               ref={svgRef}
-              viewBox="0 0 1140 580"
+              viewBox="0 0 1220 680"
               className="pipeline-svg"
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
@@ -472,33 +472,33 @@ export default function InteractivePipeline() {
               <defs>
                 {/* Radial background glow */}
                 <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#818CF8" stopOpacity="0.2" />
+                  <stop offset="0%" stopColor="#818CF8" stopOpacity="0.22" />
                   <stop offset="100%" stopColor="#818CF8" stopOpacity="0" />
                 </radialGradient>
               </defs>
 
               {/* Background Glow */}
-              <circle cx="570" cy="285" r="260" fill="url(#centerGlow)" />
+              <circle cx="610" cy="340" r="300" fill="url(#centerGlow)" />
 
               {/* Central Radar Rings */}
               <circle
-                cx="570"
-                cy="285"
-                r="95"
+                cx="610"
+                cy="340"
+                r="115"
                 fill="none"
                 stroke="var(--pipeline-grid-line, rgba(129, 140, 248, 0.22))"
-                strokeWidth="1"
-                strokeDasharray="4 4"
+                strokeWidth="1.2"
+                strokeDasharray="5 5"
                 className={`radar-ring ${isPaused ? 'paused' : ''}`}
               />
               <circle
-                cx="570"
-                cy="285"
-                r="170"
+                cx="610"
+                cy="340"
+                r="195"
                 fill="none"
                 stroke="var(--pipeline-grid-line, rgba(129, 140, 248, 0.12))"
                 strokeWidth="1"
-                strokeDasharray="6 6"
+                strokeDasharray="7 7"
               />
 
               {/* ── Dynamic Connecting Curved Paths ── */}
@@ -520,14 +520,14 @@ export default function InteractivePipeline() {
                       d={pathD}
                       className={`pipeline-cable ${isSelectedConn ? 'pipeline-cable--selected' : ''}`}
                       stroke={conn.color || 'var(--text-muted)'}
-                      strokeWidth={isSelectedConn ? 2.5 : 1.5}
+                      strokeWidth={isSelectedConn ? 2.8 : 1.8}
                       strokeDasharray="5 4"
                       fill="none"
                     />
 
                     {/* Animated moving pulse packet */}
                     {!isPaused && (
-                      <circle r={isSelectedConn ? 4.5 : 3.2} fill={conn.color || '#38BDF8'} className="pulse-particle">
+                      <circle r={isSelectedConn ? 5.2 : 3.8} fill={conn.color || '#38BDF8'} className="pulse-particle">
                         <animateMotion
                           dur={isSelectedConn ? '2s' : '3.5s'}
                           repeatCount="indefinite"
@@ -538,25 +538,25 @@ export default function InteractivePipeline() {
                       </circle>
                     )}
 
-                    {/* Cybernetic Floating Cable Badge (like reference HUD) */}
+                    {/* Cybernetic Floating Cable Badge */}
                     {conn.label && (
                       <g transform={`translate(${midX}, ${midY})`} className="cable-badge-group">
                         <rect
-                          x="-22"
-                          y="-8"
-                          width="44"
-                          height="16"
-                          rx="8"
+                          x="-28"
+                          y="-10"
+                          width="56"
+                          height="20"
+                          rx="10"
                           className="cable-badge-rect"
                           stroke={conn.color || 'var(--border)'}
-                          strokeWidth="1"
+                          strokeWidth="1.2"
                         />
                         <text
                           x="0"
-                          y="3.5"
+                          y="4"
                           textAnchor="middle"
-                          fontSize="7"
-                          fontWeight="700"
+                          fontSize="8.5"
+                          fontWeight="800"
                           letterSpacing="0.08em"
                           fill={conn.color || '#94a3b8'}
                           className="cable-badge-text"
@@ -576,9 +576,9 @@ export default function InteractivePipeline() {
                 const isSatellite = node.category === 'core' && !isCenterCore
                 const NodeIcon = node.icon
 
-                // Widths: 204 for input/output, 184 for satellites
-                const rectW = isSatellite ? 184 : 204
-                const rectH = 48
+                // Widths: 250 for inputs/outputs, 220 for satellites
+                const rectW = isSatellite ? 220 : 250
+                const rectH = 58
                 const halfW = rectW / 2
                 const halfH = rectH / 2
 
@@ -600,7 +600,7 @@ export default function InteractivePipeline() {
                             y={-halfH + 1}
                             width={rectW - 2}
                             height={rectH - 2}
-                            rx="10"
+                            rx="12"
                           />
                         </clipPath>
                       </defs>
@@ -611,11 +611,11 @@ export default function InteractivePipeline() {
                       <circle
                         cx="0"
                         cy="0"
-                        r={isCenterCore ? 58 : 50}
+                        r={isCenterCore ? 72 : 62}
                         fill="none"
                         stroke={node.color}
-                        strokeWidth="2"
-                        strokeOpacity="0.4"
+                        strokeWidth="2.5"
+                        strokeOpacity="0.45"
                         className="node-aura-pulse"
                       />
                     )}
@@ -626,48 +626,48 @@ export default function InteractivePipeline() {
                         <circle
                           cx="0"
                           cy="0"
-                          r="48"
+                          r="60"
                           className="node-core-circle"
                           stroke={node.color}
-                          strokeWidth={isSelected ? 3 : 2}
+                          strokeWidth={isSelected ? 3.5 : 2.5}
                         />
 
                         {/* Inner rotating orbit of radar dots */}
                         <g className={`core-dot-orbit ${isPaused ? 'paused' : ''}`}>
                           {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => {
                             const rad = (deg * Math.PI) / 180
-                            const dx = Math.cos(rad) * 36
-                            const dy = Math.sin(rad) * 36
+                            const dx = Math.cos(rad) * 44
+                            const dy = Math.sin(rad) * 44
                             return (
                               <circle
                                 key={i}
                                 cx={dx}
                                 cy={dy}
-                                r="2"
+                                r="2.5"
                                 fill={node.color}
-                                opacity="0.6"
+                                opacity="0.65"
                               />
                             )
                           })}
                         </g>
 
-                        {/* Vector CPU icon */}
+                        {/* Large Vector CPU icon */}
                         <NodeIcon
-                          x="-13"
-                          y="-22"
-                          size={26}
+                          x="-18"
+                          y="-35"
+                          size={36}
                           color={node.color}
-                          strokeWidth={2}
+                          strokeWidth={2.2}
                         />
 
                         {/* Core Title */}
                         <text
                           x="0"
-                          y="12"
+                          y="14"
                           textAnchor="middle"
                           className="node-core-title"
-                          fontSize="9"
-                          fontWeight="700"
+                          fontSize="12"
+                          fontWeight="800"
                           fill="#ffffff"
                         >
                           VERITAS CORE
@@ -676,11 +676,11 @@ export default function InteractivePipeline() {
                         {/* Core Subtitle */}
                         <text
                           x="0"
-                          y="23"
+                          y="28"
                           textAnchor="middle"
                           className="node-core-sub"
-                          fontSize="7"
-                          fontWeight="600"
+                          fontSize="9.5"
+                          fontWeight="700"
                           fill={node.color}
                           letterSpacing="0.08em"
                         >
@@ -696,69 +696,69 @@ export default function InteractivePipeline() {
                           y={-halfH}
                           width={rectW}
                           height={rectH}
-                          rx="11"
+                          rx="13"
                           className="node-pill-rect"
-                          stroke={isSelected ? node.color : 'var(--pipeline-border, rgba(255,255,255,0.12))'}
-                          strokeWidth={isSelected ? 2 : 1}
+                          stroke={isSelected ? node.color : 'var(--pipeline-border, rgba(255,255,255,0.14))'}
+                          strokeWidth={isSelected ? 2.5 : 1.2}
                         />
 
-                        {/* Circular Vector Icon Badge Container */}
+                        {/* Large Circular Vector Icon Badge Container */}
                         <circle
-                          cx={-halfW + 28}
+                          cx={-halfW + 34}
                           cy="0"
-                          r="15"
+                          r="19"
                           className="node-icon-bg"
-                          fill={`${node.color}15`}
-                          stroke={`${node.color}40`}
-                          strokeWidth="1"
+                          fill={`${node.color}18`}
+                          stroke={`${node.color}45`}
+                          strokeWidth="1.2"
                         />
 
-                        {/* Vector Lucide Icon */}
+                        {/* High-visibility Vector Lucide Icon */}
                         <NodeIcon
-                          x={-halfW + 20}
-                          y="-8"
-                          size={16}
+                          x={-halfW + 22}
+                          y="-12"
+                          size={24}
                           color={node.color}
-                          strokeWidth={2}
+                          strokeWidth={2.2}
                         />
 
-                        {/* Text Group */}
+                        {/* Text Group - Clear, Large, Readable Typography */}
                         <text
-                          x={-halfW + 52}
-                          y="-4"
+                          x={-halfW + 62}
+                          y="-5"
                           className="node-title"
-                          fontSize="10.2"
+                          fontSize="13.5"
                           fontWeight="700"
-                          textLength={node.title.length > 20 ? (isSatellite ? 116 : 130) : undefined}
+                          textLength={node.title.length > 20 ? (isSatellite ? 142 : 166) : undefined}
                           lengthAdjust="spacing"
                         >
                           {node.title}
                         </text>
 
                         <text
-                          x={-halfW + 52}
-                          y="11"
+                          x={-halfW + 62}
+                          y="14"
                           className="node-sub"
-                          fontSize="7.6"
-                          fontWeight="600"
-                          letterSpacing="0.06em"
+                          fontSize="9.8"
+                          fontWeight="700"
+                          letterSpacing="0.07em"
                         >
                           {node.badge}
                         </text>
                       </g>
                     )}
 
-                    {/* Connection Anchor Port Dots (Cybernetic HUD detail) */}
+                    {/* Connection Anchor Port Dots */}
                     {!isCenterCore && node.category === 'input' && (
-                      <circle cx={halfW} cy="0" r="3.5" fill={node.color} className="anchor-port" />
+                      <circle cx={halfW} cy="0" r="4.5" fill={node.color} className="anchor-port" />
                     )}
                     {!isCenterCore && node.category === 'output' && (
-                      <circle cx={-halfW} cy="0" r="3.5" fill={node.color} className="anchor-port" />
+                      <circle cx={-halfW} cy="0" r="4.5" fill={node.color} className="anchor-port" />
                     )}
                     {!isCenterCore && node.category === 'core' && (
                       <>
-                        <circle cx={-halfW} cy="0" r="3.5" fill={node.color} className="anchor-port" />
-                        <circle cx={halfW} cy="0" r="3.5" fill={node.color} className="anchor-port" />
+                        <circle cx={-halfW} cy="0" r="4.5" fill={node.color} className="anchor-port" />
+                        <circle cx={halfW} cy="0" r="4.5" fill={node.color} className="anchor-port" />
                       </>
                     )}
                   </g>
@@ -784,12 +784,12 @@ export default function InteractivePipeline() {
                     <div
                       className="card-icon-badge"
                       style={{
-                        background: `${n.color}15`,
-                        borderColor: `${n.color}40`,
+                        background: `${n.color}18`,
+                        borderColor: `${n.color}45`,
                         color: n.color,
                       }}
                     >
-                      <CardIcon size={17} strokeWidth={2} />
+                      <CardIcon size={22} strokeWidth={2.2} />
                     </div>
                     <div>
                       <strong>{n.title}</strong>
@@ -815,12 +815,12 @@ export default function InteractivePipeline() {
                     <div
                       className="card-icon-badge"
                       style={{
-                        background: `${n.color}15`,
-                        borderColor: `${n.color}40`,
+                        background: `${n.color}18`,
+                        borderColor: `${n.color}45`,
                         color: n.color,
                       }}
                     >
-                      <CardIcon size={17} strokeWidth={2} />
+                      <CardIcon size={22} strokeWidth={2.2} />
                     </div>
                     <div>
                       <strong>{n.title}</strong>
@@ -846,12 +846,12 @@ export default function InteractivePipeline() {
                     <div
                       className="card-icon-badge"
                       style={{
-                        background: `${n.color}15`,
-                        borderColor: `${n.color}40`,
+                        background: `${n.color}18`,
+                        borderColor: `${n.color}45`,
                         color: n.color,
                       }}
                     >
-                      <CardIcon size={17} strokeWidth={2} />
+                      <CardIcon size={22} strokeWidth={2.2} />
                     </div>
                     <div>
                       <strong>{n.title}</strong>
@@ -881,12 +881,12 @@ export default function InteractivePipeline() {
               <div
                 className="inspector-icon-badge"
                 style={{
-                  background: `${selectedNode.color}15`,
-                  borderColor: `${selectedNode.color}45`,
+                  background: `${selectedNode.color}18`,
+                  borderColor: `${selectedNode.color}50`,
                   color: selectedNode.color,
                 }}
               >
-                <SelectedNodeIcon size={22} strokeWidth={2} />
+                <SelectedNodeIcon size={28} strokeWidth={2.2} />
               </div>
               <div>
                 <h3 className="inspector-title">{selectedNode.title}</h3>
