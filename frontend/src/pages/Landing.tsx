@@ -651,7 +651,6 @@ export default function Landing() {
           >
             <span className="brand-icon">✨</span>
             <span className="brand-name">Veritas<span className="brand-dot">.</span></span>
-            <span className="brand-tag">Socratic Math</span>
           </a>
 
           <nav className="navbar-links">
