@@ -195,6 +195,7 @@ GEMINI_API_KEY=your_gemini_api_key
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+SUPABASE_JWT_SECRET=your_supabase_jwt_secret  # From Supabase Settings -> API -> JWT Settings
 ELEVENLABS_API_KEY=your_elevenlabs_key  # Optional
 ```
 

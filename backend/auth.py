@@ -133,11 +133,61 @@ def verify_session_token(token: str) -> dict:
 
     parts = token.strip().split(".")
 
-    # Support 3-part Supabase Auth JWT tokens
+    # Support 3-part Supabase Auth JWT tokens (both modern ES256/ECC and legacy HS256)
     if len(parts) == 3:
         header_b64, payload_b64, sig_b64 = parts
-        jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
-        if jwt_secret:
+        try:
+            header = json.loads(_b64url_decode(header_b64).decode("utf-8"))
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token header encoding",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        alg = header.get("alg", "HS256")
+        payload = None
+
+        if alg in ("ES256", "RS256"):
+            supabase_url = os.getenv("SUPABASE_URL")
+            if not supabase_url:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Server misconfiguration: SUPABASE_URL required for asymmetric token verification",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            try:
+                import jwt
+                from jwt import PyJWKClient
+
+                global _JWKS_CLIENT
+                if "_JWKS_CLIENT" not in globals() or _JWKS_CLIENT is None:
+                    jwks_url = f"{supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+                    _JWKS_CLIENT = PyJWKClient(jwks_url, cache_keys=True, lifespan=3600)
+
+                signing_key = _JWKS_CLIENT.get_signing_key_from_jwt(token)
+                payload = jwt.decode(
+                    token,
+                    signing_key.key,
+                    algorithms=[alg],
+                    options={"verify_exp": True},
+                )
+            except HTTPException:
+                raise
+            except Exception as e:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"Asymmetric JWT token verification failed: {e}",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+        elif alg == "HS256":
+            jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
+            if not jwt_secret:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Server misconfiguration: SUPABASE_JWT_SECRET is not configured for HS256 tokens.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
             expected_sig = hmac.new(
                 jwt_secret.encode("utf-8"),
                 f"{header_b64}.{payload_b64}".encode("ascii"),
@@ -157,33 +207,36 @@ def verify_session_token(token: str) -> dict:
                     detail="JWT token signature verification failed",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
-
-        try:
-            payload_bytes = _b64url_decode(payload_b64)
-            payload = json.loads(payload_bytes.decode("utf-8"))
-            if payload.get("exp", 0) < time.time():
+            try:
+                payload = json.loads(_b64url_decode(payload_b64).decode("utf-8"))
+            except Exception:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authentication token has expired. Please sign in again.",
+                    detail="Failed to decode authentication token payload",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
-            user_meta = payload.get("user_metadata") or {}
-            role = user_meta.get("user_role") or payload.get("role") or "student"
-            return {
-                "sub": payload.get("sub"),
-                "email": payload.get("email"),
-                "name": user_meta.get("name") or (payload.get("email", "").split("@")[0] if payload.get("email") else "User"),
-                "role": role,
-                "exp": payload.get("exp"),
-            }
-        except HTTPException:
-            raise
-        except Exception:
+        else:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Failed to decode authentication token payload",
+                detail=f"Unsupported token signing algorithm: {alg}",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
+        if payload.get("exp", 0) < time.time():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication token has expired. Please sign in again.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        user_meta = payload.get("user_metadata") or {}
+        role = user_meta.get("user_role") or payload.get("role") or "student"
+        return {
+            "sub": payload.get("sub"),
+            "email": payload.get("email"),
+            "name": user_meta.get("name") or (payload.get("email", "").split("@")[0] if payload.get("email") else "User"),
+            "role": role,
+            "exp": payload.get("exp"),
+        }
 
     if len(parts) != 2:
         raise HTTPException(

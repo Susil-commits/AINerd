@@ -5,8 +5,13 @@ Automated Verification Suite:
 3. Rate Limiter Cooldown & Quota Protection (429)
 4. Content Agent RAG Semantic Search with pgvector fallback
 """
+import os
 import sys
 import time
+import json
+import base64
+import hmac
+import hashlib
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -28,7 +33,6 @@ from auth import (
     verify_parent_caller,
 )
 from rate_limiter import RateLimiter
-from agents.content_agent import get_next_problem
 
 def test_token_lifecycle():
     print("🔐 [TEST 1] Testing Session Token Lifecycle...")
@@ -66,6 +70,64 @@ def test_token_lifecycle():
     except HTTPException as e:
         assert e.status_code == 401, f"Expected 401, got {e.status_code}"
         print("   ✓ Expired token rejected with HTTP 401")
+
+    # 5. 3-Part JWT fails closed when SUPABASE_JWT_SECRET is unset
+    orig_jwt_secret = os.environ.pop("SUPABASE_JWT_SECRET", None)
+    try:
+        fake_payload = base64.urlsafe_b64encode(
+            json.dumps({"sub": student_id, "role": "parent", "exp": int(time.time()) + 3600}).encode()
+        ).rstrip(b"=").decode()
+        forged_jwt = f"eyJhbGciOiJIUzI1NiJ9.{fake_payload}.fake_signature"
+
+        try:
+            verify_session_token(forged_jwt)
+            assert False, "Forged JWT without SUPABASE_JWT_SECRET must be rejected"
+        except HTTPException as e:
+            assert e.status_code == 401, f"Expected 401, got {e.status_code}"
+            assert "SUPABASE_JWT_SECRET is not configured" in e.detail or "JWT verification is not available" in e.detail
+            print("   ✓ Forged JWT rejected with HTTP 401 when SUPABASE_JWT_SECRET is missing (fail-closed)")
+
+        # 6. 3-Part JWT verifies signature correctly when SUPABASE_JWT_SECRET is configured
+        os.environ["SUPABASE_JWT_SECRET"] = "test-jwt-secret-key-12345"
+        # Invalid signature
+        try:
+            verify_session_token(forged_jwt)
+            assert False, "Forged JWT with bad signature must be rejected"
+        except HTTPException as e:
+            assert e.status_code == 401
+            assert "signature verification failed" in e.detail
+            print("   ✓ Forged JWT with bad signature rejected with HTTP 401")
+
+        # Valid signature
+        header_b64 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+        valid_payload_bytes = json.dumps({"sub": student_id, "role": "student", "exp": int(time.time()) + 3600}).encode()
+        valid_payload_b64 = base64.urlsafe_b64encode(valid_payload_bytes).rstrip(b"=").decode()
+        sig = hmac.new(
+            b"test-jwt-secret-key-12345",
+            f"{header_b64}.{valid_payload_b64}".encode("ascii"),
+            hashlib.sha256,
+        ).digest()
+        sig_b64 = base64.urlsafe_b64encode(sig).rstrip(b"=").decode()
+        valid_jwt = f"{header_b64}.{valid_payload_b64}.{sig_b64}"
+
+        jwt_claims = verify_session_token(valid_jwt)
+        assert jwt_claims["sub"] == student_id
+        assert jwt_claims["role"] == "student"
+        print("   ✓ Valid 3-part JWT verified successfully when SUPABASE_JWT_SECRET is set")
+
+        # 7. ES256 Token verification fail-closed against forged signature
+        forged_es256 = "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjhjZDFiNjkyLTE0M2ItNGI2Yi1hNmNkLTljZGEyOTE5Y2ZiNyJ9.eyJzdWIiOiJzdHVkZW50LTEyMyIsInJvbGUiOiJzdHVkZW50IiwiZXhwIjo5OTk5OTk5OTk5fQ.fake_es256_signature"
+        try:
+            verify_session_token(forged_es256)
+            assert False, "Forged ES256 must be rejected"
+        except HTTPException as e:
+            assert e.status_code == 401
+            print("   ✓ Forged ES256 token rejected with HTTP 401 via JWKS")
+    finally:
+        if orig_jwt_secret is not None:
+            os.environ["SUPABASE_JWT_SECRET"] = orig_jwt_secret
+        else:
+            os.environ.pop("SUPABASE_JWT_SECRET", None)
 
     print("✅ [TEST 1 PASSED] Token lifecycle verification complete!\n")
 
@@ -209,6 +271,7 @@ def test_content_agent_rag():
     print("📚 [TEST 4] Testing Content Agent RAG Semantic Search...")
     # Test problem retrieval with misconception targeting
     try:
+        from agents.content_agent import get_next_problem
         problem = get_next_problem(
             skill_id="4.NF.B.3",
             mastery_prob=0.35,
