@@ -1031,20 +1031,15 @@ export default function Landing() {
                         : "If that email is registered, we've sent your code."}
                     </p>
 
-                    {/* Dedicated High-Visibility Spam Alert Banner */}
+                    {/* Single Concise Spam Check Notice */}
                     <div className="otp-spam-alert-banner animate-fadein">
-                      <div className="otp-spam-alert-header">
-                        <span className="otp-spam-alert-badge">⚠️ IMPORTANT</span>
-                        <strong>CHECK YOUR SPAM / JUNK FOLDER!</strong>
-                      </div>
-                      <div className="otp-spam-alert-content">
-                        Automated verification emails almost always land in your <strong>Spam</strong>, <strong>Junk</strong>, or <strong>Promotions</strong> folder. If you don't see it in your primary inbox, please open your Spam folder right now.
-                      </div>
+                      <span className="otp-spam-alert-badge">Spam check</span>
+                      <span>If not in your inbox, check your <strong>Spam / Junk folder</strong>.</span>
                     </div>
 
                     {resendSuccess && (
                       <div className="otp-success-banner animate-fadein">
-                        ✅ Fresh verification code sent! ⚠️ <strong>Remember to check your Spam / Junk folder immediately.</strong>
+                        ✅ Fresh code sent! Check your inbox or Spam folder.
                       </div>
                     )}
 
@@ -1091,24 +1086,16 @@ export default function Landing() {
                       ))}
                     </div>
 
-                    <div className="otp-inputs-spam-guide animate-fadein">
-                      <span>📬 <strong>Can't find the code in your inbox?</strong> Please check your <strong>Spam / Junk folder</strong> — verification emails almost always arrive there!</span>
-                    </div>
-
                     {/* Laptop vs Phone helper tip */}
                     <div className="otp-device-tip animate-fadein">
                       <span className="otp-device-tip-icon">💻</span>
                       <div className="otp-device-tip-body">
                         <span className="otp-device-tip-title">Signing in on this laptop?</span>
                         <span className="otp-device-tip-desc">
-                          Type your verification code directly into the boxes above. Tapping "Sign in to Veritas" on your phone logs in your phone's browser, not this laptop. (Also remember to check your <strong>Spam / Junk folder</strong>!)
+                          Type your verification code directly into the boxes above. Tapping the link on your phone logs in your phone's browser, not this laptop.
                         </span>
                       </div>
                     </div>
-
-                    <p className="otp-hint otp-hint--soft animate-fadein">
-                      📬 <strong>Reminder:</strong> If you don't see the email within seconds, check your <strong>Spam, Junk, or Promotions folder</strong> or search for "Veritas".
-                    </p>
 
                     {otpScreenSeconds >= 75 && (
                       <p className="otp-hint otp-hint--direct animate-fadein">
@@ -1188,7 +1175,6 @@ export default function Landing() {
                       {resendTimer > 0 ? (
                         <div className="otp-resend-col">
                           <span className="otp-timer-text">Resend new code in <strong>{resendTimer}s</strong></span>
-                          <span className="otp-spam-subtext">Check your Spam / Junk folder while waiting</span>
                         </div>
                       ) : (
                         <button
@@ -1352,9 +1338,6 @@ export default function Landing() {
                           ))}
                         </div>
 
-                        <div className="auth-email-spam-notice animate-fadein">
-                          <span>📬 <strong>Heads up:</strong> Your code will be sent by email. <u>Always check your Spam / Junk folder</u> as automated verification codes almost always land there!</span>
-                        </div>
                       </div>
 
                       <div className="auth-field-group">
@@ -1430,8 +1413,8 @@ export default function Landing() {
                         </button>
 
                         <div className="auth-spam-pre-hint">
-                          <span className="auth-spam-pre-badge">⚠️ CHECK SPAM FOLDER</span>
-                          <span>Security codes sent by email almost always arrive in your <strong>Spam or Junk folder</strong>. Please look there immediately!</span>
+                          <span className="auth-spam-pre-badge">Spam check</span>
+                          <span>Codes may arrive in your <strong>Spam / Junk folder</strong>.</span>
                         </div>
 
                         <div className="auth-mode-switch-row">

@@ -1946,126 +1946,57 @@
   color: #475569;
 }
 
-/* Dedicated High-Impact Spam Alert Banner & Notices */
+/* Single Concise Spam Alert Banner on OTP Screen */
 .otp-spam-alert-banner {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1.5px solid rgba(245, 158, 11, 0.45);
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.15);
-  border-radius: 12px;
-  padding: 10px 14px;
-  margin: 0.3rem 0 0.5rem;
-}
-
-.otp-spam-alert-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.82rem;
-  font-weight: 800;
-  color: #B45309;
-  letter-spacing: 0.02em;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 9px;
+  padding: 8px 12px;
+  margin: 0.25rem 0 0.4rem;
+  font-size: 0.76rem;
+  color: #78350F;
 }
 
-[data-theme="dark"] .otp-spam-alert-header {
+[data-theme="dark"] .otp-spam-alert-banner {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.25);
+  color: #FDE68A;
+}
+
+.otp-spam-alert-banner strong {
+  color: #B45309;
+}
+
+[data-theme="dark"] .otp-spam-alert-banner strong {
   color: #FBBF24;
 }
 
 .otp-spam-alert-badge {
   background: #F59E0B;
   color: #000000;
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 9999px;
-  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.otp-spam-alert-content {
-  font-size: 0.77rem;
-  line-height: 1.5;
-  color: #78350F;
-}
-
-[data-theme="dark"] .otp-spam-alert-content {
-  color: #FDE68A;
-}
-
-.otp-spam-alert-content strong {
-  color: #B45309;
-}
-
-[data-theme="dark"] .otp-spam-alert-content strong {
-  color: #FBBF24;
-}
-
-/* Sub-input guide under the 8/6-digit boxes */
-.otp-inputs-spam-guide {
-  margin: 0.35rem 0 0.2rem;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px dashed rgba(245, 158, 11, 0.3);
+/* Pre-hint below submit button */
+.auth-spam-pre-hint {
   font-size: 0.74rem;
   line-height: 1.4;
-  color: #92400E;
-  text-align: center;
-}
-
-[data-theme="dark"] .otp-inputs-spam-guide {
-  background: rgba(245, 158, 11, 0.09);
-  border-color: rgba(245, 158, 11, 0.25);
-  color: #FDE68A;
-}
-
-.otp-inputs-spam-guide strong {
-  color: #B45309;
-}
-
-[data-theme="dark"] .otp-inputs-spam-guide strong {
-  color: #FBBF24;
-}
-
-/* Notice on email input form */
-.auth-email-spam-notice {
-  margin-top: 8px;
-  padding: 7px 11px;
-  border-radius: 8px;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  font-size: 0.73rem;
-  line-height: 1.45;
-  color: #92400E;
-}
-
-[data-theme="dark"] .auth-email-spam-notice {
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.3);
-  color: #FDE68A;
-}
-
-.auth-email-spam-notice strong {
-  color: #B45309;
-}
-
-[data-theme="dark"] .auth-email-spam-notice strong {
-  color: #FBBF24;
-}
-
-/* Pre-hint before submit button */
-.auth-spam-pre-hint {
-  font-size: 0.75rem;
-  line-height: 1.45;
   color: #78350F;
   text-align: center;
-  margin: 0.5rem 0 0;
-  padding: 8px 12px;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px dashed rgba(245, 158, 11, 0.35);
-  border-radius: 9px;
+  margin: 0.4rem 0 0;
+  padding: 6px 12px;
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px dashed rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2075,8 +2006,8 @@
 
 [data-theme="dark"] .auth-spam-pre-hint {
   color: #FDE68A;
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.09);
+  border-color: rgba(245, 158, 11, 0.25);
 }
 
 .auth-spam-pre-badge {
@@ -2086,7 +2017,8 @@
   font-weight: 800;
   padding: 2px 6px;
   border-radius: 4px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
