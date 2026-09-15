@@ -16,7 +16,7 @@ interface SkillMastery {
 export default function Dashboard() {
   const { studentId } = useParams<{ studentId: string }>()
   const navigate = useNavigate()
-  const { role } = useAuth()
+  const { role, signOut } = useAuth()
   const [skills, setSkills] = useState<SkillMastery[]>([])
   const [summary, setSummary] = useState('')
   const [loading, setLoading] = useState(true)
@@ -85,19 +85,31 @@ export default function Dashboard() {
   return (
     <div className="dashboard">
       <header className="dash-header">
-        <button
-          className="btn btn-ghost"
-          onClick={() => {
-            if (role === 'parent') {
-              navigate('/parent-dashboard')
-            } else {
-              navigate('/student-session')
-            }
-          }}
-          aria-label={role === 'parent' ? 'Back to Parent Portal' : 'Back to Session'}
-        >
-          {role === 'parent' ? '← Parent Portal' : '← Back to Session'}
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => navigate('/')}
+            aria-label="Back to Home"
+            title="Return to Home Landing Page"
+          >
+            ← Home
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => {
+              if (role === 'parent') {
+                navigate('/parent-dashboard')
+              } else {
+                navigate('/student-session')
+              }
+            }}
+            aria-label={role === 'parent' ? 'Back to Parent Portal' : 'Back to Session'}
+          >
+            {role === 'parent' ? '← Parent Portal' : '← Back to Session'}
+          </button>
+        </div>
         <div>
           <h2>{studentName}'s Learning Dashboard</h2>
           <p className="dash-sub">Real-time skill progress & practice summary</p>
@@ -116,6 +128,18 @@ export default function Dashboard() {
             <label>Practicing</label>
           </div>
           <ThemeToggle />
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              signOut()
+                .then(() => navigate('/'))
+                .catch(() => navigate('/'))
+            }}
+            title="Log out of Veritas"
+          >
+            Log Out
+          </button>
         </div>
       </header>
 

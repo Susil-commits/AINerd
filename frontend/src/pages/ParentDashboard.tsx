@@ -263,11 +263,20 @@ export default function ParentDashboard() {
         </div>
 
         <div className="parent-nav-right">
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => navigate('/')}
+            title="Return to Home Landing Page"
+          >
+            ← Home
+          </button>
           <div className="parent-user-pill">
             <span className="parent-avatar">P</span>
             <span className="parent-email">{parentEmail}</span>
           </div>
           <button
+            type="button"
             className="btn btn-ghost btn-sm"
             onClick={() => {
               signOut()
@@ -278,7 +287,7 @@ export default function ParentDashboard() {
                 })
             }}
           >
-            Sign Out
+            Log Out
           </button>
           <ThemeToggle />
         </div>

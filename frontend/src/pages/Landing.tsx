@@ -7,6 +7,7 @@ import SocraticPreview from '../components/SocraticPreview'
 import { validateEmailFormat, suggestCorrection, friendlyAuthError } from '../lib/emailValidation'
 import { useBackendWarmup } from '../hooks/useBackendWarmup'
 import WarmupExperience from '../components/WarmupExperience'
+import InteractivePipeline from '../components/InteractivePipeline'
 import ThemeToggle from '../components/ThemeToggle'
 import './Landing.css'
 
@@ -406,8 +407,7 @@ export default function Landing() {
       setAuthError('')
       try {
         await demoSignIn(remRole, remEmail)
-        const targetPath = remRole === 'parent' ? '/parent-dashboard' : '/student-session'
-        navigateToRoleWithWarmup(remRole, targetPath)
+        setAuthScreen('form')
       } catch (err: any) {
         console.error('Fast resume failed:', err)
         setAuthError(friendlyAuthError(err?.message || 'Could not resume demo session. Please try signing in again.'))
@@ -527,8 +527,9 @@ export default function Landing() {
       if (res.error) {
         setAuthError(friendlyAuthError(res.error))
       } else {
-        const targetPath = activeRole === 'parent' ? '/parent-dashboard' : '/student-session'
-        navigateToRoleWithWarmup(activeRole, targetPath)
+        // Verification succeeded and user session is active.
+        // Keep the user on the landing portal to see their active account and click the button to enter.
+        setAuthScreen('form')
       }
     } catch (err: any) {
       console.error('Verify OTP failed:', err)
@@ -606,8 +607,7 @@ export default function Landing() {
     setAuthError('')
     try {
       await demoSignIn(targetRole)
-      const targetPath = targetRole === 'parent' ? '/parent-dashboard' : '/student-session'
-      navigateToRoleWithWarmup(targetRole, targetPath)
+      setAuthScreen('form')
     } catch (err: any) {
       console.error('Demo sign-in failed:', err)
       setAuthError(friendlyAuthError(err?.message || 'Could not log into demo. Please try again.'))
@@ -678,6 +678,17 @@ export default function Landing() {
               How It Works
             </a>
             <a
+              href="#how-it-works"
+              className="nav-link"
+              onClick={(e) => {
+                e.preventDefault()
+                scrollToSection('how-it-works', true)
+                window.history.pushState(null, '', '#how-it-works')
+              }}
+            >
+              Live Pipeline
+            </a>
+            <a
               href="#topics"
               className="nav-link"
               onClick={(e) => {
@@ -693,9 +704,36 @@ export default function Landing() {
           <div className="navbar-actions">
             <ThemeToggle />
             {user && (
-              <button className="btn btn-sm btn-violet" onClick={handleEnterSession}>
-                {role === 'parent' ? 'Parent Portal' : 'Math Session'}
-              </button>
+              <div className="navbar-user-group">
+                <span className="navbar-user-chip" title={user.email || ''}>
+                  <span className="user-dot" />
+                  {user.email?.split('@')[0] || (role === 'parent' ? 'Parent' : 'Student')}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-violet"
+                  onClick={handleEnterSession}
+                  title="Move to your learning space"
+                >
+                  {role === 'parent' ? 'Parent Portal →' : 'Learning Space →'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost navbar-logout-btn"
+                  onClick={async () => {
+                    try {
+                      await signOut()
+                    } catch (err) {
+                      console.error('Sign out error:', err)
+                    }
+                    setEmail('')
+                    setAuthScreen('form')
+                  }}
+                  title="Sign out of your account"
+                >
+                  Log Out
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -736,31 +774,54 @@ export default function Landing() {
               <div className="logged-in-badge">
                 <span className="logged-in-avatar">{role === 'parent' ? 'P' : 'S'}</span>
                 <div>
+                  <div className="logged-in-celebration">
+                    <span className="celebration-dot" />
+                    Account Verified & Ready!
+                  </div>
                   <div className="logged-in-title">Signed In as <strong>{user.email}</strong></div>
-                  <div className="logged-in-role">Active Role: <span className="badge badge-violet">{role === 'parent' ? 'Parent' : 'Student'}</span></div>
+                  <div className="logged-in-role">Active Portal: <span className="badge badge-violet">{role === 'parent' ? 'Parent & Guardian Portal' : 'Student Socratic Workspace'}</span></div>
                 </div>
               </div>
               <div className="logged-in-actions">
                 <button
-                  className="btn btn-violet btn-lg"
+                  type="button"
+                  className="btn btn-violet btn-lg logged-in-primary-cta"
                   onClick={handleEnterSession}
+                  title="Move to your learning space"
                 >
-                  {role === 'parent' ? 'Enter Parent Dashboard' : 'Start Practice Session'}
+                  {role === 'parent' ? 'Enter Parent Dashboard →' : 'Enter Learning Space →'}
                 </button>
-                <button
-                  className="btn btn-ghost"
-                  onClick={async () => {
-                    try {
-                      await signOut()
-                    } catch (err) {
-                      console.error('Sign out error:', err)
-                    }
-                    setEmail('')
-                    setAuthScreen('form')
-                  }}
-                >
-                  Switch Account / Sign Out
-                </button>
+                <div className="logged-in-sub-actions">
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => scrollToSection('how-it-works', true)}
+                  >
+                    Explore Live Pipeline ↓
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => scrollToSection('topics', true)}
+                  >
+                    View Math Topics ↓
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm logged-in-logout-btn"
+                    onClick={async () => {
+                      try {
+                        await signOut()
+                      } catch (err) {
+                        console.error('Sign out error:', err)
+                      }
+                      setEmail('')
+                      setAuthScreen('form')
+                    }}
+                  >
+                    Log Out / Switch
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -1393,50 +1454,8 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* Pipeline flow */}
-        <div className="pipeline-strip card">
-          <div className="pipeline-header">
-            <span className="pipeline-dot" />
-            <span className="pipeline-label">How Each Practice Step Works</span>
-          </div>
-          <div className="pipeline-steps">
-            {[
-              { step: '1', label: 'Student Voice / Text', color: 'var(--violet)', bg: 'var(--violet-dim)' },
-              { step: '2', label: 'Tutor Thinks & Guides', color: 'var(--indigo)', bg: 'var(--indigo-dim)' },
-              { step: '3', label: 'Checks Paper Work Photo', color: 'var(--amber)', bg: 'var(--amber-dim)' },
-              { step: '4', label: 'Updates Your Skill Map', color: 'var(--emerald)', bg: 'var(--emerald-dim)' },
-            ].map((stepItem, i) => (
-              <div key={i} className="pipeline-step-wrapper">
-                <div className="pipeline-step-item">
-                  <span
-                    className="step-badge"
-                    style={{
-                      borderColor: stepItem.color,
-                      color: stepItem.color,
-                      backgroundColor: stepItem.bg,
-                    }}
-                  >
-                    {stepItem.step}
-                  </span>
-                  <div className="step-info">
-                    <span className="step-tag" style={{ color: stepItem.color }}>
-                      Step {stepItem.step}
-                    </span>
-                    <span className="step-name">{stepItem.label}</span>
-                  </div>
-                </div>
-                {i < 3 && (
-                  <span className="step-arrow" aria-hidden="true">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Live Draggable Learning Flow Architecture Pipeline */}
+        <InteractivePipeline />
       </section>
 
       {/* 10 Core Math Topics Section */}

@@ -820,10 +820,98 @@
   margin-top: 3px;
 }
 
+.logged-in-celebration {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #34D399;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  padding: 3px 9px;
+  border-radius: 999px;
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+
+.celebration-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34D399;
+  box-shadow: 0 0 6px #34D399;
+}
+
 .logged-in-actions {
   display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.logged-in-primary-cta {
+  padding: 12px 28px !important;
+  font-size: 1.02rem !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 20px rgba(124, 93, 250, 0.45) !important;
+  white-space: nowrap;
+}
+
+.logged-in-sub-actions {
+  display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.logged-in-logout-btn {
+  color: #F87171 !important;
+}
+.logged-in-logout-btn:hover {
+  background: rgba(248, 113, 113, 0.1) !important;
+}
+
+/* Navbar user group */
+.navbar-user-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navbar-user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 999px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34D399;
+}
+
+.navbar-logout-btn {
+  font-size: 0.78rem !important;
+  color: var(--text-muted) !important;
+}
+
+.navbar-logout-btn:hover {
+  color: #F87171 !important;
+  background: rgba(248, 113, 113, 0.08) !important;
 }
 
 /* Split Card */

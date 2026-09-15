@@ -399,8 +399,22 @@ export default function TutorSession() {
             <ThemeToggle />
           </div>
           <div className="session-header-actions-row">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              style={{ padding: '5px 8px', fontSize: '0.74rem' }}
+              onClick={() => {
+                stop()
+                navigate('/')
+              }}
+              aria-label="Back to Home"
+              title="Return to Home Landing Page"
+            >
+              ← Home
+            </button>
             {role === 'parent' && (
               <button
+                type="button"
                 className="btn btn-ghost"
                 style={{ padding: '5px 8px', fontSize: '0.74rem' }}
                 onClick={() => {
@@ -413,6 +427,7 @@ export default function TutorSession() {
               </button>
             )}
             <button
+              type="button"
               className="btn btn-ghost"
               style={{ padding: '5px 8px', fontSize: '0.74rem' }}
               onClick={() => {
@@ -426,6 +441,7 @@ export default function TutorSession() {
             </button>
             {user && (
               <button
+                type="button"
                 className="btn btn-ghost"
                 style={{ padding: '5px 8px', fontSize: '0.74rem' }}
                 onClick={() => {
@@ -441,10 +457,10 @@ export default function TutorSession() {
                       navigate('/')
                     })
                 }}
-                aria-label="Sign out"
-                title="Sign out"
+                aria-label="Log out"
+                title="Log out"
               >
-                Sign Out
+                Log Out
               </button>
             )}
           </div>
@@ -490,8 +506,22 @@ export default function TutorSession() {
             <ThemeToggle />
           </div>
           <div className="session-header-actions-row">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              style={{ padding: '5px 10px', fontSize: '0.78rem' }}
+              onClick={() => {
+                stop()
+                navigate('/')
+              }}
+              aria-label="Back to Home"
+              title="Return to Home Landing Page"
+            >
+              ← Home
+            </button>
             {role === 'parent' && (
               <button
+                type="button"
                 className="btn btn-ghost"
                 style={{ padding: '5px 10px', fontSize: '0.78rem' }}
                 onClick={() => {
@@ -504,6 +534,7 @@ export default function TutorSession() {
               </button>
             )}
             <button
+              type="button"
               className="btn btn-ghost"
               style={{ padding: '5px 10px', fontSize: '0.78rem' }}
               onClick={() => {
@@ -517,6 +548,7 @@ export default function TutorSession() {
             </button>
             {user && (
               <button
+                type="button"
                 className="btn btn-ghost"
                 style={{ padding: '5px 10px', fontSize: '0.78rem' }}
                 onClick={() => {
@@ -532,10 +564,10 @@ export default function TutorSession() {
                       navigate('/')
                     })
                 }}
-                aria-label="Sign out"
-                title="Sign out"
+                aria-label="Log out"
+                title="Log out"
               >
-                Sign Out
+                Log Out
               </button>
             )}
           </div>
