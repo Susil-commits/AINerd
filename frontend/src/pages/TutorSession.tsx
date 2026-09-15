@@ -278,8 +278,9 @@ export default function TutorSession() {
           return updated
         })
       },
-      (newMastery) => {
+      (newMastery, solved) => {
         if (newMastery && Object.keys(newMastery).length) setMasteryState(newMastery)
+        if (solved) setProblemSolved(true)
         setIsStreaming(false)
         if (responseAcc) stableSpeak(responseAcc)
       },
