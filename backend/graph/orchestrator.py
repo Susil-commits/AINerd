@@ -3,7 +3,6 @@ LangGraph Orchestrator — 3-agent pipeline with state management.
 Routes between: Tutor Agent, Diagnostic Agent, Content Agent.
 """
 # pyright: reportMissingImports=false, reportMissingModuleSource=false
-import os
 import uuid
 import warnings
 warnings.filterwarnings("ignore", message=".*allowed_objects.*")
@@ -13,7 +12,7 @@ from langgraph.graph import StateGraph, END, START
 from agents.tutor_agent import run_tutor_agent
 from agents.diagnostic_agent import run_diagnostic_agent
 from agents.content_agent import get_next_problem
-from bkt.tracker import update_mastery, get_next_skill, get_all_skills
+from bkt.tracker import update_mastery, get_next_skill
 from db.supabase_client import get_supabase
 
 

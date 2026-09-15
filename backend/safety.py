@@ -12,7 +12,7 @@ import re
 import html
 import time
 from typing import Tuple, Dict, Any, Optional
-from fastapi import HTTPException, UploadFile, status
+from fastapi import HTTPException, status
 
 # Patterns indicating attempts to extract system prompt or force direct answers
 PROMPT_INJECTION_PATTERNS = [

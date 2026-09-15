@@ -252,7 +252,7 @@ export function useTTS() {
             sessionStorage.setItem('veritas_cloud_tts_disabled', 'true')
           } catch {}
         }
-      } catch (err: any) {
+      } catch {
         if (currentTokenRef.current !== token || !isMountedRef.current || localGen !== globalSpeechGeneration) {
           return
         }

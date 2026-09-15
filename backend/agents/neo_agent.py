@@ -19,7 +19,6 @@ from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, AI
 from safety import (
     sanitize_input,
     check_neo_domain_scope,
-    check_prompt_injection,
     check_harmful_content,
     NEO_OUT_OF_SCOPE_RESPONSE,
     SAFE_SUPPORT_RESPONSE,
