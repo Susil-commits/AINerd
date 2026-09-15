@@ -11,13 +11,21 @@ export interface RememberedProfile {
   avatar: string
 }
 
+export interface VerifyOtpResult {
+  error: string | null
+  registeredRole?: UserRole
+  roleMismatch?: boolean
+}
+
 interface AuthContextType {
   user: User | null
   session: Session | null
   role: UserRole
+  avatar: string | null
+  updateAvatar: (avatarVal: string) => Promise<void>
   loading: boolean
-  sendMagicLink: (email: string, targetRole: UserRole, fullName?: string) => Promise<{ error: string | null }>
-  verifyOtp: (email: string, token: string, targetRole: UserRole, preferredName?: string) => Promise<{ error: string | null }>
+  sendMagicLink: (email: string, targetRole: UserRole, fullName?: string, isSignUp?: boolean) => Promise<{ error: string | null }>
+  verifyOtp: (email: string, token: string, targetRole: UserRole, preferredName?: string) => Promise<VerifyOtpResult>
   demoSignIn: (targetRole: UserRole, customEmail?: string) => Promise<void>
   signOut: () => Promise<void>
   setRole: (role: UserRole) => void
@@ -41,6 +49,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     roleRef.current = role
   }, [role])
   const [loading, setLoading] = useState(true)
+  const [avatar, setAvatar] = useState<string | null>(() => {
+    try {
+      const rem = localStorage.getItem('veritas_remembered_profile')
+      if (rem) {
+        const parsed = JSON.parse(rem)
+        return parsed.avatar || null
+      }
+    } catch {}
+    return null
+  })
+
   const [rememberedProfile, setRememberedProfile] = useState<RememberedProfile | null>(() => {
     try {
       const raw = localStorage.getItem('veritas_remembered_profile')
@@ -51,9 +70,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   })
 
   const saveProfile = (p: RememberedProfile) => {
-    setRememberedProfile(p)
+    const activeAvatar = avatar || p.avatar || 'initials'
+    const updated = { ...p, avatar: activeAvatar }
+    setRememberedProfile(updated)
     try {
-      localStorage.setItem('veritas_remembered_profile', JSON.stringify(p))
+      localStorage.setItem('veritas_remembered_profile', JSON.stringify(updated))
     } catch {}
   }
 
@@ -68,6 +89,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('veritas_user_role', newRole)
   }
 
+  const updateAvatar = async (avatarVal: string) => {
+    setAvatar(avatarVal)
+
+    // 1. If user is authenticated in Supabase, update auth metadata
+    if (user && session) {
+      try {
+        await supabase.auth.updateUser({
+          data: { avatar: avatarVal },
+        })
+      } catch (err) {
+        console.warn('Could not update avatar in Supabase auth metadata:', err)
+      }
+    }
+
+    // 2. Update active user state and storage
+    if (user) {
+      const updatedUser = {
+        ...user,
+        user_metadata: {
+          ...user.user_metadata,
+          avatar: avatarVal,
+        },
+      }
+      setUser(updatedUser as User)
+      if (user.id) {
+        localStorage.setItem(`veritas_avatar_${user.id}`, avatarVal)
+      }
+      if (user.email) {
+        localStorage.setItem(`veritas_avatar_${user.email}`, avatarVal)
+      }
+      const isDemo = localStorage.getItem('veritas_demo_user')
+      if (isDemo) {
+        localStorage.setItem('veritas_demo_user', JSON.stringify(updatedUser))
+      }
+    }
+
+    // 3. Update remembered profile
+    setRememberedProfile((prev) => {
+      if (!prev) return null
+      const updated = { ...prev, avatar: avatarVal }
+      try {
+        localStorage.setItem('veritas_remembered_profile', JSON.stringify(updated))
+      } catch {}
+      return updated
+    })
+  }
+
   useEffect(() => {
     // 1. Check existing Supabase session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
@@ -78,12 +146,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (userMetaRole && (userMetaRole === 'student' || userMetaRole === 'parent')) {
           setRole(userMetaRole)
         }
+        const userMetaAvatar = currentSession.user.user_metadata?.avatar as string | undefined
+        const localAvatar = currentSession.user.id
+          ? localStorage.getItem(`veritas_avatar_${currentSession.user.id}`)
+          : null
+        const activeAv = userMetaAvatar || localAvatar || 'initials'
+        setAvatar(activeAv)
         saveProfile({
           email: currentSession.user.email || '',
           name: currentSession.user.user_metadata?.name || (userMetaRole === 'parent' ? 'Parent' : 'Student'),
           role: userMetaRole || roleRef.current,
           lastActive: new Date().toISOString(),
-          avatar: (userMetaRole || roleRef.current) === 'parent' ? 'P' : 'S',
+          avatar: activeAv,
         })
       } else {
         // Check if demo user is stored
@@ -95,6 +169,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (parsed.user_metadata?.user_role) {
               setRole(parsed.user_metadata.user_role)
             }
+            const demoAv = parsed.user_metadata?.avatar || localStorage.getItem(`veritas_avatar_${parsed.id}`) || 'initials'
+            setAvatar(demoAv)
           } catch {}
         }
       }
@@ -126,15 +202,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch {}
 
+        const userMetaAvatar = newSession.user.user_metadata?.avatar as string | undefined
+        const localAvatar = newSession.user.id
+          ? localStorage.getItem(`veritas_avatar_${newSession.user.id}`)
+          : null
+        const activeAv = userMetaAvatar || localAvatar || 'initials'
+        setAvatar(activeAv)
+
         saveProfile({
           email: newSession.user.email || '',
           name: newSession.user.user_metadata?.name || (userMetaRole === 'parent' ? 'Parent' : 'Student'),
           role: userMetaRole || roleRef.current,
           lastActive: new Date().toISOString(),
-          avatar: (userMetaRole || roleRef.current) === 'parent' ? 'P' : 'S',
+          avatar: activeAv,
         })
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
+        setAvatar(null)
         localStorage.removeItem('veritas_demo_user')
         localStorage.removeItem('ainerd_demo_user')
         sessionStorage.removeItem('session')
@@ -147,18 +231,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [])
 
-  const sendMagicLink = async (email: string, targetRole: UserRole, fullName?: string): Promise<{ error: string | null }> => {
+  const sendMagicLink = async (
+    email: string,
+    targetRole: UserRole,
+    fullName?: string,
+    isSignUp = false
+  ): Promise<{ error: string | null }> => {
     try {
-      setRole(targetRole)
+      if (isSignUp) {
+        setRole(targetRole)
+      }
+      const cleanEmail = email.trim().toLowerCase()
       const trimmedName = fullName?.trim()
-      // Call Supabase Auth signInWithOtp to issue magic link with user_role stored in metadata
+
+      // CRITICAL: Only attach user_role and name metadata during signup.
+      // On sign-in, passing metadata options will mutate/overwrite an existing user's role in Supabase!
+      // By omitting options.data on sign-in, existing accounts preserve their registered role permanently.
+      const metadataOptions: Record<string, any> = {}
+      if (isSignUp) {
+        metadataOptions.user_role = targetRole
+        if (trimmedName) {
+          metadataOptions.name = trimmedName
+        }
+      }
+
       const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
+        email: cleanEmail,
         options: {
-          data: {
-            user_role: targetRole,
-            ...(trimmedName ? { name: trimmedName } : {}),
-          },
+          shouldCreateUser: isSignUp,
+          ...(isSignUp ? { data: metadataOptions } : {}),
           emailRedirectTo: `${window.location.origin}/`,
         },
       })
@@ -171,22 +272,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
-  const verifyOtp = async (email: string, token: string, targetRole: UserRole, preferredName?: string): Promise<{ error: string | null }> => {
+  const verifyOtp = async (
+    email: string,
+    token: string,
+    targetRole: UserRole,
+    preferredName?: string
+  ): Promise<VerifyOtpResult> => {
     const cleanEmail = email.trim().toLowerCase()
     const cleanToken = token.trim()
 
     // 1. DEMO / EVALUATOR SHORTCUT ONLY:
-    // These pre-configured test codes (777888, 123456, and @veritas.dev emails)
-    // are strictly for judge / evaluator convenience so they can preview student and parent
-    // flows without waiting for external email delivery.
-    // In production, all logins route through Supabase OTP verification below.
     if (cleanToken === '777888' || cleanToken === '123456' || cleanEmail.includes('@veritas.dev')) {
-      await demoSignIn(targetRole, cleanEmail)
-      return { error: null }
+      const demoRole: UserRole = cleanEmail.includes('parent')
+        ? 'parent'
+        : cleanEmail.includes('student')
+        ? 'student'
+        : targetRole
+      await demoSignIn(demoRole, cleanEmail)
+      return { error: null, registeredRole: demoRole, roleMismatch: demoRole !== targetRole }
     }
 
     try {
-      setRole(targetRole)
       const { data, error } = await supabase.auth.verifyOtp({
         email: cleanEmail,
         token: cleanToken,
@@ -200,16 +306,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data?.user) {
         setUser(data.user)
         setSession(data.session)
-        const resolvedName = data.user.user_metadata?.name || preferredName?.trim() || (targetRole === 'parent' ? 'Parent' : 'Student')
+
+        // Read the actual registered role saved during sign-up
+        const userMetaRole = data.user.user_metadata?.user_role as UserRole | undefined
+        const effectiveRole: UserRole =
+          userMetaRole === 'student' || userMetaRole === 'parent'
+            ? userMetaRole
+            : targetRole
+        const roleMismatch = userMetaRole !== undefined && userMetaRole !== targetRole
+
+        // Set the active role to the registered role
+        setRole(effectiveRole)
+
+        const resolvedName =
+          data.user.user_metadata?.name ||
+          preferredName?.trim() ||
+          (effectiveRole === 'parent' ? 'Parent' : 'Student')
+
+        const userMetaAvatar = data.user.user_metadata?.avatar as string | undefined
+        const localAvatar = data.user.id ? localStorage.getItem(`veritas_avatar_${data.user.id}`) : null
+        const activeAv = userMetaAvatar || localAvatar || 'initials'
+        setAvatar(activeAv)
+
         saveProfile({
           email: data.user.email || cleanEmail,
           name: resolvedName,
-          role: targetRole,
+          role: effectiveRole,
           lastActive: new Date().toISOString(),
-          avatar: targetRole === 'parent' ? 'P' : 'S',
+          avatar: activeAv,
         })
+
+        return { error: null, registeredRole: effectiveRole, roleMismatch }
       }
-      return { error: null }
+      return { error: null, registeredRole: targetRole, roleMismatch: false }
     } catch (err: any) {
       return { error: err?.message || 'Failed to verify OTP code' }
     }
@@ -226,6 +355,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name = prefix.charAt(0).toUpperCase() + prefix.slice(1)
     }
 
+    const storedDemoAvatar = localStorage.getItem(`veritas_avatar_${id}`) || 'initials'
+    setAvatar(storedDemoAvatar)
+
     const fakeUser = {
       id,
       email,
@@ -235,6 +367,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user_metadata: {
         user_role: targetRole,
         name,
+        avatar: storedDemoAvatar,
       },
       app_metadata: {
         provider: 'email',
@@ -251,7 +384,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name,
       role: targetRole,
       lastActive: new Date().toISOString(),
-      avatar: isParent ? 'P' : 'S',
+      avatar: storedDemoAvatar,
     })
   }
 
@@ -262,6 +395,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch {}
     setUser(null)
     setSession(null)
+    setAvatar(null)
     localStorage.removeItem('veritas_demo_user')
     localStorage.removeItem('ainerd_demo_user')
     sessionStorage.removeItem('session')
@@ -276,6 +410,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         session,
         role,
+        avatar,
+        updateAvatar,
         loading,
         sendMagicLink,
         verifyOtp,

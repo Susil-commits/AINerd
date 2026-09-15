@@ -5,7 +5,10 @@ import { getParentChildren, addChild, getChildDetails, deleteParentData, type Ch
 import { supabase } from '../lib/supabase'
 import MasteryRadar from '../components/MasteryRadar'
 import ThemeToggle from '../components/ThemeToggle'
+import UserAvatar from '../components/UserAvatar'
+import AvatarModal from '../components/AvatarModal'
 import { getSkillMeta, getMasteryTierInfo, getBarGradient } from '../lib/skillsData'
+import { validateEmailFormat, validateNameFormat, sanitizeNameInput } from '../lib/emailValidation'
 import './ParentDashboard.css'
 
 interface SkillItem {
@@ -16,7 +19,8 @@ interface SkillItem {
 
 export default function ParentDashboard() {
   const navigate = useNavigate()
-  const { user, signOut } = useAuth()
+  const { user, signOut, role, avatar, updateAvatar } = useAuth()
+  const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [childrenList, setChildrenList] = useState<ChildItem[]>([])
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [childDetails, setChildDetails] = useState<any>(null)
@@ -197,10 +201,26 @@ export default function ParentDashboard() {
 
   const handleAddChild = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newChildEmail) return
+    const trimmedEmail = newChildEmail.trim()
+    if (!trimmedEmail) {
+      setAddError("Please enter your child's email address.")
+      return
+    }
+    const emailVal = validateEmailFormat(trimmedEmail)
+    if (!emailVal.valid) {
+      setAddError(emailVal.reason || "Please enter a valid email address.")
+      return
+    }
+    if (newChildName.trim()) {
+      const nameVal = validateNameFormat(newChildName)
+      if (!nameVal.valid) {
+        setAddError(nameVal.reason || "Please enter a valid name.")
+        return
+      }
+    }
     setAddingChild(true)
     setAddError('')
-    addChild(parentId, newChildEmail, newChildName, parentEmail)
+    addChild(parentId, trimmedEmail, newChildName.trim(), parentEmail)
       .then((res) => {
         setShowAddModal(false)
         setNewChildEmail('')
@@ -271,8 +291,18 @@ export default function ParentDashboard() {
           >
             ← Home
           </button>
-          <div className="parent-user-pill">
-            <span className="parent-avatar">P</span>
+          <div
+            className="parent-user-pill parent-user-pill--interactive"
+            onClick={() => setShowAvatarModal(true)}
+            title="Click to update profile picture"
+          >
+            <UserAvatar
+              avatar={avatar}
+              name={user?.user_metadata?.name || 'Parent'}
+              role="parent"
+              size="xs"
+              showEditBadge={true}
+            />
             <span className="parent-email">{parentEmail}</span>
           </div>
           <button
@@ -342,7 +372,12 @@ export default function ParentDashboard() {
                     onClick={() => setSelectedChildId(child.student_id)}
                   >
                     <div className="child-card-header">
-                      <div className="child-avatar">S</div>
+                      <UserAvatar
+                        avatar={null}
+                        name={child.student_name}
+                        role="student"
+                        size="sm"
+                      />
                       <div className="child-meta">
                         <h4>{child.student_name}</h4>
                         <p>{child.student_email}</p>
@@ -641,7 +676,10 @@ export default function ParentDashboard() {
                   className="input modal-input"
                   placeholder="e.g. student.alex@veritas.dev"
                   value={newChildEmail}
-                  onChange={(e) => setNewChildEmail(e.target.value)}
+                  onChange={(e) => {
+                    setNewChildEmail(e.target.value)
+                    setAddError('')
+                  }}
                   autoFocus
                   required
                 />
@@ -654,7 +692,11 @@ export default function ParentDashboard() {
                   className="input modal-input"
                   placeholder="e.g. Alex"
                   value={newChildName}
-                  onChange={(e) => setNewChildName(e.target.value)}
+                  onChange={(e) => {
+                    setNewChildName(sanitizeNameInput(e.target.value))
+                    setAddError('')
+                  }}
+                  maxLength={50}
                 />
               </div>
 
@@ -730,6 +772,18 @@ export default function ParentDashboard() {
           </div>
         </div>
       )}
+
+      {/* Avatar Selection & Profile Modal */}
+      <AvatarModal
+        isOpen={showAvatarModal}
+        onClose={() => setShowAvatarModal(false)}
+        onSave={async (newAvatar) => {
+          await updateAvatar(newAvatar)
+        }}
+        currentAvatar={avatar}
+        name={user?.user_metadata?.name || 'Parent'}
+        role={role || 'parent'}
+      />
     </div>
   )
 }

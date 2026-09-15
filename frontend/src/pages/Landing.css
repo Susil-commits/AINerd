@@ -1270,6 +1270,39 @@
   margin: 0;
 }
 
+.auth-info-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #EEF2FF;
+  border: 1px solid #C7D2FE;
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: #3730A3;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  margin-bottom: 1.25rem;
+}
+
+.auth-info-banner .info-banner-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.auth-role-detect-hint {
+  font-size: 0.74rem;
+  color: #64748B;
+  margin-top: 5px;
+  line-height: 1.35;
+}
+
+.auth-role-detect-hint span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .auth-success-banner {
   display: flex;
   align-items: flex-start;
@@ -1755,6 +1788,128 @@
   background: #EEF2FF;
 }
 
+/* Shake animation on invalid code */
+@keyframes otpShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.otp-inputs-grid--shake {
+  animation: otpShake 0.45s ease-in-out;
+}
+
+.otp-digit-input--error {
+  border-color: #EF4444 !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #DC2626 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
+}
+
+[data-theme="dark"] .otp-digit-input--error {
+  border-color: #F87171 !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #FCA5A5 !important;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.3) !important;
+}
+
+/* Auth Error Group & Action Bar */
+.auth-error-banner-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.otp-error-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
+.btn-otp-clear {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #DC2626;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+[data-theme="dark"] .btn-otp-clear {
+  color: #FCA5A5;
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
+.btn-otp-clear:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: #EF4444;
+  transform: translateY(-1px);
+}
+
+.btn-otp-change-email {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #64748B;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+[data-theme="dark"] .btn-otp-change-email {
+  color: #CBD5E1;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.btn-otp-change-email:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #0F172A;
+  border-color: #94A3B8;
+  transform: translateY(-1px);
+}
+
+[data-theme="dark"] .btn-otp-change-email:hover {
+  color: #FFFFFF;
+}
+
+.btn-auth-switch-prompt {
+  background: #6366F1;
+  color: #FFFFFF;
+  border: none;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
+.btn-auth-switch-prompt:hover {
+  background: #4F46E5;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.55);
+}
+
 /* Device Tip (Laptop vs Phone) */
 .otp-device-tip {
   display: flex;
@@ -1791,27 +1946,47 @@
   color: #475569;
 }
 
-/* Dedicated Spam Alert Banner */
+/* Dedicated High-Impact Spam Alert Banner & Notices */
 .otp-spam-alert-banner {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.32);
-  border-radius: 10px;
-  padding: 8px 12px;
-  margin: 0.2rem 0 0.4rem;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1.5px solid rgba(245, 158, 11, 0.45);
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.15);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 0.3rem 0 0.5rem;
 }
 
-.otp-spam-alert-icon {
-  font-size: 1.15rem;
-  flex-shrink: 0;
-  margin-top: 1px;
+.otp-spam-alert-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #B45309;
+  letter-spacing: 0.02em;
+}
+
+[data-theme="dark"] .otp-spam-alert-header {
+  color: #FBBF24;
+}
+
+.otp-spam-alert-badge {
+  background: #F59E0B;
+  color: #000000;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .otp-spam-alert-content {
-  font-size: 0.76rem;
-  line-height: 1.45;
+  font-size: 0.77rem;
+  line-height: 1.5;
   color: #78350F;
 }
 
@@ -1827,36 +2002,106 @@
   color: #FBBF24;
 }
 
-.auth-spam-pre-hint {
+/* Sub-input guide under the 8/6-digit boxes */
+.otp-inputs-spam-guide {
+  margin: 0.35rem 0 0.2rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.3);
   font-size: 0.74rem;
+  line-height: 1.4;
+  color: #92400E;
+  text-align: center;
+}
+
+[data-theme="dark"] .otp-inputs-spam-guide {
+  background: rgba(245, 158, 11, 0.09);
+  border-color: rgba(245, 158, 11, 0.25);
+  color: #FDE68A;
+}
+
+.otp-inputs-spam-guide strong {
+  color: #B45309;
+}
+
+[data-theme="dark"] .otp-inputs-spam-guide strong {
+  color: #FBBF24;
+}
+
+/* Notice on email input form */
+.auth-email-spam-notice {
+  margin-top: 8px;
+  padding: 7px 11px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  font-size: 0.73rem;
   line-height: 1.45;
-  color: #64748B;
+  color: #92400E;
+}
+
+[data-theme="dark"] .auth-email-spam-notice {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #FDE68A;
+}
+
+.auth-email-spam-notice strong {
+  color: #B45309;
+}
+
+[data-theme="dark"] .auth-email-spam-notice strong {
+  color: #FBBF24;
+}
+
+/* Pre-hint before submit button */
+.auth-spam-pre-hint {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #78350F;
   text-align: center;
   margin: 0.5rem 0 0;
-  padding: 6px 10px;
-  background: rgba(0, 0, 0, 0.02);
-  border: 1px dashed rgba(100, 116, 139, 0.25);
-  border-radius: 8px;
+  padding: 8px 12px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.35);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 [data-theme="dark"] .auth-spam-pre-hint {
-  color: #94A3B8;
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.1);
+  color: #FDE68A;
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.auth-spam-pre-badge {
+  background: #F59E0B;
+  color: #000000;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
 .auth-spam-pre-hint strong {
-  color: #475569;
+  color: #B45309;
 }
 
 [data-theme="dark"] .auth-spam-pre-hint strong {
-  color: #E2E8F0;
+  color: #FBBF24;
 }
 
 .otp-spam-subtext {
-  font-size: 0.72rem;
+  font-size: 0.73rem;
   color: #D97706;
-  font-weight: 500;
+  font-weight: 600;
   display: block;
 }
 
@@ -1872,19 +2117,21 @@
 }
 
 .otp-success-banner {
-  font-size: 0.76rem;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.32);
+  font-size: 0.77rem;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1.5px solid rgba(16, 185, 129, 0.4);
   color: #059669;
-  padding: 6px 12px;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border-radius: 9px;
   text-align: center;
-  margin: 0.25rem 0;
-  line-height: 1.4;
+  margin: 0.3rem 0;
+  line-height: 1.45;
+  font-weight: 500;
 }
 
 [data-theme="dark"] .otp-success-banner {
   color: #34D399;
+  border-color: rgba(52, 211, 153, 0.4);
 }
 
 @media (max-width: 480px) {

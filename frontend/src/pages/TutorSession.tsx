@@ -7,6 +7,8 @@ import WorkUpload from '../components/WorkUpload'
 import ThinkingTrace from '../components/ThinkingTrace'
 import MasteryRadar from '../components/MasteryRadar'
 import ThemeToggle from '../components/ThemeToggle'
+import UserAvatar from '../components/UserAvatar'
+import AvatarModal from '../components/AvatarModal'
 import { getSkillMeta } from '../lib/skillsData'
 import type { SessionData, Problem, Diagnosis } from '../lib/api'
 import './TutorSession.css'
@@ -70,7 +72,8 @@ function renderMessageContent(content: string) {
 
 export default function TutorSession() {
   const navigate = useNavigate()
-  const { user, signOut, role, loading: authLoading } = useAuth()
+  const { user, signOut, role, avatar, updateAvatar, loading: authLoading } = useAuth()
+  const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [session, setSession] = useState<SessionData | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -395,7 +398,20 @@ export default function TutorSession() {
       <div className="session-mobile-nav">
         <div className="session-header-mini session-header-mini--mobile">
           <div className="session-header-top-row">
-            <span className="badge badge-violet">{session.student_name}</span>
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+              onClick={() => setShowAvatarModal(true)}
+              title="Change profile picture"
+            >
+              <UserAvatar
+                avatar={avatar}
+                name={session.student_name}
+                role={role}
+                size="sm"
+                showEditBadge={true}
+              />
+              <span className="badge badge-violet">{session.student_name}</span>
+            </div>
             <ThemeToggle />
           </div>
           <div className="session-header-actions-row">
@@ -502,7 +518,20 @@ export default function TutorSession() {
       <aside className={`session-sidebar ${mobileTab !== 'problem' ? 'mobile-hidden' : ''}`}>
         <div className="session-header-mini session-header-mini--desktop">
           <div className="session-header-top-row">
-            <span className="badge badge-violet">{session.student_name}</span>
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+              onClick={() => setShowAvatarModal(true)}
+              title="Change profile picture"
+            >
+              <UserAvatar
+                avatar={avatar}
+                name={session.student_name}
+                role={role}
+                size="sm"
+                showEditBadge={true}
+              />
+              <span className="badge badge-violet">{session.student_name}</span>
+            </div>
             <ThemeToggle />
           </div>
           <div className="session-header-actions-row">
@@ -795,6 +824,17 @@ export default function TutorSession() {
           </button>
         </div>
       </aside>
+
+      <AvatarModal
+        isOpen={showAvatarModal}
+        onClose={() => setShowAvatarModal(false)}
+        onSave={async (newAvatar) => {
+          await updateAvatar(newAvatar)
+        }}
+        currentAvatar={avatar}
+        name={session?.student_name || user?.user_metadata?.name}
+        role={role}
+      />
     </div>
   )
 }

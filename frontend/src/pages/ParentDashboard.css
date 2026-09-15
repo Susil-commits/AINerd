@@ -110,6 +110,23 @@
   color: var(--text-secondary);
 }
 
+.parent-user-pill--interactive {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.parent-user-pill--interactive:hover {
+  background: rgba(124, 93, 250, 0.15);
+  border-color: rgba(124, 93, 250, 0.4);
+  transform: translateY(-1px);
+}
+
+[data-theme="light"] .parent-user-pill--interactive:hover {
+  background: #EEF2FF;
+  border-color: #C7D2FE;
+}
+
 .parent-avatar {
   font-size: 1rem;
 }

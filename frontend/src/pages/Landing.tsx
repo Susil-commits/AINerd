@@ -4,11 +4,19 @@ import { checkHealth } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import AnimatedIntro from '../components/AnimatedIntro'
 import SocraticPreview from '../components/SocraticPreview'
-import { validateEmailFormat, suggestCorrection, friendlyAuthError } from '../lib/emailValidation'
+import {
+  validateEmailFormat,
+  validateNameFormat,
+  sanitizeNameInput,
+  suggestCorrection,
+  friendlyAuthError,
+} from '../lib/emailValidation'
 import { useBackendWarmup } from '../hooks/useBackendWarmup'
 import WarmupExperience from '../components/WarmupExperience'
 import InteractivePipeline from '../components/InteractivePipeline'
 import ThemeToggle from '../components/ThemeToggle'
+import UserAvatar from '../components/UserAvatar'
+import AvatarModal from '../components/AvatarModal'
 import './Landing.css'
 
 const STATS = [
@@ -127,6 +135,8 @@ export default function Landing() {
   const {
     user,
     role,
+    avatar,
+    updateAvatar,
     setRole,
     sendMagicLink,
     verifyOtp,
@@ -144,6 +154,8 @@ export default function Landing() {
   const [authScreen, setAuthScreen] = useState<'form' | 'otp'>('form')
   const [otpLength, setOtpLength] = useState<6 | 8>(8) // Default to 8 digits matching Supabase project configuration
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '', '', ''])
+  const [hasOtpError, setHasOtpError] = useState(false)
+  const [shakeOtp, setShakeOtp] = useState(false)
   const [resendTimer, setResendTimer] = useState(45)
   const [resendCount, setResendCount] = useState(0)
   const [resendSuccess, setResendSuccess] = useState(false)
@@ -155,6 +167,14 @@ export default function Landing() {
   const switchOtpLength = (targetLen: 6 | 8) => {
     setOtpLength(targetLen)
     setOtpDigits(Array(targetLen).fill(''))
+    setAuthError('')
+    setHasOtpError(false)
+    setTimeout(() => otpRefs.current[0]?.focus(), 50)
+  }
+
+  const handleClearOtp = () => {
+    setOtpDigits(Array(otpLength).fill(''))
+    setHasOtpError(false)
     setAuthError('')
     setTimeout(() => otpRefs.current[0]?.focus(), 50)
   }
@@ -169,6 +189,9 @@ export default function Landing() {
     }
   })
   const [fullName, setFullName] = useState('')
+  const [roleMismatchNotice, setRoleMismatchNotice] = useState<string | null>(null)
+  const [showAvatarModal, setShowAvatarModal] = useState(false)
+  const [isRegistrationAvatarStep, setIsRegistrationAvatarStep] = useState(false)
 
   // Cold-start warmup hook
   const {
@@ -430,15 +453,22 @@ export default function Landing() {
     if (!trimmed) return
     const validation = validateEmailFormat(trimmed)
     if (!validation.valid) {
-      setAuthError(validation.reason || 'Invalid email address')
+      setAuthError(validation.reason || 'Please enter a valid email address.')
     } else {
       setAuthError('')
-      const correction = suggestCorrection(trimmed)
-      if (correction && correction.toLowerCase() !== trimmed.toLowerCase()) {
-        setEmailCorrection(correction)
-      } else {
-        setEmailCorrection(null)
-      }
+      const typo = suggestCorrection(trimmed)
+      setEmailCorrection(typo)
+    }
+  }
+
+  const handleNameBlur = () => {
+    const trimmed = fullName.trim()
+    if (!trimmed) return
+    const nameValidation = validateNameFormat(trimmed)
+    if (!nameValidation.valid) {
+      setAuthError(nameValidation.reason || 'Invalid name format')
+    } else {
+      setAuthError('')
     }
   }
 
@@ -450,15 +480,32 @@ export default function Landing() {
     if (e) e.preventDefault()
     const targetEmail = (emailOverride !== undefined ? emailOverride : email).trim()
     const targetRole = roleOverride || role
+
+    // 1. Strict email validation (rejects phone numbers, plain names, missing TLDs, etc.)
     const validation = validateEmailFormat(targetEmail)
     if (!validation.valid) {
       setAuthError(validation.reason || 'Please enter a valid email address.')
       return
     }
+
+    // 2. Strict name validation during signup (rejects emails, numbers, symbols in name)
+    if (authMode === 'signup' && fullName.trim()) {
+      const nameValidation = validateNameFormat(fullName)
+      if (!nameValidation.valid) {
+        setAuthError(nameValidation.reason || 'Please enter a valid name.')
+        return
+      }
+    }
+
     setAuthLoading(true)
     setAuthError('')
     try {
-      const res = await sendMagicLink(targetEmail, targetRole, authMode === 'signup' ? fullName : undefined)
+      const res = await sendMagicLink(
+        targetEmail,
+        targetRole,
+        authMode === 'signup' ? fullName : undefined,
+        authMode === 'signup'
+      )
       if (res.error) {
         setAuthError(friendlyAuthError(res.error))
       } else {
@@ -487,7 +534,12 @@ export default function Landing() {
     setAuthLoading(true)
     setAuthError('')
     try {
-      const res = await sendMagicLink(target, role, authMode === 'signup' ? fullName : undefined)
+      const res = await sendMagicLink(
+        target,
+        role,
+        authMode === 'signup' ? fullName : undefined,
+        authMode === 'signup'
+      )
       if (res.error) {
         setAuthError(friendlyAuthError(res.error))
       } else {
@@ -526,20 +578,46 @@ export default function Landing() {
       const res = await verifyOtp(targetEmail, cleanCode, activeRole, authMode === 'signup' ? fullName : undefined)
       if (res.error) {
         setAuthError(friendlyAuthError(res.error))
+        setHasOtpError(true)
+        setShakeOtp(true)
+        setTimeout(() => setShakeOtp(false), 500)
+        otpRefs.current[0]?.focus()
       } else {
+        setHasOtpError(false)
+        if (res.roleMismatch && res.registeredRole) {
+          const registeredLabel =
+            res.registeredRole === 'student' ? 'Student Socratic Workspace' : 'Parent & Guardian Portal'
+          const registeredRoleName = res.registeredRole === 'student' ? 'Student' : 'Parent'
+          setRoleMismatchNotice(
+            `Account Verified: This email is registered as a ${registeredRoleName}. We've protected your profile and automatically directed you to your ${registeredLabel}.`
+          )
+        } else {
+          setRoleMismatchNotice(null)
+        }
         // Verification succeeded and user session is active.
-        // Keep the user on the landing portal to see their active account and click the button to enter.
+        // If registering, prompt avatar setup onboarding
+        if (authMode === 'signup') {
+          setIsRegistrationAvatarStep(true)
+          setShowAvatarModal(true)
+        }
         setAuthScreen('form')
       }
     } catch (err: any) {
       console.error('Verify OTP failed:', err)
       setAuthError(friendlyAuthError(err?.message || 'Verification failed. Please check the code and try again.'))
+      setHasOtpError(true)
+      setShakeOtp(true)
+      setTimeout(() => setShakeOtp(false), 500)
+      otpRefs.current[0]?.focus()
     } finally {
       setAuthLoading(false)
     }
   }
 
   const handleOtpChange = (index: number, val: string) => {
+    if (hasOtpError) {
+      setHasOtpError(false)
+    }
     // Only accept numeric digits
     const char = val.replace(/\D/g, '').slice(-1)
     const nextDigits = [...otpDigits]
@@ -558,13 +636,38 @@ export default function Landing() {
   }
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus()
+    if (e.key === 'Backspace') {
+      if (!otpDigits[index] && index > 0) {
+        otpRefs.current[index - 1]?.focus()
+      }
+      return
+    }
+    // Allow navigation, modifier shortcuts, tab, enter, escape, delete
+    if (
+      e.key === 'Tab' ||
+      e.key === 'Enter' ||
+      e.key === 'Delete' ||
+      e.key === 'Escape' ||
+      e.key === 'ArrowLeft' ||
+      e.key === 'ArrowRight' ||
+      e.key === 'ArrowUp' ||
+      e.key === 'ArrowDown' ||
+      e.key === 'Home' ||
+      e.key === 'End' ||
+      e.ctrlKey ||
+      e.metaKey
+    ) {
+      return
+    }
+    // Only accept numeric digits 0-9; reject any other character (letters, punctuation, symbols)
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault()
     }
   }
 
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault()
+    setHasOtpError(false)
     const rawPasted = e.clipboardData.getData('text').trim().replace(/\D/g, '')
     if (!rawPasted) return
 
@@ -595,6 +698,8 @@ export default function Landing() {
 
   const handleAutofillOtp = (code: string, targetRole: 'student' | 'parent') => {
     setRole(targetRole)
+    setHasOtpError(false)
+    setAuthError('')
     const targetLen: 6 | 8 = code.length === 8 ? 8 : 6
     setOtpLength(targetLen)
     const digits = code.slice(0, targetLen).split('')
@@ -770,8 +875,24 @@ export default function Landing() {
         <div className="auth-card-container" id="auth-card">
           {user ? (
             <div className="auth-logged-in-card animate-fadein">
+              {roleMismatchNotice && (
+                <div className="auth-info-banner animate-fadein">
+                  <span className="info-banner-icon">🛡️</span>
+                  <span className="info-banner-text">{roleMismatchNotice}</span>
+                </div>
+              )}
               <div className="logged-in-badge">
-                <span className="logged-in-avatar">{role === 'parent' ? 'P' : 'S'}</span>
+                <UserAvatar
+                  avatar={avatar}
+                  name={user.user_metadata?.name || rememberedProfile?.name || ''}
+                  role={role}
+                  size="lg"
+                  onClick={() => {
+                    setIsRegistrationAvatarStep(false)
+                    setShowAvatarModal(true)
+                  }}
+                  showEditBadge={true}
+                />
                 <div>
                   <div className="logged-in-celebration">
                     <span className="celebration-dot" />
@@ -815,6 +936,7 @@ export default function Landing() {
                         console.error('Sign out error:', err)
                       }
                       setEmail('')
+                      setRoleMismatchNotice(null)
                       setAuthScreen('form')
                     }}
                   >
@@ -839,7 +961,12 @@ export default function Landing() {
                 {rememberedProfile && !rememberedDismissed && authScreen === 'form' ? (
                   <div className="auth-remembered-card animate-fadein">
                     <div className="remembered-header">
-                      <span className="remembered-avatar">{rememberedProfile.role === 'parent' ? 'P' : 'S'}</span>
+                      <UserAvatar
+                        avatar={rememberedProfile.avatar}
+                        name={rememberedProfile.name}
+                        role={rememberedProfile.role}
+                        size="md"
+                      />
                       <div className="remembered-info">
                         <div className="remembered-name-row">
                           <span className="remembered-name">{rememberedProfile.name}</span>
@@ -900,21 +1027,24 @@ export default function Landing() {
                     </h2>
                     <p className="auth-tagline">
                       {authMode === 'signup'
-                        ? "We've sent a verification code to activate your new account. Please check your inbox and Spam / Junk folder."
-                        : "If that email is registered, we've sent your code. Please check your inbox and Spam / Junk folder."}
+                        ? "We've sent an activation code to your email."
+                        : "If that email is registered, we've sent your code."}
                     </p>
 
-                    {/* Dedicated Spam Alert Banner */}
+                    {/* Dedicated High-Visibility Spam Alert Banner */}
                     <div className="otp-spam-alert-banner animate-fadein">
-                      <span className="otp-spam-alert-icon">📬</span>
+                      <div className="otp-spam-alert-header">
+                        <span className="otp-spam-alert-badge">⚠️ IMPORTANT</span>
+                        <strong>CHECK YOUR SPAM / JUNK FOLDER!</strong>
+                      </div>
                       <div className="otp-spam-alert-content">
-                        <strong>Please check your Spam / Junk folder!</strong> Automated security codes often land in Spam, Junk, or Promotions. Look there if you don't see the email in your main inbox.
+                        Automated verification emails almost always land in your <strong>Spam</strong>, <strong>Junk</strong>, or <strong>Promotions</strong> folder. If you don't see it in your primary inbox, please open your Spam folder right now.
                       </div>
                     </div>
 
                     {resendSuccess && (
                       <div className="otp-success-banner animate-fadein">
-                        ✅ Fresh verification code sent! Remember to check your <strong>Spam / Junk folder</strong>.
+                        ✅ Fresh verification code sent! ⚠️ <strong>Remember to check your Spam / Junk folder immediately.</strong>
                       </div>
                     )}
 
@@ -939,15 +1069,17 @@ export default function Landing() {
                       </div>
                     </div>
 
-                    <div className={`otp-inputs-grid otp-inputs-grid--${otpLength}`}>
+                    <div className={`otp-inputs-grid otp-inputs-grid--${otpLength} ${shakeOtp ? 'otp-inputs-grid--shake' : ''}`}>
                       {otpDigits.map((digit, idx) => (
                         <input
                           key={idx}
                           ref={(el) => { otpRefs.current[idx] = el }}
                           type="text"
                           inputMode="numeric"
+                          pattern="[0-9]*"
+                          autoComplete="one-time-code"
                           maxLength={1}
-                          className={`otp-digit-input ${digit ? 'otp-digit-input--filled' : ''}`}
+                          className={`otp-digit-input ${digit ? 'otp-digit-input--filled' : ''} ${hasOtpError ? 'otp-digit-input--error' : ''}`}
                           value={digit}
                           onChange={(e) => handleOtpChange(idx, e.target.value)}
                           onKeyDown={(e) => handleOtpKeyDown(idx, e)}
@@ -959,22 +1091,24 @@ export default function Landing() {
                       ))}
                     </div>
 
+                    <div className="otp-inputs-spam-guide animate-fadein">
+                      <span>📬 <strong>Can't find the code in your inbox?</strong> Please check your <strong>Spam / Junk folder</strong> — verification emails almost always arrive there!</span>
+                    </div>
+
                     {/* Laptop vs Phone helper tip */}
                     <div className="otp-device-tip animate-fadein">
                       <span className="otp-device-tip-icon">💻</span>
                       <div className="otp-device-tip-body">
                         <span className="otp-device-tip-title">Signing in on this laptop?</span>
                         <span className="otp-device-tip-desc">
-                          Type your verification code directly into the boxes above. Tapping "Sign in to Veritas" on your phone logs in your phone's browser, not this laptop. (Also remember to check your Spam folder!)
+                          Type your verification code directly into the boxes above. Tapping "Sign in to Veritas" on your phone logs in your phone's browser, not this laptop. (Also remember to check your <strong>Spam / Junk folder</strong>!)
                         </span>
                       </div>
                     </div>
 
-                    {otpScreenSeconds >= 20 && otpScreenSeconds < 75 && (
-                      <p className="otp-hint otp-hint--soft animate-fadein">
-                        📬 <strong>Helpful reminder:</strong> If the email hasn't appeared yet, please check your <strong>Spam, Junk, or Promotions folder</strong>!
-                      </p>
-                    )}
+                    <p className="otp-hint otp-hint--soft animate-fadein">
+                      📬 <strong>Reminder:</strong> If you don't see the email within seconds, check your <strong>Spam, Junk, or Promotions folder</strong> or search for "Veritas".
+                    </p>
 
                     {otpScreenSeconds >= 75 && (
                       <p className="otp-hint otp-hint--direct animate-fadein">
@@ -983,14 +1117,40 @@ export default function Landing() {
                         <button
                           type="button"
                           className="otp-hint-link"
-                          onClick={() => { setAuthScreen('form'); setAuthError(''); setResendSuccess(false) }}
+                          onClick={() => { setAuthScreen('form'); setAuthError(''); setResendSuccess(false); setHasOtpError(false) }}
                         >
                           try a different email
                         </button>.
                       </p>
                     )}
 
-                    {authError && <p className="auth-error-banner">{authError}</p>}
+                    {authError && (
+                      <div className="auth-error-banner-group animate-fadein">
+                        <p className="auth-error-banner">{authError}</p>
+                        <div className="otp-error-action-bar">
+                          <button
+                            type="button"
+                            className="btn-otp-clear"
+                            onClick={handleClearOtp}
+                            title="Clear all digits to re-type code"
+                          >
+                            <span>🔄 Clear & Re-enter</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-otp-change-email"
+                            onClick={() => {
+                              setAuthScreen('form')
+                              setAuthError('')
+                              setHasOtpError(false)
+                            }}
+                            title="Enter a different email"
+                          >
+                            <span>✏️ Change Email</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     <button
                       type="button"
@@ -1057,6 +1217,7 @@ export default function Landing() {
                         onClick={() => {
                           setAuthMode('signin')
                           setAuthError('')
+                          setRoleMismatchNotice(null)
                         }}
                       >
                         <span className="tab-icon">👋</span>
@@ -1070,6 +1231,7 @@ export default function Landing() {
                         onClick={() => {
                           setAuthMode('signup')
                           setAuthError('')
+                          setRoleMismatchNotice(null)
                         }}
                       >
                         <span className="tab-icon">✨</span>
@@ -1119,7 +1281,11 @@ export default function Landing() {
                               className="auth-text-input"
                               placeholder={role === 'parent' ? 'e.g. Sarah Jenkins' : 'e.g. Alex Jenkins'}
                               value={fullName}
-                              onChange={(e) => setFullName(e.target.value)}
+                              onChange={(e) => {
+                                setFullName(sanitizeNameInput(e.target.value))
+                                setAuthError('')
+                              }}
+                              onBlur={handleNameBlur}
                               disabled={authLoading}
                               maxLength={50}
                             />
@@ -1185,10 +1351,16 @@ export default function Landing() {
                             </button>
                           ))}
                         </div>
+
+                        <div className="auth-email-spam-notice animate-fadein">
+                          <span>📬 <strong>Heads up:</strong> Your code will be sent by email. <u>Always check your Spam / Junk folder</u> as automated verification codes almost always land there!</span>
+                        </div>
                       </div>
 
                       <div className="auth-field-group">
-                        <label>Select Your Learning Role</label>
+                        <label>
+                          {authMode === 'signup' ? 'Select Your Learning Role' : 'Intended Portal'}
+                        </label>
                         <div className="auth-role-tabs">
                           <button
                             type="button"
@@ -1218,9 +1390,32 @@ export default function Landing() {
                             </div>
                           </button>
                         </div>
+                        {authMode === 'signin' && (
+                          <div className="auth-role-detect-hint">
+                            <span>🛡️ Registered accounts automatically open in their verified role.</span>
+                          </div>
+                        )}
                       </div>
 
-                      {authError && <p className="auth-error-banner">{authError}</p>}
+                      {authError && (
+                        <div className="auth-error-banner animate-fadein">
+                          <div>{authError}</div>
+                          {authMode === 'signin' && (authError.toLowerCase().includes('create free account') || authError.toLowerCase().includes('register first') || authError.toLowerCase().includes('no account found')) && (
+                            <div style={{ marginTop: '8px' }}>
+                              <button
+                                type="button"
+                                className="btn-auth-switch-prompt"
+                                onClick={() => {
+                                  setAuthMode('signup')
+                                  setAuthError('')
+                                }}
+                              >
+                                ✨ Switch to Create Free Account →
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       <div className="auth-submit-row">
                         <button
@@ -1235,7 +1430,8 @@ export default function Landing() {
                         </button>
 
                         <div className="auth-spam-pre-hint">
-                          <span>📬 Note: Security codes sent by email may arrive in your <strong>Spam or Junk folder</strong>. Please check there if not found in your inbox!</span>
+                          <span className="auth-spam-pre-badge">⚠️ CHECK SPAM FOLDER</span>
+                          <span>Security codes sent by email almost always arrive in your <strong>Spam or Junk folder</strong>. Please look there immediately!</span>
                         </div>
 
                         <div className="auth-mode-switch-row">
@@ -1580,6 +1776,23 @@ export default function Landing() {
         }}
       />
     )}
+
+    {/* Avatar Selection & Profile Modal */}
+    <AvatarModal
+      isOpen={showAvatarModal}
+      onClose={() => setShowAvatarModal(false)}
+      onSave={async (newAvatar) => {
+        await updateAvatar(newAvatar)
+      }}
+      currentAvatar={avatar}
+      name={user?.user_metadata?.name || rememberedProfile?.name || fullName}
+      role={role}
+      isRegistration={isRegistrationAvatarStep}
+      onSkip={async () => {
+        await updateAvatar('initials')
+        setShowAvatarModal(false)
+      }}
+    />
     </>
   )
 }

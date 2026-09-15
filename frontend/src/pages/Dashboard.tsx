@@ -5,6 +5,8 @@ import { getMastery, getSummary } from '../lib/api'
 import MasteryRadar from '../components/MasteryRadar'
 import { getSkillMeta } from '../lib/skillsData'
 import ThemeToggle from '../components/ThemeToggle'
+import UserAvatar from '../components/UserAvatar'
+import AvatarModal from '../components/AvatarModal'
 import './Dashboard.css'
 
 interface SkillMastery {
@@ -16,7 +18,8 @@ interface SkillMastery {
 export default function Dashboard() {
   const { studentId } = useParams<{ studentId: string }>()
   const navigate = useNavigate()
-  const { role, signOut } = useAuth()
+  const { role, avatar, updateAvatar, signOut } = useAuth()
+  const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [skills, setSkills] = useState<SkillMastery[]>([])
   const [summary, setSummary] = useState('')
   const [loading, setLoading] = useState(true)
@@ -110,9 +113,24 @@ export default function Dashboard() {
             {role === 'parent' ? '← Parent Portal' : '← Back to Session'}
           </button>
         </div>
-        <div>
-          <h2>{studentName}'s Learning Dashboard</h2>
-          <p className="dash-sub">Real-time skill progress & practice summary</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div
+            onClick={() => setShowAvatarModal(true)}
+            style={{ cursor: 'pointer' }}
+            title="Click to update profile picture"
+          >
+            <UserAvatar
+              avatar={avatar}
+              name={studentName}
+              role={role}
+              size="md"
+              showEditBadge={true}
+            />
+          </div>
+          <div>
+            <h2>{studentName}'s Learning Dashboard</h2>
+            <p className="dash-sub">Real-time skill progress & practice summary</p>
+          </div>
         </div>
         <div className="dash-stats">
           <div className="dash-stat">
@@ -271,6 +289,18 @@ export default function Dashboard() {
           </div>
         </div>
       ))}
+
+      {/* Avatar Selection & Profile Modal */}
+      <AvatarModal
+        isOpen={showAvatarModal}
+        onClose={() => setShowAvatarModal(false)}
+        onSave={async (newAvatar) => {
+          await updateAvatar(newAvatar)
+        }}
+        currentAvatar={avatar}
+        name={studentName}
+        role={role}
+      />
     </div>
   )
 }

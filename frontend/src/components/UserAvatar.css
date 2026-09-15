@@ -1,0 +1,98 @@
+/* UserAvatar.css */
+.user-avatar-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  user-select: none;
+  border-radius: 50%;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  background: var(--bg-card, #1E1B4B);
+}
+
+.user-avatar--interactive {
+  cursor: pointer;
+}
+
+.user-avatar--interactive:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 0 3px rgba(124, 93, 250, 0.45);
+}
+
+.user-avatar--interactive:focus-visible {
+  outline: 2px solid var(--violet-light, #7C5DFA);
+  outline-offset: 2px;
+}
+
+.user-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+/* Neutral Person Silhouette (Permanent fallback when avatar is deleted) */
+.user-avatar-silhouette {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #334155;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  color: #94A3B8;
+  transition: background 0.2s ease;
+}
+
+[data-theme="light"] .user-avatar-silhouette {
+  background: #E2E8F0;
+  border-color: #CBD5E1;
+  color: #64748B;
+}
+
+.user-avatar-silhouette-icon {
+  width: 55%;
+  height: 55%;
+}
+
+/* Colorful Initials */
+.user-avatar-initials {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Edit Badge Overlay */
+.user-avatar-edit-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 22px;
+  height: 22px;
+  background: #6366F1;
+  color: #FFFFFF;
+  border-radius: 50%;
+  border: 2px solid #0F172A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.user-avatar-edit-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+[data-theme="light"] .user-avatar-edit-badge {
+  border-color: #FFFFFF;
+}
