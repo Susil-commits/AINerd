@@ -28,6 +28,25 @@
   gap: 8px;
   text-decoration: none;
   color: var(--text-primary);
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.navbar-brand:hover {
+  opacity: 0.92;
+}
+
+/* Sticky header offset for smooth anchor navigation (#demo, #how-it-works, etc.) */
+#demo,
+#how-it-works,
+#topics,
+#features,
+#auth-card,
+.demo-section,
+.architecture-section,
+.topics-section,
+.features {
+  scroll-margin-top: 85px;
 }
 
 .brand-icon {

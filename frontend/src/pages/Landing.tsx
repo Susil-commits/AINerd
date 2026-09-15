@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { checkHealth } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import AnimatedIntro from '../components/AnimatedIntro'
@@ -122,6 +122,7 @@ type ConnStatus = 'checking' | 'connected' | 'waking_up' | 'error'
 
 export default function Landing() {
   const navigate = useNavigate()
+  const location = useLocation()
   const {
     user,
     role,
@@ -203,8 +204,11 @@ export default function Landing() {
     }
   }, [authScreen, resendTimer])
 
-  // Animated intro portal control
+  // Animated intro portal control (bypassed if arriving directly with a section anchor like #demo)
   const [showIntro, setShowIntro] = useState(() => {
+    if (window.location.hash && !window.location.hash.includes('access_token')) {
+      return false
+    }
     return sessionStorage.getItem('veritas_intro_seen') !== 'true' && sessionStorage.getItem('ainerd_intro_seen') !== 'true'
   })
 
@@ -287,6 +291,74 @@ export default function Landing() {
     setConnMessage('Connecting to learning space...')
     setConnRetryTrigger(c => c + 1)
   }
+
+  // Smoothly scroll to a section by element ID with sticky navbar offset resilience
+  const scrollToSection = useCallback((sectionId: string, smooth: boolean = true) => {
+    const cleanId = sectionId.replace(/^#/, '').trim()
+    if (!cleanId) return
+
+    let attempts = 0
+    const tryScroll = () => {
+      const el = document.getElementById(cleanId)
+      if (el) {
+        el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' })
+      } else if (attempts < 8) {
+        attempts++
+        setTimeout(tryScroll, 100)
+      }
+    }
+
+    tryScroll()
+  }, [])
+
+  // Auto-scroll to target section on initial load or refresh if hash is present (e.g. #demo)
+  useEffect(() => {
+    const rawHash = location.hash || window.location.hash
+    if (rawHash && !rawHash.includes('access_token') && !rawHash.includes('error=')) {
+      const timer = setTimeout(() => {
+        scrollToSection(rawHash, false)
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [location.hash, scrollToSection])
+
+  // Handle browser back/forward buttons when moving between section hashes
+  useEffect(() => {
+    const handleHashChange = () => {
+      const rawHash = window.location.hash
+      if (rawHash && !rawHash.includes('access_token') && !rawHash.includes('error=')) {
+        scrollToSection(rawHash, true)
+      } else if (!rawHash) {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    }
+
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [scrollToSection])
+
+  // When user scrolls back near the top (hero/header), clear obsolete hash from URL
+  // so refreshing cleanly reloads the main landing URL (https://veritas-tutor.vercel.app/)
+  useEffect(() => {
+    let ticking = false
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          if (window.scrollY < 180) {
+            const currentHash = window.location.hash
+            if (currentHash && !currentHash.includes('access_token') && !currentHash.includes('error=')) {
+              window.history.replaceState(null, '', window.location.pathname + window.location.search)
+            }
+          }
+          ticking = false
+        })
+        ticking = true
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   // On verified login (Magic Link callback in URL hash/query), redirect to role destination
   useEffect(() => {
@@ -570,6 +642,10 @@ export default function Landing() {
           onEnter={() => {
             setShowIntro(false)
             sessionStorage.setItem('veritas_intro_seen', 'true')
+            const rawHash = window.location.hash
+            if (rawHash && !rawHash.includes('access_token')) {
+              setTimeout(() => scrollToSection(rawHash, true), 120)
+            }
           }}
         />
       )}
@@ -577,16 +653,54 @@ export default function Landing() {
       {/* Top Glassmorphic Navigation Bar */}
       <header className="landing-navbar">
         <div className="navbar-container">
-          <div className="navbar-brand">
+          <a
+            href="/"
+            className="navbar-brand"
+            onClick={(e) => {
+              e.preventDefault()
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+              window.history.replaceState(null, '', window.location.pathname + window.location.search)
+            }}
+          >
             <span className="brand-icon">✨</span>
             <span className="brand-name">Veritas<span className="brand-dot">.</span></span>
             <span className="brand-tag">Socratic Math</span>
-          </div>
+          </a>
 
           <nav className="navbar-links">
-            <a href="#demo" className="nav-link">Interactive Demo</a>
-            <a href="#how-it-works" className="nav-link">How It Works</a>
-            <a href="#topics" className="nav-link">Math Topics</a>
+            <a
+              href="#demo"
+              className="nav-link"
+              onClick={(e) => {
+                e.preventDefault()
+                scrollToSection('demo', true)
+                window.history.pushState(null, '', '#demo')
+              }}
+            >
+              Interactive Demo
+            </a>
+            <a
+              href="#how-it-works"
+              className="nav-link"
+              onClick={(e) => {
+                e.preventDefault()
+                scrollToSection('how-it-works', true)
+                window.history.pushState(null, '', '#how-it-works')
+              }}
+            >
+              How It Works
+            </a>
+            <a
+              href="#topics"
+              className="nav-link"
+              onClick={(e) => {
+                e.preventDefault()
+                scrollToSection('topics', true)
+                window.history.pushState(null, '', '#topics')
+              }}
+            >
+              Math Topics
+            </a>
           </nav>
 
           <div className="navbar-actions">

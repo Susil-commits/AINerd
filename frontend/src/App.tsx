@@ -46,6 +46,10 @@ export default function App() {
           <Suspense fallback={<PageFallback />}>
             <Routes>
               <Route path="/" element={<Landing />} />
+              <Route path="/demo" element={<Navigate to="/#demo" replace />} />
+              <Route path="/how-it-works" element={<Navigate to="/#how-it-works" replace />} />
+              <Route path="/topics" element={<Navigate to="/#topics" replace />} />
+              <Route path="/features" element={<Navigate to="/#features" replace />} />
               <Route
                 path="/student-session"
                 element={
