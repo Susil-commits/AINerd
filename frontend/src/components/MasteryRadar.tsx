@@ -136,7 +136,7 @@ export default function MasteryRadar({ skills = [], showBars = true }: Props) {
                     >
                       {s.meta.grade} · {s.meta.domainAbbr}
                     </span>
-                    <span className="mastery-std-code">{s.skill_id}</span>
+                    <span className="mastery-std-code">{s.meta.shortTitle || s.meta.title}</span>
                   </div>
                   <span
                     className="mastery-tier-badge"

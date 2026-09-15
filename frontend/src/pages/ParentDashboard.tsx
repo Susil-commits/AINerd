@@ -454,7 +454,7 @@ export default function ParentDashboard() {
                             >
                               {meta.grade} · {meta.domainAbbr}
                             </span>
-                            <span className="skill-std-code">{s.skill_id}</span>
+                            <span className="skill-std-code">{meta.shortTitle || meta.title}</span>
                           </div>
                           <span
                             className="skill-tier-badge"

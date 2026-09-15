@@ -1453,7 +1453,7 @@ export default function Landing() {
           {MATH_TOPICS.map(topic => (
             <div key={topic.id} className="topic-card card">
               <div className="topic-card-top">
-                <span className="topic-standard">{topic.id}</span>
+                <span className="topic-standard">{topic.tag || topic.name}</span>
                 <span className="topic-grade">{topic.grade}</span>
               </div>
               <h3 className="topic-title">{topic.name}</h3>

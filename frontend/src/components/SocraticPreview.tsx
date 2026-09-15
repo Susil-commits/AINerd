@@ -17,7 +17,7 @@ const SCENARIOS: Scenario[] = [
   {
     id: 'fractions',
     title: 'Adding Fractions',
-    topic: 'Fractions · 4.NF.B.3',
+    topic: 'Fractions · Visual Slice Models',
     problem: 'Solve:  1/3 + 1/6',
     studentWork: '1/3 + 1/6 = 2/9  (I added 1+1 and 3+6)',
     misconception: 'Added denominators directly instead of finding a common denominator.',
@@ -28,7 +28,7 @@ const SCENARIOS: Scenario[] = [
   {
     id: 'algebra',
     title: 'Negative Coefficients',
-    topic: 'Equations · 7.EE.B.4',
+    topic: 'Equations · Negative Coefficients',
     problem: 'Solve for x:  -3x = 12',
     studentWork: '-3x = 12  →  x = 12 / 3  →  x = 4',
     misconception: 'Dropped the negative sign when dividing both sides.',
@@ -39,7 +39,7 @@ const SCENARIOS: Scenario[] = [
   {
     id: 'geometry',
     title: 'Perimeter vs. Area',
-    topic: 'Geometry · 4.MD.A.3',
+    topic: 'Geometry · Perimeter vs. Area',
     problem: 'A garden is 6m long and 4m wide. Find the fence needed to surround it.',
     studentWork: '6 × 4 = 24 meters of fence',
     misconception: 'Calculated area instead of perimeter.',

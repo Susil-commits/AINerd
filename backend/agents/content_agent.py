@@ -66,6 +66,20 @@ def _get_local_fallback_problem(skill_id: str, exclude_ids: set[str]) -> dict | 
     return problems[0]
 
 
+def _enrich_problem(prob: dict | None) -> dict | None:
+    """Enrich problem dict with human-readable skill_name based on skill_id."""
+    if not prob:
+        return None
+    p = dict(prob)
+    s_id = p.get("skill_id", "")
+    try:
+        params = get_skill_params(s_id)
+        p["skill_name"] = params.get("name", s_id)
+    except Exception:
+        p["skill_name"] = s_id
+    return p
+
+
 def get_next_problem(
     skill_id: str,
     mastery_prob: float,
@@ -158,10 +172,10 @@ def get_next_problem(
         local_fallback = _get_local_fallback_problem(skill_id, exclude_ids)
         if local_fallback:
             print(f"[INFO] Using resilient local seed problem for skill {skill_id}: {local_fallback.get('title')}")
-            return local_fallback
+            return _enrich_problem(local_fallback)
         return None
 
-    return result_data[0]
+    return _enrich_problem(result_data[0])
 
 
 def generate_session_summary(
@@ -220,4 +234,4 @@ Keep it under 150 words total. Warm, specific, actionable."""
         return str(response.content).strip()
     except Exception as e:
         print(f"[WARN] Failed to generate LLM summary: {e}")
-        return f"{student_name} completed an active practice session today. The tutor tracked student engagement across core Common Core math concepts. Continued practice with targeted guidance is recommended to solidify problem-solving fluency."
+        return f"{student_name} completed an active practice session today. The tutor tracked student engagement across core math concepts. Continued practice with targeted guidance is recommended to solidify problem-solving fluency."

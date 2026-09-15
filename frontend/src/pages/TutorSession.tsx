@@ -18,6 +18,9 @@ interface Message {
 }
 
 function formatSkillName(id: string): string {
+  if (!id) return 'Math Practice'
+  const meta = getSkillMeta(id)
+  if (meta && meta.title && meta.title !== id) return meta.title
   const map: Record<string, string> = {
     fractions_add_unlike: 'Adding Fractions',
     fractions_multiply: 'Multiplying Fractions',
@@ -25,16 +28,16 @@ function formatSkillName(id: string): string {
     equations_linear_2step: '2-Step Equations',
     word_problems_ratios: 'Ratios & Proportions',
     geometry_area_perimeter: 'Area & Perimeter',
-    '3.OA.A.1': 'Multiplication',
-    '3.OA.A.2': 'Division',
+    '3.OA.A.1': 'Understanding Multiplication',
+    '3.OA.A.2': 'Understanding Division',
     '3.OA.D.8': 'Two-Step Word Problems',
     '4.NF.A.1': 'Equivalent Fractions',
-    '4.NF.B.3': 'Adding Fractions',
-    '4.NF.B.4': 'Fractions & Whole Numbers',
-    '5.NF.B.7': 'Dividing Fractions',
-    '6.EE.A.2': 'Algebraic Expressions',
-    '6.EE.B.7': 'One-Step Equations',
-    '7.EE.B.4': 'Multi-Step Equations',
+    '4.NF.B.3': 'Adding & Subtracting Fractions',
+    '4.NF.B.4': 'Multiplying Fractions by Whole Numbers',
+    '5.NF.B.7': 'Dividing Fractions & Whole Numbers',
+    '6.EE.A.2': 'Evaluating Algebraic Expressions',
+    '6.EE.B.7': 'Solving One-Step Equations',
+    '7.EE.B.4': 'Solving Multi-Step Equations',
   }
   if (map[id]) return map[id]
   return id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
@@ -541,7 +544,7 @@ export default function TutorSession() {
         {currentProblem && (
           <div className="problem-card card animate-fadein">
             <div className="problem-header">
-              <span className="badge badge-amber">Skill: {formatSkillName(currentProblem.skill_id)}</span>
+              <span className="badge badge-amber">Topic: {formatSkillName(currentProblem.skill_id)}</span>
               <span className="difficulty-dots">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <span key={i} className={`dot ${i < currentProblem.difficulty ? 'active' : ''}`} />

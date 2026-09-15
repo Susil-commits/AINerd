@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getMastery, getSummary } from '../lib/api'
 import MasteryRadar from '../components/MasteryRadar'
+import { getSkillMeta } from '../lib/skillsData'
 import ThemeToggle from '../components/ThemeToggle'
 import './Dashboard.css'
 
@@ -196,7 +197,7 @@ export default function Dashboard() {
                       <div className="skill-bar-track">
                         <div className="skill-bar-fill" style={{ width: `${pct}%` }} />
                       </div>
-                      <span className="skill-std">{s.skill_id}</span>
+                      <span className="skill-std">{getSkillMeta(s.skill_id).domain}</span>
                     </div>
                   )
                 })}

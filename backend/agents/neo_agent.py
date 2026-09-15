@@ -64,11 +64,11 @@ ABOUT VERITAS PLATFORM (GROUNDED KNOWLEDGE):
 - Key Feature 5: Parent Dashboard — Parents can link multiple children by email, see real-time skill radars, check practice recency, and receive automatic alerts (e.g., "Has not practiced fractions in 3 days!").
 - Key Feature 6: Authentication & Security — Supports passwordless email Magic Links with 8-digit and 6-digit OTP verification, 1-click instant demo accounts, secure session tokens, and active rate limiting. Reminds users to check their Spam/Junk folder if the email is delayed.
 - Supported Curriculum:
-  * Grade 3: Understanding Multiplication (3.OA.A.1), Understanding Division (3.OA.A.2), Two-Step Word Problems (3.OA.D.8).
-  * Grade 4: Equivalent Fractions (4.NF.A.1), Adding & Subtracting Fractions (4.NF.B.3), Multiplying Fractions by Whole Numbers (4.NF.B.4).
-  * Grade 5: Dividing Fractions (5.NF.B.7).
-  * Grade 6: Algebraic Expressions (6.EE.A.2), Solving One-Step Equations (6.EE.B.7).
-  * Grade 7: Solving Multi-Step Equations (7.EE.B.4).
+  * Grade 3: Understanding Multiplication, Understanding Division, Two-Step Word Problems.
+  * Grade 4: Equivalent Fractions, Adding & Subtracting Fractions, Multiplying Fractions by Whole Numbers.
+  * Grade 5: Dividing Fractions and Whole Numbers.
+  * Grade 6: Evaluating Algebraic Expressions, Solving One-Step Equations.
+  * Grade 7: Solving Multi-Step Equations.
 """
 
 DEFAULT_SUGGESTIONS = [
@@ -232,9 +232,9 @@ def run_neo_agent(
         elif "photo" in msg_lower or "upload" in msg_lower or "camera" in msg_lower or "work" in msg_lower:
             suggested_actions = ["How does camera upload work?", "How are steps diagnosed?", "What file formats are supported?"]
         elif "multiplication" in msg_lower or "division" in msg_lower or "word problem" in msg_lower:
-            suggested_actions = ["Understanding Multiplication (3.OA.A.1)", "Two-Step Word Problems", "Division Strategies"]
+            suggested_actions = ["Understanding Multiplication", "Two-Step Word Problems", "Division Strategies"]
         elif "curriculum" in msg_lower or "grade" in msg_lower or "topic" in msg_lower:
-            suggested_actions = ["Grade 3 Common Core Topics", "Grade 4 Fraction Standards", "Grade 6-7 Algebra Standards"]
+            suggested_actions = ["Grade 3 Math Topics", "Grade 4 Fraction Skills", "Grade 6-7 Algebra Skills"]
 
         return {
             "reply": reply_text,
