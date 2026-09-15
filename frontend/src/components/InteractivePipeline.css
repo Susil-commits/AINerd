@@ -82,12 +82,15 @@
 }
 
 .pipeline-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--text-primary, #f8fafc);
   font-size: 0.76rem;
   font-weight: 600;
-  padding: 5px 12px;
+  padding: 6px 12px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.18s ease;
@@ -125,7 +128,7 @@
   background: transparent;
   border: none;
   color: var(--text-muted, #94a3b8);
-  padding: 4px 10px;
+  padding: 5px 11px;
   font-size: 0.72rem;
   font-weight: 600;
   border-radius: 6px;
@@ -142,12 +145,16 @@
 .pipeline-stage-container {
   position: relative;
   width: 100%;
-  background: radial-gradient(circle at 50% 45%, rgba(124, 93, 250, 0.08) 0%, rgba(10, 14, 23, 0.98) 75%);
+  background: radial-gradient(circle at 50% 48%, rgba(124, 93, 250, 0.09) 0%, rgba(10, 14, 23, 0.98) 75%);
   user-select: none;
 }
 
 .pipeline-hint-bar {
-  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 7px 16px;
   background: rgba(124, 93, 250, 0.08);
   border-bottom: 1px solid rgba(124, 93, 250, 0.12);
   font-size: 0.73rem;
@@ -166,7 +173,7 @@
 .pipeline-svg {
   width: 100%;
   height: auto;
-  min-height: 380px;
+  min-height: 400px;
   display: block;
 }
 
@@ -181,8 +188,8 @@
 }
 
 .radar-ring {
-  transform-origin: 500px 250px;
-  animation: rotate-radar 24s linear infinite;
+  transform-origin: 570px 285px;
+  animation: rotate-radar 28s linear infinite;
 }
 
 .radar-ring.paused {
@@ -194,43 +201,91 @@
   to { transform: rotate(360deg); }
 }
 
+/* ── Core Dot Orbit ── */
+.core-dot-orbit {
+  transform-origin: 0 0;
+  animation: rotate-core-orbit 16s linear infinite;
+}
+
+.core-dot-orbit.paused {
+  animation-play-state: paused;
+}
+
+@keyframes rotate-core-orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Cable Floating Event Badges ── */
+.cable-badge-rect {
+  fill: #0e131f;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5));
+  transition: all 0.2s ease;
+}
+
+.cable-badge-text {
+  font-family: 'JetBrains Mono', monospace;
+  pointer-events: none;
+}
+
+/* ── Anchor Port Dots ── */
+.anchor-port {
+  filter: drop-shadow(0 0 4px currentColor);
+  pointer-events: none;
+}
+
 /* ── Node Items ── */
 .pipeline-node-item {
-  transition: transform 0.05s ease-out;
+  transition: transform 0.04s ease-out;
 }
 
 .node-pill-rect {
-  fill: var(--bg-card, #161b22);
+  fill: #131722;
   transition: fill 0.2s ease, stroke 0.2s ease;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
 }
 
 .node-core-circle {
-  fill: var(--bg-card, #161b22);
+  fill: #131722;
   transition: fill 0.2s ease, stroke 0.2s ease;
   filter: drop-shadow(0 8px 24px rgba(124, 93, 250, 0.45));
 }
 
 .pipeline-node-item:hover .node-pill-rect,
 .pipeline-node-item:hover .node-core-circle {
-  fill: var(--bg-hover, #1f2937);
+  fill: #1a2030;
   filter: drop-shadow(0 6px 16px rgba(124, 93, 250, 0.35));
 }
 
 .pipeline-node-item.selected .node-pill-rect,
 .pipeline-node-item.selected .node-core-circle {
-  fill: var(--bg-elevated, #242c38);
+  fill: #1e2638;
+}
+
+.node-icon-bg {
+  transition: all 0.2s ease;
 }
 
 .node-title {
-  fill: var(--text-primary, #ffffff);
+  fill: #f8fafc;
+  font-family: inherit;
+  letter-spacing: -0.01em;
   pointer-events: none;
 }
 
 .node-sub {
-  fill: var(--text-secondary, #94a3b8);
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  fill: #94a3b8;
+  font-family: 'JetBrains Mono', monospace;
+  pointer-events: none;
+}
+
+.node-core-title {
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.node-core-sub {
+  font-family: 'JetBrains Mono', monospace;
   pointer-events: none;
 }
 
@@ -280,7 +335,7 @@
   padding: 10px 12px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -297,13 +352,21 @@
   box-shadow: 0 0 12px rgba(124, 93, 250, 0.2);
 }
 
-.pipeline-card-item .card-icon {
-  font-size: 1.3rem;
+.card-icon-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .pipeline-card-item strong {
   display: block;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
+  font-weight: 700;
   color: var(--text-primary, #ffffff);
 }
 
@@ -367,11 +430,18 @@
 .inspector-title-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
-.inspector-icon {
-  font-size: 1.7rem;
+.inspector-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .inspector-title {
@@ -462,7 +532,7 @@
 }
 
 [data-theme="light"] .pipeline-stage-container {
-  background: radial-gradient(circle at 50% 45%, rgba(124, 93, 250, 0.06) 0%, #f8fafc 85%);
+  background: radial-gradient(circle at 50% 48%, rgba(124, 93, 250, 0.06) 0%, #f8fafc 85%);
 }
 
 [data-theme="light"] .pipeline-hint-bar {
@@ -477,6 +547,11 @@
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.08));
 }
 
+[data-theme="light"] .cable-badge-rect {
+  fill: #ffffff;
+  stroke: #cbd5e1;
+}
+
 [data-theme="light"] .pipeline-node-item:hover .node-pill-rect,
 [data-theme="light"] .pipeline-node-item:hover .node-core-circle {
   fill: #f8fafc;
@@ -488,6 +563,10 @@
 
 [data-theme="light"] .node-sub {
   fill: #64748b;
+}
+
+[data-theme="light"] .node-core-title {
+  fill: #0f172a;
 }
 
 [data-theme="light"] .radar-ring {
