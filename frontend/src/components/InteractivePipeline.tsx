@@ -266,8 +266,6 @@ export default function InteractivePipeline() {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const draggingNodeRef = useRef<{ id: string; startX: number; startY: number; mouseStartX: number; mouseStartY: number } | null>(null)
 
-  const selectedNode = nodes.find(n => n.id === selectedNodeId) || nodes[6]
-  const SelectedNodeIcon = selectedNode.icon
 
   // Reset to default positions
   const handleResetLayout = () => {
@@ -865,43 +863,6 @@ export default function InteractivePipeline() {
         </div>
       )}
 
-      {/* ── Bottom Telemetry / Node Inspector ── */}
-      <div className="pipeline-inspector">
-        <div className="inspector-header">
-          <span className="inspector-badge">
-            <span className="inspector-dot" style={{ background: selectedNode.color }} />
-            COMPONENT INSPECTOR
-          </span>
-          <span className="inspector-status">STATUS: ACTIVE & CONNECTED</span>
-        </div>
-
-        <div className="inspector-body">
-          <div className="inspector-info">
-            <div className="inspector-title-row">
-              <div
-                className="inspector-icon-badge"
-                style={{
-                  background: `${selectedNode.color}18`,
-                  borderColor: `${selectedNode.color}50`,
-                  color: selectedNode.color,
-                }}
-              >
-                <SelectedNodeIcon size={28} strokeWidth={2.2} />
-              </div>
-              <div>
-                <h3 className="inspector-title">{selectedNode.title}</h3>
-                <span className="inspector-sub">{selectedNode.subtitle}</span>
-              </div>
-            </div>
-            <p className="inspector-desc">{selectedNode.description}</p>
-          </div>
-
-          <div className="inspector-payload">
-            <span className="payload-label">Live Example Data Stream:</span>
-            <pre className="payload-code">{selectedNode.sampleData}</pre>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

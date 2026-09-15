@@ -376,120 +376,6 @@
   color: var(--text-secondary, #94a3b8);
 }
 
-/* ── Bottom Telemetry / Node Inspector ── */
-.pipeline-inspector {
-  background: rgba(0, 0, 0, 0.5);
-  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
-  padding: 1.2rem 1.6rem;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.inspector-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-}
-
-.inspector-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-family: 'JetBrains Mono', monospace;
-  color: var(--text-primary, #f1f5f9);
-}
-
-.inspector-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-}
-
-.inspector-status {
-  font-family: 'JetBrains Mono', monospace;
-  color: #34D399;
-}
-
-.inspector-body {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 24px;
-  align-items: stretch;
-}
-
-.inspector-info {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.inspector-title-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.inspector-icon-badge {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
-  border: 1px solid;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.inspector-title {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: var(--text-primary, #ffffff);
-}
-
-.inspector-sub {
-  font-size: 0.82rem;
-  color: var(--text-muted, #94a3b8);
-}
-
-.inspector-desc {
-  margin: 0;
-  font-size: 0.92rem;
-  line-height: 1.6;
-  color: var(--text-secondary, #cbd5e1);
-}
-
-.inspector-payload {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.payload-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.72rem;
-  color: var(--text-muted, #94a3b8);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.payload-code {
-  margin: 0;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 0.84rem;
-  color: #34D399;
-  white-space: pre-wrap;
-  word-break: break-word;
-  line-height: 1.5;
-}
 
 /* ═════════════════════════════════════════════════════════════════════════
    LIGHT MODE OVERRIDES
@@ -506,8 +392,7 @@
 }
 
 [data-theme="light"] .pipeline-status,
-[data-theme="light"] .pipeline-title-text,
-[data-theme="light"] .inspector-title {
+[data-theme="light"] .pipeline-title-text {
   color: #0f172a;
 }
 
@@ -590,23 +475,6 @@
   color: #0f172a;
 }
 
-[data-theme="light"] .pipeline-inspector {
-  background: #f8fafc;
-  border-top-color: rgba(0, 0, 0, 0.08);
-}
-
-[data-theme="light"] .inspector-desc {
-  color: #334155;
-}
-
-[data-theme="light"] .inspector-payload {
-  background: #ffffff;
-  border-color: #e2e8f0;
-}
-
-[data-theme="light"] .payload-code {
-  color: #047857;
-}
 
 /* ═════════════════════════════════════════════════════════════════════════
    RESPONSIVENESS (Mobile & Cross Devices)
@@ -622,10 +490,6 @@
     min-height: 480px;
   }
 
-  .inspector-body {
-    grid-template-columns: 1fr;
-    gap: 14px;
-  }
 
   .pipeline-cards-view {
     grid-template-columns: 1fr;
