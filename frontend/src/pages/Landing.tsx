@@ -212,13 +212,15 @@ export default function Landing() {
   const [connStatus, setConnStatus] = useState<ConnStatus>('checking')
   const [connMessage, setConnMessage] = useState<string>('Connecting to learning space...')
   const [connRetryTrigger, setConnRetryTrigger] = useState(0)
+  const [connVisible, setConnVisible] = useState(true)
+  const [connFading, setConnFading] = useState(false)
 
   const checkConnection = async (): Promise<boolean> => {
     try {
       const data = await checkHealth()
       if (data && data.status === 'ok') {
         setConnStatus('connected')
-        setConnMessage('Learning platform ready')
+        setConnMessage('Connected to learning space')
         return true
       } else {
         setConnStatus('waking_up')
@@ -259,6 +261,32 @@ export default function Landing() {
       if (timer) clearTimeout(timer)
     }
   }, [connRetryTrigger])
+
+  // Show "Connected to learning space" for 2.5s, then smoothly fade out & disappear
+  useEffect(() => {
+    if (connStatus === 'connected') {
+      const fadeTimer = setTimeout(() => {
+        setConnFading(true)
+      }, 2500)
+
+      const hideTimer = setTimeout(() => {
+        setConnVisible(false)
+      }, 3100)
+
+      return () => {
+        clearTimeout(fadeTimer)
+        clearTimeout(hideTimer)
+      }
+    }
+  }, [connStatus])
+
+  const handleConnRetry = () => {
+    setConnVisible(true)
+    setConnFading(false)
+    setConnStatus('checking')
+    setConnMessage('Connecting to learning space...')
+    setConnRetryTrigger(c => c + 1)
+  }
 
   // On verified login (Magic Link callback in URL hash/query), redirect to role destination
   useEffect(() => {
@@ -584,19 +612,15 @@ export default function Landing() {
           An encouraging math tutor that spots where you get stuck — asking helpful questions so you learn the concepts and solve problems on your own.
         </p>
 
-        {/* Server Connection Status - only shown while connecting or on error; invisible once online */}
-        {connStatus !== 'connected' && (
-          <div className={`conn-status conn-status--${connStatus}`}>
+        {/* Server Connection Status - shows connecting, then 'Connected to learning space', then smoothly disappears */}
+        {connVisible && (
+          <div className={`conn-status conn-status--${connStatus} ${connFading ? 'conn-status--fade-out' : ''}`}>
             <span className="conn-dot" />
             <span>{connMessage}</span>
             {connStatus === 'error' && (
               <button
                 className="conn-retry-btn"
-                onClick={() => {
-                  setConnStatus('checking')
-                  setConnMessage('Connecting to learning space...')
-                  setConnRetryTrigger(c => c + 1)
-                }}
+                onClick={handleConnRetry}
               >
                 Retry
               </button>
